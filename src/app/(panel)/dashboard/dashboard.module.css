@@ -1,0 +1,228 @@
+/* Layout Principal */
+.dashboardLayout {
+  background-color: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* --- TOPBAR ORIGINAL --- */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1e293b;
+  padding: 12px 24px;
+  color: white;
+}
+.brand h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+}
+.brand span {
+  color: #3b82f6;
+}
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.9rem;
+}
+.roleBadge {
+  background-color: #334155;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.logoutBtn {
+  background: none;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.logoutBtn:hover {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+/* --- MAIN CONTENT --- */
+.mainContent {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Sub-Header (Estilo Torre de Control) */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.headerTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.headerNumber {
+  background-color: #2563eb;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 1.2rem;
+}
+.headerSubtitle {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #64748b;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.timeText {
+  font-size: 0.9rem;
+  color: #475569;
+  font-weight: 500;
+}
+.refreshBtn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.refreshBtn:hover {
+  color: #0f172a;
+}
+
+/* Mensaje de Error */
+.errorMessage {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+}
+
+/* --- GRID DE KPIs --- */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+
+/* --- TABLA CENTRAL --- */
+.tableSection {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.tableTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* --- WIDGETS INFERIORES --- */
+.bottomRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.widgetCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+.widgetTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+/* Estilos de Lista de Alertas e Items */
+.alertList {
+  display: flex;
+  flex-direction: column;
+}
+.alertItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  color: #334155;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.alertItem:last-child {
+  border-bottom: none;
+}
+.alertIcon {
+  margin-right: 8px;
+  font-size: 1rem;
+}
+.emptyText {
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 20px 0;
+}
+.ghostLink {
+  margin-top: auto;
+  text-align: center;
+  color: #2563eb;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding-top: 16px;
+}
+.ghostLink:hover {
+  text-decoration: underline;
+}
+
+/* Placeholder del mapa */
+.mapContainer {
+  background-color: #f1f5f9;
+  flex: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed #cbd5e1;
+}
+.mapText {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 0.9rem;
+}

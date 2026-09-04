@@ -1,0 +1,77 @@
+.sidebar {
+  width: 250px;
+  height: 100vh;
+  background-color: #1e293b;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.logo {
+  padding: 24px;
+  font-size: 20px;
+  font-weight: bold;
+  border-bottom: 1px solid #334155;
+}
+
+.menu {
+  list-style: none;
+  padding: 16px 0;
+}
+
+.menuItem {
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menuItem:hover, .menuItem--active {
+  background-color: #334155;
+  border-left: 4px solid #3b82f6;
+}
+
+
+.badgeCount {
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.submenu {
+  list-style: none;
+  padding-left: 1.5rem;
+  margin: 4px 0;
+}
+
+.subMenuItem {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parentItem {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.linkItem {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+
+}

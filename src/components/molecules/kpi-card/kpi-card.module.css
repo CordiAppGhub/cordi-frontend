@@ -1,0 +1,34 @@
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+.value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+}
+/* Variantes de color para el texto del valor */
+.success .value { color: #10b981; }
+.warning .value { color: #f59e0b; }
+.danger .value { color: #ef4444; }
+.info .value { color: #3b82f6; }
+.default .value { color: #1f2937; }

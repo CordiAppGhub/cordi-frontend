@@ -1,0 +1,22 @@
+.panelWrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f4f7f6; 
+}
+
+.mainContent {
+  flex-grow: 1;
+  padding: 2rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  
+  /* 🪄 LA MAGIA ESTÁ AQUÍ: 
+     Empujamos el contenido a la derecha exactamente el mismo ancho que tiene el Sidebar.
+     (Si tu Sidebar mide distinto a 260px, cambia este valor) */
+  margin-left: 260px; 
+  
+  /* Aseguramos que la tabla no se desborde horizontalmente */
+  width: calc(100% - 260px); 
+  overflow-x: auto;
+}
