@@ -34,11 +34,13 @@ export const LocationsManager: React.FC = () => {
     {
       id: 'name',
       header: 'Nombre',
+      type: 'text',
       renderCell: (row) => <span style={{ fontWeight: '500' }}>{row.name}</span>,
     },
     {
       id: 'type', // ID virtual
       header: 'Tipo de Instalación',
+      type: 'text',
       renderCell: (loc) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           {loc.isPort && <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '12px', fontSize: '12px' }}>Puerto</span>}
@@ -50,7 +52,7 @@ export const LocationsManager: React.FC = () => {
     {
       id: 'routes', // ID virtual
       header: 'Rutas Permitidas',
-      
+      type: 'text',
       renderCell: (loc) => (
         <div style={{ fontSize: '13px' }}>
           {loc.isOrigin ? '✅ Origen' : '❌ Origen'}<br />
@@ -82,6 +84,7 @@ export const LocationsManager: React.FC = () => {
     {
       id: 'actions', // ID virtual
       header: 'Acciones',
+      type: 'text',
       renderCell: (loc) => (
         <div style={{ textAlign: 'right' }}>
           <button 

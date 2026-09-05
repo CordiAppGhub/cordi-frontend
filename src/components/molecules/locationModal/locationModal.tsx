@@ -5,14 +5,9 @@ import { useLocations } from '../../../hooks/useLocation';
 import { locationSchema } from '../../../schemas/location.schema';
 import { Input } from '../../atoms/input/input';
 import { Button } from '../../atoms/button/button';
-import { Location } from '../../../types/location.types';
+import { Location, Tarifa } from '../../../types/location.types';
 import styles from '../../organisms/assign-modal/assign-modal.module.css';
 
-export interface Tarifa {
-  id?: number;
-  operacion: string;
-  valor: number | string;
-}
 
 // 1. 👇 LO MOVEMOS AFUERA DEL COMPONENTE para evitar el error del useEffect
 const defaultState = {
@@ -67,10 +62,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
   // ==========================================
   // MANEJO DINÁMICO DEL TARIFARIO
   // ==========================================
-  const handleAddTarifa = () => {
+const handleAddTarifa = () => {
     setFormData((prev) => ({
       ...prev,
-      tarifas: [...prev.tarifas, { operacion: '', valor: '' }]
+      tarifas: [...prev.tarifas, { operacion: '', valor: 0 } as Tarifa]
     }));
   };
 
@@ -81,19 +76,17 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
     }));
   };
 
-  const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) => {
-    const newTarifas = [...formData.tarifas];
-    newTarifas[index] = { ...newTarifas[index], [field]: field === 'valor' ? Number(value) || '' : value };
-    setFormData((prev) => ({ ...prev, tarifas: newTarifas }));
+const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) => {
+  const newTarifas = [...formData.tarifas];
+  newTarifas[index] = { 
+    ...newTarifas[index], 
+    [field]: field === 'valor' ? Number(value) || 0 : value 
   };
-
-  // ==========================================
-  // ENVÍO DE DATOS
-  // ==========================================
+  setFormData((prev) => ({ ...prev, tarifas: newTarifas }));
+}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validamos que las tarifas no tengan campos vacíos si existen
     const invalidTarifas = formData.tarifas.some(t => !t.operacion || !t.valor);
     if (invalidTarifas) {
       setErrors({ ...errors, tarifas: 'Todas las tarifas deben tener operación y valor.' });

@@ -11,7 +11,7 @@ const PROTECTED_ROUTES = [
   '/yard',
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const sessionToken = request.cookies.get('corditrans_session')?.value;
