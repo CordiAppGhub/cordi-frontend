@@ -32,7 +32,7 @@ export interface Operation {
   
   vehicle?: Vehicle | null;
   evidences?: Evidence[];
-  
+  placaIA?: string | null; // Placa detectada por IA
   origen?: LogisticNode | null;
   cargue?: LogisticNode | null;
   descargue?: LogisticNode | null;

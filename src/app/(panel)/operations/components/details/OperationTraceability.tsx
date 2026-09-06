@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import styles from './OperationTraceability.module.css';
 import { useOperations } from '../../hooks/useOperations';
+import { socket } from '@/lib/socket';
+import { useOperationStore } from '@/store/use-operation.store';
 
 interface Props {
   operationId: number;
@@ -10,13 +12,38 @@ interface Props {
 
 export function OperationTraceability({ operationId }: Props) {
   const { currentOperation, isLoadingCurrent, fetchOperationById } = useOperations();
+  const updateOperation = useOperationStore((state) => state.updateOperation);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (operationId) {
       fetchOperationById(operationId);
+
+      const updateEvent = `operation_${operationId}_updated`;
+      const evidenceEvent = `operation_${operationId}_evidence`;
+
+      const handleUpdate = (newData: any) => {
+        updateOperation(operationId, newData);
+      };
+
+      const handleNewEvidence = (newEvidence: any) => {
+        const currentState = useOperationStore.getState().currentOperation;
+        if (currentState?.id === operationId) {
+          updateOperation(operationId, {
+            evidences: [...(currentState.evidences || []), newEvidence],
+          });
+        }
+      };
+
+      socket.on(updateEvent, handleUpdate);
+      socket.on(evidenceEvent, handleNewEvidence);
+
+      return () => {
+        socket.off(updateEvent, handleUpdate);
+        socket.off(evidenceEvent, handleNewEvidence);
+      };
     }
-  }, [operationId, fetchOperationById]);
+  }, [operationId, fetchOperationById, updateOperation]);
 
   if (isLoadingCurrent) {
     return <div>Cargando detalles de la operación...</div>;
@@ -50,7 +77,7 @@ export function OperationTraceability({ operationId }: Props) {
             <div>
               <p className={styles.label}>Placa Registrada (IA)</p>
               <p className={`${styles.value} ${styles.mono}`}>
-                {currentOperation.vehicle?.plate || 'Pendiente'}
+                {currentOperation.placaIA || currentOperation.vehicle?.plate || 'Pendiente'}
               </p>
             </div>
             <div>

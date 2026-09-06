@@ -7,6 +7,8 @@ import { CreateOperationInput } from '@/schemas/operation.schema';
 import { useOperationStore } from '@/store/use-operation.store';
 import { useAuthStore } from '@/store/use-auth.store';
 import { useUIStore } from '@/store/use-ui.store';
+import { socket } from '@/lib/socket'; // 👈 Importamos la instancia del socket
+import { Operation } from '@/types/operation-types';
 
 export function useOperations() {
   const operations = useOperationStore((state) => state.operations);
@@ -23,6 +25,7 @@ export function useOperations() {
   const setIsLoadingOperations = useOperationStore((state) => state.setIsLoadingOperations);
   const setIsLoadingCurrent = useOperationStore((state) => state.setIsLoadingCurrent);
   const setError = useOperationStore((state) => state.setError);
+  const updateOperation = useOperationStore((state) => state.updateOperation); // 👈 Acción de Zustand para actualización atómica
 
   // ─────────────────────────────
   // LOAD OPERATIONS (Con Fusión de Filtros)
@@ -167,6 +170,26 @@ export function useOperations() {
     },
     [fetchOperations, setError, setIsLoadingOperations]
   );
+
+  // ─────────────────────────────
+  // WEBSOCKETS LISTENER (TIEMPO REAL)
+  // ─────────────────────────────
+  useEffect(() => {
+    const handleGlobalUpdate = (data: Operation) => {
+      if (data && data.id) {
+        console.log(`🔄 [WebSocket] Actualización global para operación #${data.id}`);
+        // Actualiza de forma inmediata tanto en la tabla como en el estado actual si coincide
+        updateOperation(data.id, data);
+      }
+    };
+
+    // Escuchamos el canal global emitido por el EventsGateway de NestJS
+    socket.on('global_operations_updated', handleGlobalUpdate);
+
+    return () => {
+      socket.off('global_operations_updated', handleGlobalUpdate);
+    };
+  }, [updateOperation]);
 
   // INITIAL LOAD
   useEffect(() => {
