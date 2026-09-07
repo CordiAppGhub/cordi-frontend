@@ -1,3 +1,6 @@
+/* ==========================================
+   SUPER TABLA RESPONSIVA (MOBILE-FIRST)
+   ========================================== */
 .tableContainer {
   background: #ffffff;
   border-radius: 12px;
@@ -14,23 +17,24 @@
   padding: 16px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-direction: column; /* 🔥 Apilado en móvil para evitar desbordes */
+  gap: 12px;
   justify-content: space-between;
-  align-items: center;
+  align-items: stretch; /* Elementos ocupan todo el ancho en móvil */
   background-color: #f8fafc;
 }
 
 .searchContainer {
   position: relative;
+  width: 100%;
 }
 
 .searchInput {
-  padding: 8px 16px 8px 36px;
+  padding: 12px 16px 12px 40px; /* Padding mayor para mejor accesibilidad táctil */
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  font-size: 14px;
-  width: 256px;
+  font-size: 16px; /* 🔥 16px previene el zoom automático molesto en iOS */
+  width: 100%; /* Ocupa todo el ancho disponible en móvil */
   background-color: #ffffff;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -43,74 +47,87 @@
 
 .searchIcon {
   position: absolute;
-  left: 12px;
-  top: 10px;
+  left: 14px;
+  top: 14px;
   color: #94a3b8;
   font-size: 14px;
 }
 
 .actionButtons {
   display: flex;
+  flex-direction: column; /* Botones apilados verticalmente en pantallas estrechas */
   gap: 8px;
+  width: 100%;
+}
+
+.btnSecondary,
+.btnPrimary {
+  width: 100%; /* Ancho completo para facilitar clics con el pulgar */
+  min-height: 44px; /* Altura táctil estándar */
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s;
 }
 
 .btnSecondary {
-  font-size: 14px;
-  padding: 6px 12px;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
   background-color: #ffffff;
   color: #334155;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.btnSecondary:hover {
-  background-color: #f1f5f9;
+@media (hover: hover) and (pointer: fine) {
+  .btnSecondary:hover {
+    background-color: #f1f5f9;
+  }
 }
 
 .btnPrimary {
-  font-size: 14px;
-  padding: 6px 12px;
   border: none;
-  border-radius: 6px;
   background-color: #2563eb;
   color: #ffffff;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.btnPrimary:hover {
-  background-color: #1d4ed8;
+@media (hover: hover) and (pointer: fine) {
+  .btnPrimary:hover {
+    background-color: #1d4ed8;
+  }
 }
 
 /* 2. TABLA Y ESTRUCTURA */
 .tableWrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Scroll horizontal fluido en móviles */
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  min-width: 600px; /* Asegura que la tabla no colapse feo en pantallas muy angostas */
 }
 
 .th {
   background-color: #f8fafc;
   color: #475569;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
 .td {
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
   color: #1e293b;
   border-bottom: 1px solid #f1f5f9;
 }
@@ -119,53 +136,43 @@
   transition: background-color 0.15s ease;
 }
 
-.row:hover {
-  background-color: rgba(248, 250, 252, 0.8);
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background-color: rgba(248, 250, 252, 0.8);
+  }
 }
 
 .rowSelected {
   background-color: #eff6ff !important;
 }
 
-/* 3. CONTROLES DE EDICIÓN EN LÍNEA (Inputs y Selects dentro de las celdas) */
-.cellInput {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background-color: #ffffff;
-  font-size: 14px;
-  color: #1e293b;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.cellInput:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
+/* 3. CONTROLES DE EDICIÓN EN LÍNEA */
+.cellInput,
 .cellSelect {
   width: 100%;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background-color: #ffffff;
   font-size: 14px;
   color: #1e293b;
   outline: none;
-  cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.cellInput:focus,
 .cellSelect:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+.cellSelect {
+  cursor: pointer;
+}
+
 .checkbox {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   border: 1px solid #cbd5e1;
   cursor: pointer;
@@ -175,6 +182,8 @@
 /* 4. PAGINACIÓN Y PIE DE PÁGINA */
 .pagination {
   display: flex;
+  flex-direction: column; /* Apilado en móvil */
+  gap: 12px;
   justify-content: space-between;
   align-items: center;
   padding: 16px;
@@ -183,10 +192,11 @@
 }
 
 .pageInfo {
-  font-size: 14px;
+  font-size: 13px;
   color: #64748b;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .selectedBadge {
@@ -198,14 +208,16 @@
 .paginationControls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
 }
 
 .pageSizeSelector {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   color: #475569;
 }
 
@@ -214,7 +226,7 @@
   border-radius: 6px;
   padding: 6px 8px;
   background-color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   color: #1e293b;
   outline: none;
   cursor: pointer;
@@ -224,21 +236,26 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
 .pageBtn {
-  padding: 6px 12px;
+  flex: 1; /* Botones de paginación expandidos simétricamente en móvil */
+  padding: 8px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 14px;
   background-color: #ffffff;
   color: #334155;
   cursor: pointer;
+  text-align: center;
   transition: background-color 0.2s, opacity 0.2s;
 }
 
-.pageBtn:hover:not(:disabled) {
-  background-color: #f1f5f9;
+@media (hover: hover) and (pointer: fine) {
+  .pageBtn:hover:not(:disabled) {
+    background-color: #f1f5f9;
+  }
 }
 
 .pageBtn:disabled {
@@ -251,4 +268,56 @@
   text-align: center;
   color: #64748b;
   font-size: 14px;
+}
+
+
+/* ==========================================
+   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+@media (min-width: 768px) {
+  .toolbar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .searchContainer {
+    width: auto;
+  }
+
+  .searchInput {
+    width: 256px;
+    padding: 8px 16px 8px 36px;
+    font-size: 14px;
+  }
+
+  .searchIcon {
+    top: 10px;
+    left: 12px;
+  }
+
+  .actionButtons {
+    flex-direction: row;
+    width: auto;
+  }
+
+  .btnSecondary,
+  .btnPrimary {
+    width: auto;
+    min-height: auto;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  .pagination {
+    flex-direction: row;
+  }
+
+  .paginationControls {
+    width: auto;
+  }
+
+  .pageBtn {
+    flex: initial;
+    padding: 6px 12px;
+  }
 }

@@ -1,26 +1,64 @@
+/* ==========================================
+   FORM SELECTS (MOBILE-FIRST)
+   ========================================== */
 .select {
   width: 100%;
-  padding: 10px;
+  /* 🔥 CRÍTICO MÓVIL: Padding mayor para asegurar un touch-target cómodo */
+  padding: 14px 16px; 
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: 8px; /* Coherente con los inputs */
+  
+  /* 🔥 EL TRUCO DE ORO: Evita el zoom automático en dispositivos iOS (iPhone) */
+  font-size: 16px; 
+  
   color: #334155;
   background-color: #fff;
   outline: none;
-  transition: border-color 0.2s;
+  font-family: inherit;
+  cursor: pointer;
+  
+  /* Transición fluida para bordes y sombras */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* --- Estado Focus (Mejora de Accesibilidad) --- */
 .select:focus {
-  border-color: #0066cc;
+  border-color: #2563eb;
+  /* Halo exterior translúcido idéntico al de los inputs para mantener consistencia visual */
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); 
 }
 
+/* --- Estado de Error --- */
 .error {
   border-color: #ef4444;
 }
 
+/* Halo rojo si el select con error está seleccionado */
+.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
 .errorMessage {
   color: #ef4444;
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: 13px;
+  margin-top: 6px;
+  font-weight: 500;
   display: block;
+}
+
+/* ==========================================
+   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+@media (min-width: 768px) {
+  .select {
+    /* Retornamos a la densidad compacta para pantallas grandes */
+    padding: 10px 12px;
+    font-size: 14px; 
+    border-radius: 6px;
+  }
+
+  .errorMessage {
+    font-size: 12px;
+    margin-top: 4px;
+  }
 }

@@ -1,15 +1,51 @@
+/* ==========================================
+   BADGES (ESTADOS Y ETIQUETAS)
+   ========================================== */
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
+  
+  /* 🔥 CRÍTICO: Evita que "EN CURSO" se parta en dos líneas 
+     cuando la tabla se comprime en la pantalla de un móvil */
+  white-space: nowrap; 
+  
+  /* Garantiza una altura perfecta y centrada en cualquier navegador */
+  line-height: 1; 
+  
+  /* Previene saltos de píxeles si en el futuro decides agregarles borde hover */
+  border: 1px solid transparent; 
+  
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.success { background-color: #dcfce7; color: #166534; }
-.warning { background-color: #ffedd5; color: #9a3412; }
-.danger { background-color: #fee2e2; color: #991b1b; }
-.info { background-color: #dbeafe; color: #1e40af; }
-.default { background-color: #f3f4f6; color: #374151; }
+
+/* --- Variantes de Color --- */
+.success { 
+  background-color: #dcfce7; 
+  color: #166534; 
+}
+
+.warning { 
+  background-color: #ffedd5; 
+  color: #9a3412; 
+}
+
+.danger { 
+  background-color: #fee2e2; 
+  color: #991b1b; 
+}
+
+.info { 
+  background-color: #dbeafe; 
+  color: #1e40af; 
+}
+
+.default { 
+  background-color: #f3f4f6; 
+  color: #374151; 
+}

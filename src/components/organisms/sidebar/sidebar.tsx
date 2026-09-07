@@ -14,7 +14,9 @@ import {
   ClipboardList,
   Fuel,
   Bell,
-  BarChart3
+  BarChart3,
+  Menu,
+  X
 } from 'lucide-react';
 import styles from './sidebar.module.css';
 
@@ -22,15 +24,18 @@ type NavItem = {
   path?: string;
   label: string;
   icon: React.ReactNode;
-  badge?: number | string; // 👈 Soporte para los contadores rojos (Combustible, Alertas)
+  badge?: number | string;
   subItems?: { path: string; label: string; icon?: React.ReactNode }[];
 };
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Estructura completa alineada 100% con la Torre de Control corporativa
+  const toggleSidebar = () => setIsOpen(!isOpen);
+  const closeSidebar = () => setIsOpen(false);
+
   const navItems: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={20} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={20} /> },
@@ -67,58 +72,90 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.logo}>🚛 Corditrans Panel</div>
-      <ul className={styles.menu}>
-        {navItems.map((item) => {
-          const hasSubItems = !!item.subItems;
-          const isActive = item.path ? pathname === item.path : false;
-          const isOpen = openMenus[item.label];
+    <>
+      {/* 🍔 BOTÓN HAMBURGUESA FLOTANTE (Esquina Inferior Derecha, se oculta si isOpen es true) */}
+      <button 
+        type="button" 
+        onClick={toggleSidebar} 
+        className={`${styles.hamburgerBtn} ${isOpen ? styles.hamburgerHidden : ''}`}
+        aria-label="Abrir menú de navegación"
+      >
+        <Menu size={24} />
+      </button>
 
-          return (
-            <React.Fragment key={item.label}>
-              {hasSubItems ? (
-                <li 
-                  className={`${styles.menuItem} ${isOpen ? styles['menuItem--open'] : ''} ${styles.parentItem}`}
-                  onClick={() => toggleMenu(item.label)}
-                >
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {item.icon} {item.label}
-                  </div>
-                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </li>
-              ) : (
-                <Link href={item.path!} className={styles.linkItem}>
-                  <li className={`${styles.menuItem} ${isActive ? styles['menuItem--active'] : ''}`}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+      {/* 🌑 BACKDROP OSCURO */}
+      {isOpen && (
+        <div className={styles.backdrop} onClick={closeSidebar} />
+      )}
+
+      {/* 🗂️ ASIDE SIDEBAR */}
+      <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+        <div className={styles.logo}>
+          <span>🚛 Corditrans Panel</span>
+          <button 
+            type="button" 
+            onClick={closeSidebar} 
+            className={styles.closeBtn}
+            aria-label="Cerrar menú"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <ul className={styles.menu}>
+          {navItems.map((item) => {
+            const hasSubItems = !!item.subItems;
+            const isActive = item.path ? pathname === item.path : false;
+            const menuOpen = openMenus[item.label];
+
+            return (
+              <React.Fragment key={item.label}>
+                {hasSubItems ? (
+                  <li 
+                    className={`${styles.menuItem} ${menuOpen ? styles['menuItem--open'] : ''} ${styles.parentItem}`}
+                    onClick={() => toggleMenu(item.label)}
+                  >
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%' }}>
                       {item.icon} 
                       <span>{item.label}</span>
-                      {item.badge && (
-                        <span className={styles.badgeCount}>{item.badge}</span>
-                      )}
+                      <span style={{ marginLeft: 'auto' }}>
+                        {menuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </span>
                     </div>
                   </li>
-                </Link>
-              )}
+                ) : (
+                  <Link href={item.path!} className={styles.linkItem} onClick={closeSidebar}>
+                    <li className={`${styles.menuItem} ${isActive ? styles['menuItem--active'] : ''}`}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%' }}>
+                        {item.icon} 
+                        <span>{item.label}</span>
+                        {item.badge && (
+                          <span className={styles.badgeCount}>{item.badge}</span>
+                        )}
+                      </div>
+                    </li>
+                  </Link>
+                )}
 
-              {hasSubItems && isOpen && (
-                <ul className={styles.submenu}>
-                  {item.subItems!.map((sub) => {
-                    const isSubActive = pathname === sub.path;
-                    return (
-                      <Link key={sub.path} href={sub.path} className={styles.linkItem}>
-                        <li className={`${styles.menuItem} ${styles.subMenuItem} ${isSubActive ? styles['menuItem--active'] : ''}`}>
-                          {sub.icon} {sub.label}
-                        </li>
-                      </Link>
-                    );
-                  })}
-                </ul>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </ul>
-    </aside>
+                {hasSubItems && menuOpen && (
+                  <ul className={styles.submenu}>
+                    {item.subItems!.map((sub) => {
+                      const isSubActive = pathname === sub.path;
+                      return (
+                        <Link key={sub.path} href={sub.path} className={styles.linkItem} onClick={closeSidebar}>
+                          <li className={`${styles.menuItem} ${styles.subMenuItem} ${isSubActive ? styles['menuItem--active'] : ''}`}>
+                            {sub.icon} <span>{sub.label}</span>
+                          </li>
+                        </Link>
+                      );
+                    })}
+                  </ul>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </ul>
+      </aside>
+    </>
   );
 };

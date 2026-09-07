@@ -12,15 +12,16 @@ import PaginationTable from '@/components/organisms/pagination-table/pagination-
 import { Button } from '@/components/atoms/button/button';
 import { Badge } from '@/components/atoms/badge.tsx/badge';
 import { ColumnDef } from '@/types/table';
+import { LiveClock } from '@/components/atoms/liveClock/LiveClock';
 
 
 interface DispatchRow {
-    id: number;
-    route: string;
-    driverName: string;
-    vehiclePlate: string;
-    status: string;
-  }
+  id: number;
+  route: string;
+  driverName: string;
+  vehiclePlate: string;
+  status: string;
+}
 
 export default function DashboardPage() {
   const { user, logout } = useAuthStore();
@@ -29,41 +30,41 @@ export default function DashboardPage() {
   // 1. Helper para los Badges de Estado
   const renderStatus = (estado: string) => {
     switch (estado?.toUpperCase()) {
-      case 'DISPONIBLE': 
+      case 'DISPONIBLE':
         return <Badge variant="success">Disponible</Badge>;
-      case 'EN_PROGRESO': 
+      case 'EN_PROGRESO':
       case 'EN TRANSITO':
         return <Badge variant="info">En tránsito</Badge>;
       case 'CON_NOVEDAD':
-      case 'EN MANTENIMIENTO': 
+      case 'EN MANTENIMIENTO':
         return <Badge variant="warning">Con novedad</Badge>;
-      default: 
+      default:
         return <Badge variant="default">{estado || 'Sin estado'}</Badge>;
     }
   };
 
   // 2. Definición de Columnas adaptadas a tus datos de despachos
   const dispatchColumns: ColumnDef<DispatchRow>[] = [
-    { 
-      id: 'vehiclePlate', 
-      header: 'Placa', 
-      type: 'text', 
-      renderCell: (row: any) => <strong style={{ color: '#1e293b' }}>{row.vehiclePlate}</strong> 
+    {
+      id: 'vehiclePlate',
+      header: 'Placa',
+      type: 'text',
+      renderCell: (row: any) => <strong style={{ color: '#1e293b' }}>{row.vehiclePlate}</strong>
     },
     { id: 'driverName', header: 'Conductor', type: 'text' },
-    { 
-      id: 'status', 
-      header: 'Estado', 
-      type: 'text', 
-      renderCell: (row: any) => renderStatus(row.status) 
+    {
+      id: 'status',
+      header: 'Estado',
+      type: 'text',
+      renderCell: (row: any) => renderStatus(row.status)
     },
     { id: 'route', header: 'Ruta / Viaje', type: 'text' },
-    { 
-      id: 'accion', 
-      header: 'Próxima acción', 
-      type: 'text', 
+    {
+      id: 'accion',
+      header: 'Próxima acción',
+      type: 'text',
       renderCell: (row: any) => (
-        row.status === 'DISPONIBLE' 
+        row.status === 'DISPONIBLE'
           ? <Button style={{ padding: '4px 10px', fontSize: '0.8rem' }}>Asignar viaje</Button>
           : <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Monitorear</span>
       )
@@ -72,7 +73,7 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.dashboardLayout}>
-      
+
       {/* HEADER PRINCIPAL */}
       <header className={styles.topbar}>
         <div className={styles.brand}>
@@ -86,7 +87,7 @@ export default function DashboardPage() {
       </header>
 
       <main className={styles.mainContent}>
-        
+
         {/* SUB-HEADER (Estilo Torre de Control) */}
         <div className={styles.pageHeader}>
           <div className={styles.headerTitle}>
@@ -94,7 +95,7 @@ export default function DashboardPage() {
             Torre de Control <span className={styles.headerSubtitle}>— Vista general de la flota</span>
           </div>
           <div className={styles.headerActions}>
-            <span className={styles.timeText}>🕒 {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            <LiveClock />
             <button onClick={refresh} className={styles.refreshBtn} disabled={isLoading}>
               {isLoading ? 'Actualizando...' : 'Actualizado: ahora 🔄'}
             </button>
@@ -105,34 +106,34 @@ export default function DashboardPage() {
 
         {/* 1. SECCIÓN: KPIs SUPERIORES (6 Columnas) */}
         <section className={styles.kpiRow}>
-          <KpiCard 
-            title="Total Flota" 
-            value={isLoading ? '...' : (data?.kpis.disponibles || 0) + (data?.kpis.enProgreso || 0) + (data?.kpis.conNovedad || 0)} 
+          <KpiCard
+            title="Total Flota"
+            value={isLoading ? '...' : (data?.kpis.disponibles || 0) + (data?.kpis.enProgreso || 0) + (data?.kpis.conNovedad || 0)}
           />
-          <KpiCard 
-            title="Disponibles" 
-            value={isLoading ? '...' : data?.kpis.disponibles ?? 0} 
-            variant="success" 
+          <KpiCard
+            title="Disponibles"
+            value={isLoading ? '...' : data?.kpis.disponibles ?? 0}
+            variant="success"
           />
-          <KpiCard 
-            title="En Progreso" 
-            value={isLoading ? '...' : data?.kpis.enProgreso ?? 0} 
-            variant="info" 
+          <KpiCard
+            title="En Progreso"
+            value={isLoading ? '...' : data?.kpis.enProgreso ?? 0}
+            variant="info"
           />
-          <KpiCard 
-            title="Con Novedad" 
-            value={isLoading ? '...' : data?.kpis.conNovedad ?? 0} 
-            variant="danger" 
+          <KpiCard
+            title="Con Novedad"
+            value={isLoading ? '...' : data?.kpis.conNovedad ?? 0}
+            variant="danger"
           />
-          <KpiCard 
-            title="Completados Hoy" 
-            value={isLoading ? '...' : data?.kpis.completadosHoy ?? 0} 
-            variant="info" 
+          <KpiCard
+            title="Completados Hoy"
+            value={isLoading ? '...' : data?.kpis.completadosHoy ?? 0}
+            variant="info"
           />
-          <KpiCard 
-            title="Facturación Estimada" 
+          <KpiCard
+            title="Facturación Estimada"
             value="$ -- M" // Aquí puedes conectar tu métrica financiera futura
-            variant="default" 
+            variant="default"
           />
         </section>
 
@@ -142,19 +143,19 @@ export default function DashboardPage() {
             <h2 className={styles.tableTitle}>Estado de la flota (tiempo real)</h2>
             <Button variant="secondary">Filtros</Button>
           </div>
-          
+
           <PaginationTable
             data={data?.activeDispatches || []}
             columns={dispatchColumns}
             totalPages={1}
             currentPage={1}
-            onPageChange={() => {}}
+            onPageChange={() => { }}
           />
         </section>
 
         {/* 3. SECCIÓN: WIDGETS INFERIORES */}
         <section className={styles.bottomRow}>
-          
+
           {/* Widget 1: Mapa (Placeholder interactivo) */}
           <div className={styles.widgetCard}>
             <h3 className={styles.widgetTitle}>Ubicación en mapa</h3>
@@ -176,7 +177,7 @@ export default function DashboardPage() {
                   <span>
                     <span className={styles.alertIcon}>
                       {alert.type === 'SOAT' ? '🔴' : '🟠'}
-                    </span> 
+                    </span>
                     {alert.message}
                   </span>
                   <strong>1</strong> {/* Si agrupas las alertas, aquí va el conteo */}

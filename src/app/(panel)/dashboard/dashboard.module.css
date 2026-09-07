@@ -1,4 +1,6 @@
-/* Layout Principal */
+/* ==========================================
+   LAYOUT PRINCIPAL Y CONTENEDORES (MOBILE-FIRST)
+   ========================================== */
 .dashboardLayout {
   background-color: #f8fafc;
   min-height: 100vh;
@@ -7,29 +9,42 @@
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* --- TOPBAR ORIGINAL --- */
+.mainContent {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- TOPBAR RESPONSIVE --- */
 .topbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
   background-color: #1e293b;
-  padding: 12px 24px;
+  padding: 16px;
   color: white;
 }
+
 .brand h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   letter-spacing: 1px;
 }
+
 .brand span {
   color: #3b82f6;
 }
+
 .userInfo {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 0.9rem;
 }
+
 .roleBadge {
   background-color: #334155;
   padding: 4px 8px;
@@ -37,6 +52,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
 }
+
 .logoutBtn {
   background: none;
   border: 1px solid #475569;
@@ -45,64 +61,69 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  width: 100%;
 }
+
 .logoutBtn:hover {
   background-color: #ef4444;
   border-color: #ef4444;
   color: white;
 }
 
-/* --- MAIN CONTENT --- */
-.mainContent {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Sub-Header (Estilo Torre de Control) */
+/* --- SUB-HEADER (TORRE DE CONTROL) --- */
 .pageHeader {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
 }
+
 .headerTitle {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #0f172a;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+
 .headerNumber {
   background-color: #2563eb;
   color: white;
-  padding: 4px 12px;
+  padding: 2px 8px;
   border-radius: 6px;
-  font-size: 1.2rem;
-}
-.headerSubtitle {
   font-size: 1rem;
+}
+
+.headerSubtitle {
+  font-size: 0.9rem;
   font-weight: 400;
   color: #64748b;
 }
+
 .headerActions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 16px;
 }
+
 .timeText {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #475569;
   font-weight: 500;
 }
+
 .refreshBtn {
   background: none;
   border: none;
   color: #475569;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
+
 .refreshBtn:hover {
   color: #0f172a;
 }
@@ -115,13 +136,14 @@
   border-radius: 8px;
   font-weight: 500;
   border: 1px solid #fecaca;
+  font-size: 0.9rem;
 }
 
-/* --- GRID DE KPIs --- */
+/* --- GRID DE KPIs (MÓVIL: 1 COLUMNA) --- */
 .kpiRow {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 /* --- TABLA CENTRAL --- */
@@ -129,45 +151,50 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overflow-x: auto;
 }
+
 .tableHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
+
 .tableTitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1e293b;
   margin: 0;
 }
 
-/* --- WIDGETS INFERIORES --- */
+/* --- WIDGETS INFERIORES (MÓVIL: 1 COLUMNA) --- */
 .bottomRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
 }
+
 .widgetCard {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
 }
+
 .widgetTitle {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #1e293b;
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 
 /* Estilos de Lista de Alertas e Items */
@@ -175,28 +202,33 @@
   display: flex;
   flex-direction: column;
 }
+
 .alertItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #334155;
   border-bottom: 1px dashed #e2e8f0;
 }
+
 .alertItem:last-child {
   border-bottom: none;
 }
+
 .alertIcon {
   margin-right: 8px;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
+
 .emptyText {
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-align: center;
-  padding: 20px 0;
+  padding: 16px 0;
 }
+
 .ghostLink {
   margin-top: auto;
   text-align: center;
@@ -204,8 +236,9 @@
   font-size: 0.85rem;
   font-weight: 500;
   text-decoration: none;
-  padding-top: 16px;
+  padding-top: 12px;
 }
+
 .ghostLink:hover {
   text-decoration: underline;
 }
@@ -218,11 +251,95 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  min-height: 180px;
   border: 1px dashed #cbd5e1;
 }
+
 .mapText {
   color: #64748b;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+
+/* ==========================================
+   MEDIA QUERIES (ESCRITORIO / MIN-WIDTH)
+   ========================================== */
+
+@media (min-width: 640px) {
+  .topbar {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 24px;
+  }
+
+  .logoutBtn {
+    width: auto;
+  }
+
+  .mainContent {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .pageHeader {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .headerActions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .headerTitle {
+    font-size: 1.5rem;
+    gap: 12px;
+  }
+
+  .headerNumber {
+    padding: 4px 12px;
+    font-size: 1.2rem;
+  }
+
+  .headerSubtitle {
+    font-size: 1rem;
+  }
+
+  .kpiRow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .kpiRow {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .bottomRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .tableSection, .widgetCard {
+    padding: 20px;
+  }
+
+  .tableTitle {
+    font-size: 1.1rem;
+  }
+
+  .widgetTitle {
+    font-size: 1rem;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .alertItem {
+    font-size: 0.9rem;
+  }
+
+  .mapContainer {
+    min-height: 200px;
+  }
 }

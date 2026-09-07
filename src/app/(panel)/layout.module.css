@@ -1,22 +1,49 @@
+/* ==========================================
+   1. ESTILOS BASE (MÓVIL / PANTALLAS PEQUEÑAS)
+   ========================================== */
 .panelWrapper {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: #f4f7f6; 
+  background-color: #f4f7f6;
+  /* Si en móvil tu sidebar flota por encima, 
+     necesitamos que el wrapper no haga desbordes raros */
+  overflow-x: hidden; 
 }
 
 .mainContent {
   flex-grow: 1;
-  padding: 2rem;
+  /* Padding reducido para aprovechar el espacio en teléfonos */
+  padding: 1rem; 
   min-height: 100vh;
   box-sizing: border-box;
   
-  /* 🪄 LA MAGIA ESTÁ AQUÍ: 
-     Empujamos el contenido a la derecha exactamente el mismo ancho que tiene el Sidebar.
-     (Si tu Sidebar mide distinto a 260px, cambia este valor) */
-  margin-left: 260px; 
-  
-  /* Aseguramos que la tabla no se desborde horizontalmente */
-  width: calc(100% - 260px); 
+  /* En móvil, el Sidebar no ocupa espacio físico (está oculto o flota),
+     así que el contenido toma todo el ancho desde el borde izquierdo */
+  margin-left: 0; 
+  width: 100%; 
   overflow-x: auto;
+  
+  /* Transición suave por si el Sidebar se abre/cierra dinámicamente en desktop */
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* ==========================================
+   2. MEDIA QUERIES (ESCRITORIOS / PANTALLAS GRANDES)
+   ========================================== */
+/* Usamos 1024px (Desktop) porque un sidebar de 260px + una tabla 
+   suele verse apretado en tablets de 768px */
+@media (min-width: 1024px) {
+  .mainContent {
+    /* Devolvemos el padding generoso */
+    padding: 2rem;
+    
+    /* 🪄 LA MAGIA DEL DESKTOP APARECE AQUÍ: 
+       Empujamos el contenido a la derecha exactamente el mismo ancho del Sidebar fijo */
+    margin-left: 260px; 
+    
+    /* Restamos esos 260px al ancho total para que el scroll horizontal 
+       funcione perfecto dentro de la tabla y no en toda la página */
+    width: calc(100% - 260px); 
+  }
 }

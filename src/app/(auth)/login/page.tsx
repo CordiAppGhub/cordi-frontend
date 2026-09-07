@@ -1,53 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '../../../store/use-auth.store';
+import { useAuthLogin } from '@/hooks/useAuth';
 import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
-  const login = useAuthStore((state) => state.login);
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    error,
+    isSubmitting,
+    handleLogin,
+  } = useAuthLogin();
 
   useEffect(() => {
     router.prefetch('/dashboard');
   }, [router]);
-
- const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      console.log('⏳ 1. Enviando datos al store...');
-      
-      await login(email, password);
-      
-      console.log('✅ 2. Store respondió OK. El token debe estar guardado.');
-      console.log('🚀 3. Ejecutando router.replace...');
-      
-      router.replace('/dashboard');
-      
-      console.log('🏁 4. Redirección lanzada.');
-    } catch (err: unknown) {
-      console.error('❌ Error capturado en el catch:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Ocurrió un error inesperado conectando con el servidor.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className={styles.loginContainer}>
@@ -63,7 +37,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleLogin} noValidate>
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>Correo Electrónico</label>
             <input

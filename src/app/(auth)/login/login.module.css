@@ -1,41 +1,50 @@
+/* ==========================================
+   LOGIN / AUTENTICACIÓN (MOBILE-FIRST)
+   ========================================== */
 .loginContainer {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #f0f2f5;
-  padding: 0 1rem;
+  /* 🔥 CRÍTICO MÓVIL: Padding lateral cómodo para evitar que la tarjeta toque los bordes */
+  padding: 1rem; 
 }
 
 .loginCard {
   width: 100%;
   max-width: 420px;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px; /* Ligeramente más redondeado y moderno en móvil */
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  padding: 2.5rem;
+  /* 🔥 CRÍTICO MÓVIL: Padding adaptado para aprovechar mejor el espacio vertical en celulares */
+  padding: 1.75rem 1.25rem; 
+  box-sizing: border-box;
 }
 
 .loginHeader {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .title {
-  font-size: 1.75rem;
+  /* 🔥 Tipografía fluida para que el título no rompa en pantallas pequeñas de 320px */
+  font-size: 1.5rem; 
   font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.4rem 0;
+  line-height: 1.2;
 }
 
 .subtitle {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #666666;
   margin: 0;
+  line-height: 1.4;
 }
 
 .formGroup {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
   display: flex;
   flex-direction: column;
 }
@@ -44,25 +53,34 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: #333333;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
 .input {
-  padding: 0.75rem 1rem;
+  width: 100%;
+  /* 🔥 CRÍTICO MÓVIL: Padding vertical amplio para garantizar el área táctil */
+  padding: 0.85rem 1rem; 
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 0.95rem;
+  
+  /* 🔥 EL TRUCO DE ORO: 16px previene el zoom automático molesto en iOS (Safari) */
+  font-size: 16px; 
+  
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
+  background-color: #fff;
+  font-family: inherit;
 }
 
 .input:focus {
   border-color: #0056b3;
-  box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
 }
 
 .submitBtn {
   width: 100%;
+  /* 🔥 CRÍTICO MÓVIL: Altura mínima táctil (min 48px) para el pulgar */
+  min-height: 48px; 
   padding: 0.875rem;
   background-color: #0056b3;
   color: #ffffff;
@@ -72,11 +90,16 @@
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.submitBtn:hover:not(:disabled) {
-  background-color: #004494;
+@media (hover: hover) and (pointer: fine) {
+  .submitBtn:hover:not(:disabled) {
+    background-color: #004494;
+  }
 }
 
 .submitBtn:disabled {
@@ -93,4 +116,48 @@
   text-align: center;
   margin-bottom: 1.25rem;
   border: 1px solid #fecaca;
+  line-height: 1.4;
+}
+
+
+/* ==========================================
+   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+@media (min-width: 768px) {
+  .loginContainer {
+    padding: 0 1rem;
+  }
+
+  .loginCard {
+    border-radius: 12px;
+    padding: 2.5rem; /* Retorna al padding generoso de escritorio */
+  }
+
+  .loginHeader {
+    margin-bottom: 2rem;
+  }
+
+  .title {
+    font-size: 1.75rem; /* Retorna al tamaño grande original */
+    margin: 0 0 0.5rem 0;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .formGroup {
+    margin-bottom: 1.25rem;
+  }
+
+  .input {
+    /* Retorna a 14px/0.75rem para mayor densidad de datos en monitores */
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem; 
+  }
+
+  .submitBtn {
+    min-height: auto;
+    margin-top: 1rem;
+  }
 }

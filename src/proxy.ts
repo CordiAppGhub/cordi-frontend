@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,12 +11,13 @@ const PROTECTED_ROUTES = [
   '/yard',
 ];
 
+// 🔥 The exported function must be named 'proxy' in Next.js 16+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const sessionToken = request.cookies.get('corditrans_session')?.value;
 
-  console.log('🚀 Middleware ejecutado');
+  console.log('🚀 Proxy ejecutado');
   console.log('📍 Path:', pathname);
   console.log('🔑 Token:', sessionToken ? 'Existe' : 'No existe');
 

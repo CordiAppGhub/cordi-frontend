@@ -1,16 +1,14 @@
 .page {
   --background: #fafafa;
   --foreground: #fff;
-
   --text-primary: #000;
   --text-secondary: #666;
-
   --button-primary-hover: #383838;
   --button-secondary-hover: #f2f2f2;
   --button-secondary-border: #ebebeb;
 
   display: flex;
-  flex: 1;
+  min-height: 100vh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -18,16 +16,19 @@
   background-color: var(--background);
 }
 
+/* ==========================================
+   2. ESTILOS BASE (MÓVILES / PANTALLAS PEQUEÑAS)
+   ========================================== */
 .main {
   display: flex;
   flex: 1;
   width: 100%;
-  max-width: 800px;
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
   background-color: var(--foreground);
-  padding: 120px 60px;
+  /* Padding reducido por defecto para móviles */
+  padding: 48px 24px;
 }
 
 .intro {
@@ -35,23 +36,27 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  gap: 24px;
+  gap: 16px; /* Gap más compacto en móvil */
+  width: 100%;
 }
 
 .intro h1 {
-  max-width: 320px;
-  font-size: 40px;
+  width: 100%;
+  max-width: 100%;
+  /* Tipografía fluida y adaptada para móvil */
+  font-size: 32px;
   font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
+  line-height: 40px;
+  letter-spacing: -1.92px;
   text-wrap: balance;
   color: var(--text-primary);
 }
 
 .intro p {
-  max-width: 440px;
-  font-size: 18px;
-  line-height: 32px;
+  width: 100%;
+  max-width: 100%;
+  font-size: 16px; /* Ligeramente más pequeño para lectura móvil cómoda */
+  line-height: 28px;
   text-wrap: balance;
   color: var(--text-secondary);
 }
@@ -63,24 +68,25 @@
 
 .ctas {
   display: flex;
-  flex-direction: row;
+  /* En móviles los botones se apilan verticalmente para evitar desbordes */
+  flex-direction: column; 
   width: 100%;
-  max-width: 440px;
-  gap: 16px;
+  gap: 12px;
   font-size: 14px;
+  margin-top: 32px;
 }
 
 .ctas a {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 40px;
+  height: 44px; /* Un poco más alto para mejorar touch target en móviles */
   padding: 0 16px;
   border-radius: 128px;
   border: 1px solid transparent;
   transition: 0.2s;
   cursor: pointer;
-  width: fit-content;
+  width: 100%; /* Ocupan todo el ancho en móvil */
   font-weight: 500;
 }
 
@@ -94,6 +100,58 @@ a.secondary {
   border-color: var(--button-secondary-border);
 }
 
+.code {
+  font-family: var(--font-geist-mono);
+  font-size: 0.9em;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+}
+
+
+/* ==========================================
+   3. MEDIA QUERIES (ESCRITORIO / MIN-WIDTH)
+   ========================================== */
+@media (min-width: 768px) {
+  .main {
+    max-width: 800px;
+    padding: 120px 60px; /* Padding generoso recuperado para desktop */
+    border-radius: 16px; /* Opcional: da un aspecto de tarjeta flotante en desktop */
+  }
+
+  .intro {
+    gap: 24px;
+  }
+
+  .intro h1 {
+    max-width: 320px;
+    font-size: 40px;
+    line-height: 48px;
+    letter-spacing: -2.4px;
+  }
+
+  .intro p {
+    max-width: 440px;
+    font-size: 18px;
+    line-height: 32px;
+  }
+
+  .ctas {
+    flex-direction: row; /* Los botones vuelven a estar lado a lado */
+    max-width: 440px;
+    margin-top: 0;
+  }
+
+  .ctas a {
+    height: 40px;
+    width: fit-content; /* Ancho ajustado al texto en desktop */
+  }
+}
+
+
+/* ==========================================
+   4. INTERACCIONES Y PREFERENCIAS
+   ========================================== */
 /* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
   a.primary:hover {
@@ -107,22 +165,6 @@ a.secondary {
   }
 }
 
-@media (max-width: 600px) {
-  .main {
-    padding: 48px 24px;
-  }
-
-  .intro {
-    gap: 16px;
-  }
-
-  .intro h1 {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
-  }
-}
-
 @media (prefers-color-scheme: dark) {
   .logo {
     filter: invert();
@@ -131,20 +173,10 @@ a.secondary {
   .page {
     --background: #000;
     --foreground: #000;
-
     --text-primary: #ededed;
     --text-secondary: #999;
-
     --button-primary-hover: #ccc;
     --button-secondary-hover: #1a1a1a;
     --button-secondary-border: #1a1a1a;
   }
-}
-
-.code {
-  font-family: var(--font-geist-mono);
-  font-size: 0.9em;
-  background: color-mix(in srgb, currentColor 8%, transparent);
-  padding: 0.1em 0.4em;
-  border-radius: 6px;
 }

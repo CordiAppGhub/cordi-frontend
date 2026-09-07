@@ -1,137 +1,132 @@
+/* ==========================================
+   1. ESTILOS BASE (MÓVILES / PANTALLAS PEQUEÑAS)
+   ========================================== */
 .layout {
-  padding: 24px;
+  /* Reducimos el padding y el gap para móviles */
+  padding: 16px;
   background-color: #f8fafc;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* Header Estilo Torre de Control */
+/* --- Header Estilo Torre de Control --- */
 .pageHeader {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  /* En móvil, el botón "+ Nueva Operación" irá debajo del título */
+  flex-direction: column; 
+  align-items: flex-start;
+  gap: 16px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 20px 24px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
+/* Hacemos que el botón dentro del header ocupe todo el ancho en móvil si es necesario */
+.pageHeader > button {
+  width: 100%;
+}
+
 .headerTitleContainer {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .headerNumber {
   background-color: #2563eb;
   color: white;
-  padding: 6px 14px;
+  padding: 4px 12px;
   border-radius: 6px;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
+
 .titleText {
-  font-size: 1.5rem;
+  font-size: 1.25rem; /* Letra un poco más pequeña en móvil */
   font-weight: 700;
   color: #0f172a;
   margin: 0;
+  line-height: 1.2;
 }
+
 .subtitleText {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #64748b;
   margin: 4px 0 0 0;
 }
 
-/* Barra de Filtros Avanzada */
+/* --- Barra de Filtros Avanzada --- */
 .filtersBar {
   display: flex;
+  /* En móvil, los filtros van uno debajo del otro */
+  flex-direction: column; 
   gap: 12px;
   background: #ffffff;
   padding: 16px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  align-items: center;
+  align-items: stretch; /* Estira los inputs al 100% del ancho */
 }
-.searchInput {
-  padding: 10px 14px;
+
+.searchInput,
+.selectInput {
+  width: 100%; /* Obligatorio 100% en móvil */
+  padding: 12px 14px; /* Un poco más alto para touch */
   border-radius: 8px;
   border: 1px solid #cbd5e1;
-  font-size: 0.9rem;
-  flex: 1;
+  font-size: 0.95rem; /* Evita zoom automático en iOS Safari */
   outline: none;
   transition: border-color 0.2s;
+  background-color: #fff;
+  color: #334155;
 }
+
 .searchInput:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
-.selectInput {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.9rem;
-  background-color: #fff;
-  color: #334155;
-  outline: none;
-  cursor: pointer;
-}
+
 .selectInput:focus {
   border-color: #2563eb;
 }
 
-/* Contenedor de la Tabla */
-.tableCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-/* Alertas de Error */
-.errorMessage {
-  background-color: #fee2e2;
-  color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  border: 1px solid #fecaca;
-}
-
-/* Celda de Acciones de la Tabla */
-.actionsContainer {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-
+/* --- Pestañas (Tabs) --- */
 .tabsContainer {
   display: flex;
   gap: 4px;
   border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  /* Scroll horizontal suave para móvil */
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch; 
+  scrollbar-width: none; /* Oculta scrollbar en Firefox */
   background: #ffffff;
   padding: 0 16px;
   border-radius: 12px 12px 0 0;
+}
+/* Oculta scrollbar en Chrome/Safari/Edge */
+.tabsContainer::-webkit-scrollbar {
+  display: none; 
 }
 
 .tabButton {
   background: none;
   border: none;
-  padding: 14px 20px;
-  font-size: 0.9rem;
+  padding: 14px 16px; /* Ajustado para móvil */
+  font-size: 0.85rem; /* Un poco más compacto */
   font-weight: 500;
   color: #64748b;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   transition: all 0.2s ease;
-  white-space: nowrap;
+  white-space: nowrap; /* Evita que el texto salte de línea */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -161,4 +156,104 @@
 .tabButtonActive .tabBadge {
   background-color: #dbeafe;
   color: #1e40af;
+}
+
+/* --- Contenedor de la Tabla --- */
+.tableCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px; /* Menos padding en móvil */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  width: 100%;
+  overflow-x: auto; /* Vital para que la tabla no rompa el diseño en móvil */
+}
+
+/* Alertas de Error */
+.errorMessage {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  font-size: 0.9rem;
+}
+
+/* Celda de Acciones de la Tabla */
+.actionsContainer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap; /* En móvil, si hay muchos botones, se envuelven */
+}
+
+
+/* ==========================================
+   2. MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+
+@media (min-width: 768px) {
+  .layout {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .pageHeader {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+  }
+
+  .pageHeader > button {
+    width: auto;
+  }
+
+  .headerNumber {
+    padding: 6px 14px;
+    font-size: 1.25rem;
+  }
+
+  .titleText {
+    font-size: 1.5rem;
+  }
+
+  .subtitleText {
+    font-size: 0.9rem;
+  }
+
+  .filtersBar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .searchInput,
+  .selectInput {
+    width: auto;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+  }
+
+  .searchInput {
+    flex: 1; /* El buscador toma el espacio sobrante en desktop */
+  }
+
+  .tabsContainer {
+    margin-bottom: 20px;
+  }
+
+  .tabButton {
+    padding: 14px 20px;
+    font-size: 0.9rem;
+  }
+
+  .tableCard {
+    padding: 20px;
+    /* overflow-x: visible; (Opcional, depende de tu componente de tabla) */
+  }
+
+  .actionsContainer {
+    flex-wrap: nowrap;
+  }
 }

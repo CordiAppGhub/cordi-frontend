@@ -1,20 +1,32 @@
+/* ==========================================
+   BOTONES (MOBILE-FIRST)
+   ========================================== */
 .button {
-  padding: 8px 16px;
+  /* Flexbox para alinear perfectamente el texto o incluir íconos (gap) */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  /* 🔥 CRÍTICO MÓVIL: Ocupa todo el ancho y es más alto para ser fácil de tocar */
+  width: 100%;
+  min-height: 48px; /* Estándar de accesibilidad táctil */
+  padding: 12px 20px;
+  
   border-radius: 6px;
   font-weight: 500;
-  font-size: 14px;
-  border: none;
+  font-size: 16px; /* 16px es ideal en móvil para legibilidad rápida */
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  
+  transition: all 0.2s ease;
+  white-space: nowrap; /* Evita que el texto salte de línea */
 }
 
+/* --- Variantes de Diseño --- */
 .button--primary {
   background-color: #0066cc;
   color: #ffffff;
-}
-
-.button--primary:hover {
-  background-color: #0052a3;
 }
 
 .button--secondary {
@@ -22,11 +34,35 @@
   color: #1e293b;
 }
 
-.button--secondary:hover {
-  background-color: #cbd5e1;
-}
-
+/* --- Estado Inactivo --- */
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ==========================================
+   INTERACCIONES (SOLO DISPOSITIVOS CON MOUSE)
+   ========================================== */
+/* 🔥 CRÍTICO: Previene que el color de hover se quede "atascado" al tocar la pantalla táctil */
+@media (hover: hover) and (pointer: fine) {
+  .button--primary:hover {
+    background-color: #0052a3;
+  }
+
+  .button--secondary:hover {
+    background-color: #cbd5e1;
+  }
+}
+
+/* ==========================================
+   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+@media (min-width: 768px) {
+  .button {
+    /* Retornamos al tamaño original de tu código para escritorio */
+    width: auto;
+    min-height: auto;
+    padding: 8px 16px;
+    font-size: 14px; 
+  }
 }

@@ -1,34 +1,68 @@
+/* ==========================================
+   CARDS DE KPI (MOBILE-FIRST)
+   ========================================== */
 .card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 12px; /* Ligeramente más suave para móvil */
+  
+  /* 🔥 CRÍTICO MÓVIL: Padding generoso para facilitar la visualización rápida */
+  padding: 20px 16px; 
+  
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  
+  /* Transiciones optimizadas */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   height: 100%;
+  width: 100%;
 }
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+
+/* ==========================================
+   INTERACCIONES (SOLO DISPOSITIVOS CON MOUSE)
+   ========================================== */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+  }
 }
+
 .value {
-  font-size: 1.75rem;
+  /* 🔥 Tipografía fluida y llamativa para métricas en móvil */
+  font-size: 1.5rem; 
   font-weight: 700;
   margin-bottom: 4px;
+  line-height: 1.2;
 }
+
 .title {
   font-size: 0.85rem;
   font-weight: 500;
   color: #6b7280;
   text-align: center;
 }
-/* Variantes de color para el texto del valor */
+
+/* --- Variantes de color para el texto del valor --- */
 .success .value { color: #10b981; }
 .warning .value { color: #f59e0b; }
 .danger .value { color: #ef4444; }
 .info .value { color: #3b82f6; }
 .default .value { color: #1f2937; }
+
+/* ==========================================
+   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
+   ========================================== */
+@media (min-width: 768px) {
+  .card {
+    border-radius: 8px; /* Retorna al radio original en desktop */
+    padding: 16px;
+  }
+
+  .value {
+    font-size: 1.75rem; /* Tamaño original más grande para pantallas de oficina */
+  }
+}
