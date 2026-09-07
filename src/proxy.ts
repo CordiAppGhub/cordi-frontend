@@ -1,8 +1,7 @@
-// proxy.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_ROUTES = ['/login'];
+
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/drivers',
@@ -11,7 +10,6 @@ const PROTECTED_ROUTES = [
   '/yard',
 ];
 
-// 🔥 The exported function must be named 'proxy' in Next.js 16+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -19,40 +17,71 @@ export function proxy(request: NextRequest) {
 
   console.log('🚀 Proxy ejecutado');
   console.log('📍 Path:', pathname);
-  console.log('🔑 Token:', sessionToken ? 'Existe' : 'No existe');
+  console.log(
+    '🔑 Token:',
+    sessionToken ? 'Existe' : 'No existe'
+  );
 
-  // Ignorar recursos internos
+  // ==========================================
+  // IGNORAR RECURSOS INTERNOS
+  // ==========================================
+
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
-    pathname.includes('.') // imágenes, js, css, etc.
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // Raíz
+  // ==========================================
+  // RAÍZ
+  // ==========================================
+
   if (pathname === '/') {
     return NextResponse.redirect(
-      new URL(sessionToken ? '/dashboard' : '/login', request.url)
+      new URL(
+        sessionToken ? '/dashboard' : '/login',
+        request.url
+      )
     );
   }
 
-  // Si ya está autenticado y entra a login
-  if (pathname === '/login' && sessionToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // ==========================================
+  // LOGIN
+  // ==========================================
+
+  if (pathname === '/login') {
+    if (sessionToken) {
+      return NextResponse.redirect(
+        new URL('/dashboard', request.url)
+      );
+    }
+
+    return NextResponse.next();
   }
 
-  // Verificar rutas protegidas
+  // ==========================================
+  // RUTAS PROTEGIDAS
+  // ==========================================
+
   const isProtectedRoute = PROTECTED_ROUTES.some(
     (route) =>
-      pathname === route || pathname.startsWith(`${route}/`)
+      pathname === route ||
+      pathname.startsWith(`${route}/`)
   );
 
   if (isProtectedRoute && !sessionToken) {
-    console.log('⛔ Acceso denegado, redirigiendo a login');
+    console.log(
+      '⛔ Acceso denegado, redirigiendo a login'
+    );
 
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+
+    loginUrl.searchParams.set(
+      'redirect',
+      pathname
+    );
 
     return NextResponse.redirect(loginUrl);
   }
@@ -64,10 +93,15 @@ export const config = {
   matcher: [
     '/',
     '/login',
+    '/dashboard',
     '/dashboard/:path*',
+    '/drivers',
     '/drivers/:path*',
+    '/vehicles',
     '/vehicles/:path*',
+    '/settings',
     '/settings/:path*',
+    '/yard',
     '/yard/:path*',
   ],
 };

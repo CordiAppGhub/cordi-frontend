@@ -14,28 +14,39 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
 
   login: async (email: string, password: string) => {
-    try {
-      set({ isLoading: true });
-      
-      const { access_token, user } = await authService.login(email, password);
+  try {
+    set({ isLoading: true });
 
-      // Guardamos la cookie de sesión antes de actualizar el estado global
-      Cookies.set(COOKIE_NAME, access_token, { expires: 1, path: '/' });
+    const { access_token, user } =
+      await authService.login(email, password);
 
-      set({
-        user,
-        token: access_token,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } catch (error: unknown) {
-      set({ isLoading: false });
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Credenciales inválidas');
-      }
-      throw new Error('Error al conectar con el servidor');
+    Cookies.set(COOKIE_NAME, access_token, {
+      expires: 1,
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    set({
+      user,
+      token: access_token,
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+  } catch (error: unknown) {
+    set({ isLoading: false });
+
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        error.response?.data?.message ||
+        'Credenciales inválidas'
+      );
     }
-  },
+
+    throw new Error('Error al conectar con el servidor');
+  }
+},
 
   logout: () => {
     Cookies.remove(COOKIE_NAME, { path: '/' });
@@ -45,7 +56,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   checkSession: async () => {
     const token = Cookies.get(COOKIE_NAME);
-    
+
     if (!token) {
       set({ token: null, user: null, isAuthenticated: false });
       return;
@@ -53,10 +64,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const userData = await authService.getMe();
-      set({ 
-        token, 
+      set({
+        token,
         user: userData,
-        isAuthenticated: true 
+        isAuthenticated: true
       });
     } catch (error) {
       console.error('El token guardado ya no es válido', error);
