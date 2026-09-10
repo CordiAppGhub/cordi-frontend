@@ -1,9 +1,9 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import Cookies from 'js-cookie';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import Swal from 'sweetalert2';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const COOKIE_NAME = 'corditrans_session';
+// 🔥 MAGIA AQUÍ: Ahora Axios le pega al propio Next.js, 
+// y Next.js lo reenvía al backend llevándose la cookie de forma nativa.
+const API_BASE_URL = '/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,30 +14,15 @@ export const api = axios.create({
   timeout: 10000, 
 });
 
-api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = Cookies.get(COOKIE_NAME);
-    
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error)
-);
-
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  // Tipamos el error con la estructura de NestJS
   (error: AxiosError<{ message: string; error: string; statusCode: number }>) => {
     
-    // Extraemos el mensaje de tu backend
     const backendMessage = error.response?.data?.message || 'Ocurrió un error inesperado en el servidor';
 
     if (error.response?.status === 401) {
       console.error('🔒 Sesión expirada o no autorizada.');
       
-      // 👈 SweetAlert para sesión expirada (Informativo)
       Swal.fire({
         icon: 'warning',
         title: 'Sesión Expirada',
@@ -45,22 +30,18 @@ api.interceptors.response.use(
         confirmButtonColor: '#3085d6',
       });
       
-      Cookies.remove(COOKIE_NAME, { path: '/' });
-      
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
     } 
-    // 👈 SweetAlert para rechazos del negocio (ej. El conductor ya tiene viaje)
     else if (error.response) {
       Swal.fire({
         icon: 'error',
         title: 'Acción rechazada',
         text: backendMessage,
-        confirmButtonColor: '#d33', // Un botón rojo para indicar error
+        confirmButtonColor: '#d33', 
       });
     } 
-    // 👈 SweetAlert para caídas del servidor o falta de internet
     else {
       Swal.fire({
         icon: 'error',

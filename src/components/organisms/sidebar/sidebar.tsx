@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store/use-auth.store'; // 👈 Importamos el store para leer el rol
 import { 
   LayoutDashboard, 
   Truck, 
@@ -30,13 +31,16 @@ type NavItem = {
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const { user } = useAuthStore(); // 👈 Obtenemos el usuario autenticado
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
   const closeSidebar = () => setIsOpen(false);
 
-  const navItems: NavItem[] = [
+  const userRole = user?.role;
+
+  const rawNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={20} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={20} /> },
     { 
@@ -49,12 +53,20 @@ export const Sidebar: React.FC = () => {
       ]
     },
     { path: '/locations', label: 'Ubicaciones', icon: <MapPin size={20} /> },
-    { path: '/map', label: 'Mapa', icon: <MapPin size={20} /> },
-    { path: '/fuel', label: 'Combustible', icon: <Fuel size={20} />, badge: 6 },
-    { path: '/alerts', label: 'Alertas', icon: <Bell size={20} />, badge: 12 },
-    { path: '/reports', label: 'Reportes', icon: <BarChart3 size={20} /> },
-    { path: '/settings', label: 'Configuración', icon: <Settings size={20} /> },
+    // { path: '/map', label: 'Mapa', icon: <MapPin size={20} /> },
+    // { path: '/fuel', label: 'Combustible', icon: <Fuel size={20} />, badge: 6 },
+    // { path: '/alerts', label: 'Alertas', icon: <Bell size={20} />, badge: 12 },
+    // { path: '/reports', label: 'Reportes', icon: <BarChart3 size={20} /> },
+    // { path: '/settings', label: 'Configuración', icon: <Settings size={20} /> },
   ];
+
+  // 🛡️ Filtramos los elementos del menú si el rol es ANALISTA
+  const navItems = rawNavItems.filter((item) => {
+    if (userRole === 'ANALISTA' && item.label === 'Gestión de Flota') {
+      return false; // Oculta por completo la sección de flota al analista
+    }
+    return true;
+  });
 
   useEffect(() => {
     navItems.forEach((item) => {
@@ -72,8 +84,8 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
+    // ... (El resto del JSX se mantiene exactamente igual que lo tenías)
     <>
-      {/* 🍔 BOTÓN HAMBURGUESA FLOTANTE (Esquina Inferior Derecha, se oculta si isOpen es true) */}
       <button 
         type="button" 
         onClick={toggleSidebar} 
@@ -83,12 +95,10 @@ export const Sidebar: React.FC = () => {
         <Menu size={24} />
       </button>
 
-      {/* 🌑 BACKDROP OSCURO */}
       {isOpen && (
         <div className={styles.backdrop} onClick={closeSidebar} />
       )}
 
-      {/* 🗂️ ASIDE SIDEBAR */}
       <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.logo}>
           <span>🚛 Corditrans Panel</span>

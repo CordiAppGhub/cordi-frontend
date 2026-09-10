@@ -6,13 +6,12 @@ export interface AuthUser {
 }
 
 export interface LoginResponse {
-  access_token: string;
+  message: string;
   user: AuthUser;
 }
 
 export interface AuthState {
   user: AuthUser | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;

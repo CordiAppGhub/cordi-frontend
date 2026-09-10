@@ -1,78 +1,61 @@
 import { create } from 'zustand';
-import Cookies from 'js-cookie';
 import axios from 'axios';
 import { authService } from '@/services/auth.services';
 import { AuthState } from '@/types/auth-types';
 
-
-const COOKIE_NAME = 'corditrans_session';
-
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
   isAuthenticated: false,
   isLoading: false,
 
-  login: async (email: string, password: string) => {
+ login: async (email: string, password: string) => {
   try {
     set({ isLoading: true });
 
-    const { access_token, user } =
-      await authService.login(email, password);
-
-    Cookies.set(COOKIE_NAME, access_token, {
-      expires: 1,
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+    const user = await authService.login(email, password);
 
     set({
       user,
-      token: access_token,
       isAuthenticated: true,
       isLoading: false,
     });
-
   } catch (error: unknown) {
-    set({ isLoading: false });
+      set({ isLoading: false });
 
-    if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.message ||
-        'Credenciales inválidas'
-      );
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || 'Credenciales inválidas'
+        );
+      }
+
+      throw new Error('Error al conectar con el servidor');
     }
+  },
 
-    throw new Error('Error al conectar con el servidor');
-  }
-},
-
-  logout: () => {
-    Cookies.remove(COOKIE_NAME, { path: '/' });
-    set({ user: null, token: null, isAuthenticated: false });
-    window.location.href = '/login';
+  logout: async () => {
+    try {
+      // Llamamos al endpoint del backend para destruir la HttpOnly cookie
+      await authService.logout();
+    } catch (error) {
+      console.error('Error al cerrar sesión en el servidor', error);
+    } finally {
+      set({ user: null, isAuthenticated: false });
+      window.location.href = '/login';
+    }
   },
 
   checkSession: async () => {
-    const token = Cookies.get(COOKIE_NAME);
-
-    if (!token) {
-      set({ token: null, user: null, isAuthenticated: false });
-      return;
-    }
-
+    set({ isLoading: true });
     try {
+      // Intentamos obtener el perfil usando la cookie HttpOnly enviada automáticamente
       const userData = await authService.getMe();
       set({
-        token,
         user: userData,
-        isAuthenticated: true
+        isAuthenticated: true,
+        isLoading: false,
       });
     } catch (error) {
-      console.error('El token guardado ya no es válido', error);
-      Cookies.remove(COOKIE_NAME);
-      set({ token: null, user: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 }));

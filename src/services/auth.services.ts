@@ -1,25 +1,19 @@
+import { LoginResponse, AuthUser } from '@/types/auth-types';
 import { api } from './api.service';
 
-export interface AuthUser {
-  id: number;
-  email: string;
-  name?: string | null;
-  role: string;
-}
-
-interface LoginResponse {
-  access_token: string;
-  user: AuthUser;
-}
 
 export const authService = {
-  login: async (email: string, password: string): Promise<LoginResponse> => {
+  login: async (email: string, password: string): Promise<AuthUser> => {
     const response = await api.post<LoginResponse>('/auth/login', { email, password });
-    return response.data;
+    return response.data.user;
   },
 
   getMe: async (): Promise<AuthUser> => {
     const response = await api.get<AuthUser>('/users/me');
     return response.data;
+  },
+
+  logout: async (): Promise<void> => {
+    await api.post('/auth/logout');
   },
 };
