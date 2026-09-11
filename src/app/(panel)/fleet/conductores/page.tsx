@@ -38,6 +38,12 @@ export default function DriversPage() {
       } 
     },
     {
+      id: 'portalLink',
+      header: 'Detalles',
+      type: 'text',
+      renderCell: (row) => row.portalLink
+    },
+    {
       id: 'actions',
       header: 'Acciones',
       type: 'text',

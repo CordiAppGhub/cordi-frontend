@@ -7,6 +7,7 @@ export interface Driver {
   isActive: boolean;
   // Si en el backend usaste el "include" para ver el vehículo actual:
   drivenVehicles?: { plate: string }[];
+  portalLink: string | null;
 }
 
 export type CreateDriverDto = {
