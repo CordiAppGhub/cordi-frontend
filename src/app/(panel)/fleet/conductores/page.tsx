@@ -11,37 +11,50 @@ import { Button } from '@/components/atoms/button/button';
 
 export default function DriversPage() {
   const { drivers, isLoading, loadDrivers, disableDriver, uploadExcel, createDriver } = useDrivers();
-  const [isModalOpen, setIsModalOpen] = useState(false); // 👈 Estado para controlar el modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     loadDrivers();
   }, [loadDrivers]);
 
   const driverColumns: ColumnDef<Driver>[] = [
-    { 
-      id: 'name', 
-      header: 'Nombre del Conductor', 
-      type: 'text', 
-      isDraggable: false, 
-      renderCell: (row) => <strong className="text-slate-800">{row.name || '--'}</strong> 
+    {
+      id: 'name',
+      header: 'Nombre del Conductor',
+      type: 'text',
+      isDraggable: false,
+      renderCell: (row) => <strong className="text-slate-800">{row.name || '--'}</strong>
     },
     { id: 'cedula', header: 'Cédula', type: 'text', renderCell: (row) => row.cedula },
     { id: 'telefono', header: 'Teléfono', type: 'text', renderCell: (row) => row.telefono || '--' },
-    { 
-      id: 'vehiculo', 
-      header: 'Vehículo Actual', 
-      type: 'text', 
+    {
+      id: 'vehiculo',
+      header: 'Vehículo Actual',
+      type: 'text',
       renderCell: (row) => {
-        return row.drivenVehicles && row.drivenVehicles.length > 0 
+        return row.drivenVehicles && row.drivenVehicles.length > 0
           ? <span className="px-2 py-1 bg-slate-100 rounded text-slate-700">{row.drivenVehicles[0].plate}</span>
           : <span className="text-slate-400 italic">Sin Asignar</span>;
-      } 
+      }
     },
     {
       id: 'portalLink',
-      header: 'Detalles',
+      header: 'Portal',
+      isDraggable: false,
       type: 'text',
-      renderCell: (row) => row.portalLink
+      renderCell: (row: any) =>
+        row.portalLink ? (
+          <a
+            href={row.portalLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#2563eb', fontWeight: '600', textDecoration: 'underline' }}
+          >
+            🔗 Ver Detalles
+          </a>
+        ) : (
+          <span style={{ color: '#94a3b8' }}>No disponible</span>
+        )
     },
     {
       id: 'actions',
@@ -49,8 +62,8 @@ export default function DriversPage() {
       type: 'text',
       renderCell: (row) => (
         <div style={{ display: 'flex', gap: '8px' }}>
-      
-          <Button 
+
+          <Button
             variant="secondary"
             title="Editar"
             onClick={() => console.log('Abrir modal de edición', row.id)}
@@ -59,7 +72,7 @@ export default function DriversPage() {
             ✏️
           </Button>
 
-          <Button 
+          <Button
             variant="secondary"
             title="Desactivar conductor"
             onClick={() => disableDriver(row.id, row.name)}
@@ -81,7 +94,7 @@ export default function DriversPage() {
         </div>
       </div>
 
-      <UploadExcel 
+      <UploadExcel
         title="Carga Masiva de Conductores"
         description={
           <>Sube el archivo de Excel con las columnas exactas: <strong>CÉDULA, NOMBRE, TELÉFONO.</strong></>
@@ -100,7 +113,7 @@ export default function DriversPage() {
             data={drivers}
             columns={driverColumns}
             nameButton="Crear Conductor"
-            totalPages={1} 
+            totalPages={1}
             currentPage={1}
             onPageChange={(page) => console.log(page)}
             onOpenModal={() => setIsModalOpen(true)} // 👈 Conectado al botón de la tabla

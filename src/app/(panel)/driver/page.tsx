@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDriverPortal } from '@/hooks/use-driverPortal';
+
 import styles from './driver.module.css';
+import { Button } from '@/components/atoms/button/button';
+import { SuperModal } from '@/components/organisms/modal/modal';
+import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
+import { DriverCardList } from './components/DriverCardList';
 
 function DriverPortalContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
   const { driver, loading, error, uploading, uploadEvidence } = useDriverPortal(token);
+  
+  // Estado para alternar la vista: 'table' o 'cards'
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
+  
+  // Estados para el Modal de Detalle / Soportes
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -19,6 +30,7 @@ function DriverPortalContent() {
 
     try {
       await uploadEvidence(selectedOperation.id, file);
+      setIsModalOpen(false);
       setSelectedOperation(null);
     } catch (err: any) {
       alert(err.message);
@@ -38,6 +50,27 @@ function DriverPortalContent() {
     );
   }
 
+  // Columnas de ejemplo para la tabla si eligen ver en modo tabla
+  const operationColumns = [
+    { id: 'id', header: 'ID', isDraggable: false },
+    { id: 'origen', header: 'Origen', isDraggable: true, renderCell: (row: any) => row.origen?.name || 'N/A' },
+    { id: 'destino', header: 'Destino', isDraggable: true, renderCell: (row: any) => row.destino?.name || 'N/A' },
+    { id: 'estadoViaje', header: 'Estado', isDraggable: false, renderCell: (row: any) => row.estadoViaje || 'ASIGNADO' },
+    { 
+      id: 'acciones', 
+      header: 'Acciones', 
+      isDraggable: false, 
+      renderCell: (row: any) => (
+        <Button 
+          variant="primary" 
+          onClick={() => { setSelectedOperation(row); setIsModalOpen(true); }}
+        >
+          Ver Detalle
+        </Button>
+      ) 
+    }
+  ];
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -49,67 +82,72 @@ function DriverPortalContent() {
       </header>
 
       <main className={styles.main}>
-        {/* Vehículos */}
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>🚗 Mis Vehículos</h2>
-          {driver.drivenVehicles.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No tienes vehículos asignados.</p>
-          ) : (
-            driver.drivenVehicles.map((v) => (
-              <div key={v.id} className={styles.itemRow}>
-                <div>
-                  <span className={styles.itemTitle}>{v.plate}</span>
-                  <p className={styles.itemSub}>{v.brand} • {v.empresa}</p>
-                </div>
-                <span className={styles.statusBadge}>{v.status}</span>
-              </div>
-            ))
-          )}
-        </section>
+        {/* Barra de control para alternar vistas */}
+       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
+          <h2 className={styles.cardTitle} style={{ margin: 0 }}>📦 Mis Operaciones y Viajes</h2>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button 
+              variant={viewMode === 'cards' ? 'primary' : 'secondary'} 
+              onClick={() => setViewMode('cards')}
+            >
+              📋 Tarjetas
+            </Button>
+            <Button 
+              variant={viewMode === 'table' ? 'primary' : 'secondary'} 
+              onClick={() => setViewMode('table')}
+            >
+              📊 Tabla
+            </Button>
+          </div>
+        </div>
 
-        {/* Operaciones */}
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>📦 Viajes y Operaciones</h2>
-          {driver.assignedOperations.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No tienes operaciones registradas.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {driver.assignedOperations.map((op) => (
-                <div key={op.id} className={styles.operationCard}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ruta Asignada</span>
-                    <p style={{ fontWeight: '600', fontSize: '0.875rem', color: '#1e293b', margin: '2px 0 0 0' }}>
-                      {op.origen?.name} ➡️ {op.destino?.name}
-                    </p>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
-                    Placa: <strong style={{ color: '#1e293b' }}>{op.vehicle?.plate}</strong>
-                  </div>
-                  <button
-                    onClick={() => setSelectedOperation(op)}
-                    className={styles.buttonPrimary}
-                  >
-                    Ver Detalle y Enviar Soportes
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Renderizado Condicional según la elección del cliente */}
+        {viewMode === 'cards' ? (
+          <DriverCardList
+            data={driver.assignedOperations}
+            getStatus={(op) => op.status || 'ACTIVO'}
+            renderCardContent={(op) => (
+              <>
+                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>
+                  {op.origen?.name} ➡️ {op.destino?.name}
+                </p>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                  Vehículo Placa: <strong>{op.vehicle?.plate || 'Sin asignar'}</strong>
+                </p>
+                <Button 
+                  variant="primary" 
+                  style={{ marginTop: '8px', width: '100%' }}
+                  onClick={() => { setSelectedOperation(op); setIsModalOpen(true); }}
+                >
+                  Ver Detalle y Subir Soportes
+                </Button>
+              </>
+            )}
+          />
+        ) : (
+          <PaginationTable
+            data={driver.assignedOperations}
+            columns={operationColumns}
+            totalPages={1}
+            currentPage={1}
+            onPageChange={() => {}}
+            nameButton="Actualizar"
+          />
+        )}
       </main>
 
-      {/* Modal de Soportes / Cámara */}
-      {selectedOperation && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>Operación #{selectedOperation.id}</h3>
-              <button onClick={() => setSelectedOperation(null)} style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
-            </div>
-
-            <div style={{ fontSize: '0.875rem', color: '#475569', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {/* Uso de tu componente SuperModal reutilizable */}
+      <SuperModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        title={selectedOperation ? `Detalle de Operación #${selectedOperation.id}` : 'Detalle'}
+      >
+        {selectedOperation && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ fontSize: '0.875rem', color: '#475569', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <p style={{ margin: 0 }}><strong>Origen:</strong> {selectedOperation.origen?.name}</p>
               <p style={{ margin: 0 }}><strong>Destino:</strong> {selectedOperation.destino?.name}</p>
+              <p style={{ margin: 0 }}><strong>Estado actual:</strong> {selectedOperation.estadoViaje || 'ACTIVO'}</p>
               <p style={{ margin: 0 }}><strong>Vehículo:</strong> {selectedOperation.vehicle?.plate}</p>
             </div>
 
@@ -122,24 +160,24 @@ function DriverPortalContent() {
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-              <button
+              <Button
+                variant="primary"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className={styles.buttonCamera}
-                style={{ opacity: uploading ? 0.7 : 1 }}
+                style={{ backgroundColor: '#059669' }}
               >
                 📸 {uploading ? 'Subiendo...' : 'Tomar Foto o Elegir Imagen'}
-              </button>
-              <button
-                onClick={() => setSelectedOperation(null)}
-                className={styles.buttonSecondary}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setIsModalOpen(false)}
               >
                 Cerrar
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SuperModal>
     </div>
   );
 }
