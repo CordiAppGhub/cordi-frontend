@@ -9,19 +9,30 @@ import { Button } from '@/components/atoms/button/button';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { DriverCardList } from './components/DriverCardList';
+import { OperationWorkflow } from './components/workflow/operation-workflow';
 
 function DriverPortalContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const { driver, loading, error, uploading, uploadEvidence } = useDriverPortal(token);
-  
+  const {
+    driver,
+    loading,
+    error,
+    uploading,
+    processingState,
+    uploadEvidence,
+    updateTravelState,
+    scanPlate
+  } = useDriverPortal(token);
+
   // Estado para alternar la vista: 'table' o 'cards'
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
-  
-  // Estados para el Modal de Detalle / Soportes
+
+  // Estados para el Modal de Detalle / Soportes / OCR
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<any | null>(null);
+  const [modalType, setModalType] = useState<'DETAILS' | 'OCR' | 'CLOSING'>('DETAILS');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,11 +40,22 @@ function DriverPortalContent() {
     if (!file || !selectedOperation) return;
 
     try {
-      await uploadEvidence(selectedOperation.id, file);
-      setIsModalOpen(false);
-      setSelectedOperation(null);
+      if (modalType === 'OCR') {
+        const result = await scanPlate(selectedOperation.id, file);
+        if (result?.legible && result?.codigo) {
+          alert(`✅ Escaneo exitoso: ${result.codigo}`);
+          setIsModalOpen(false);
+        } else {
+          alert('⚠️ No se pudo leer correctamente. Intenta tomar otra foto.');
+        }
+      } else if (modalType === 'CLOSING') {
+        await uploadEvidence(selectedOperation.id, file);
+        setIsModalOpen(false);
+      }
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Ocurrió un error procesando la imagen.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -50,24 +72,27 @@ function DriverPortalContent() {
     );
   }
 
-  // Columnas de ejemplo para la tabla si eligen ver en modo tabla
   const operationColumns = [
     { id: 'id', header: 'ID', isDraggable: false },
     { id: 'origen', header: 'Origen', isDraggable: true, renderCell: (row: any) => row.origen?.name || 'N/A' },
     { id: 'destino', header: 'Destino', isDraggable: true, renderCell: (row: any) => row.destino?.name || 'N/A' },
     { id: 'estadoViaje', header: 'Estado', isDraggable: false, renderCell: (row: any) => row.estadoViaje || 'ASIGNADO' },
-    { 
-      id: 'acciones', 
-      header: 'Acciones', 
-      isDraggable: false, 
+    {
+      id: 'acciones',
+      header: 'Acciones',
+      isDraggable: false,
       renderCell: (row: any) => (
-        <Button 
-          variant="primary" 
-          onClick={() => { setSelectedOperation(row); setIsModalOpen(true); }}
+        <Button
+          variant="primary"
+          onClick={() => {
+            setSelectedOperation(row);
+            setModalType('DETAILS');
+            setIsModalOpen(true);
+          }}
         >
           Ver Detalle
         </Button>
-      ) 
+      )
     }
   ];
 
@@ -83,17 +108,17 @@ function DriverPortalContent() {
 
       <main className={styles.main}>
         {/* Barra de control para alternar vistas */}
-       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
           <h2 className={styles.cardTitle} style={{ margin: 0 }}>📦 Mis Operaciones y Viajes</h2>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button 
-              variant={viewMode === 'cards' ? 'primary' : 'secondary'} 
+            <Button
+              variant={viewMode === 'cards' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('cards')}
             >
               📋 Tarjetas
             </Button>
-            <Button 
-              variant={viewMode === 'table' ? 'primary' : 'secondary'} 
+            <Button
+              variant={viewMode === 'table' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('table')}
             >
               📊 Tabla
@@ -101,11 +126,10 @@ function DriverPortalContent() {
           </div>
         </div>
 
-        {/* Renderizado Condicional según la elección del cliente */}
         {viewMode === 'cards' ? (
           <DriverCardList
             data={driver.assignedOperations}
-            getStatus={(op) => op.status || 'ACTIVO'}
+            getStatus={(op) => op.estadoViaje || 'ASIGNADO'}
             renderCardContent={(op) => (
               <>
                 <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>
@@ -114,12 +138,33 @@ function DriverPortalContent() {
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
                   Vehículo Placa: <strong>{op.vehicle?.plate || 'Sin asignar'}</strong>
                 </p>
-                <Button 
-                  variant="primary" 
-                  style={{ marginTop: '8px', width: '100%' }}
-                  onClick={() => { setSelectedOperation(op); setIsModalOpen(true); }}
+
+                <OperationWorkflow
+                  operation={op}
+                  isLoading={processingState}
+                  onUpdateState={updateTravelState}
+                  onOpenOcrModal={() => {
+                    setSelectedOperation(op);
+                    setModalType('OCR');
+                    setIsModalOpen(true);
+                  }}
+                  onOpenClosingModal={() => {
+                    setSelectedOperation(op);
+                    setModalType('CLOSING');
+                    setIsModalOpen(true);
+                  }}
+                />
+
+                <Button
+                  variant="secondary"
+                  style={{ marginTop: '8px', width: '100%', fontSize: '0.75rem', padding: '6px' }}
+                  onClick={() => {
+                    setSelectedOperation(op);
+                    setModalType('DETAILS');
+                    setIsModalOpen(true);
+                  }}
                 >
-                  Ver Detalle y Subir Soportes
+                  ℹ️ Ver Información del Viaje
                 </Button>
               </>
             )}
@@ -130,51 +175,65 @@ function DriverPortalContent() {
             columns={operationColumns}
             totalPages={1}
             currentPage={1}
-            onPageChange={() => {}}
+            onPageChange={() => { }}
             nameButton="Actualizar"
           />
         )}
       </main>
 
-      {/* Uso de tu componente SuperModal reutilizable */}
-      <SuperModal 
-        isOpen={isModalOpen} 
+      <SuperModal
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedOperation ? `Detalle de Operación #${selectedOperation.id}` : 'Detalle'}
+        title={
+          modalType === 'OCR' ? '📸 Escáner de Inteligencia Artificial' :
+            modalType === 'CLOSING' ? '✅ Subir Soporte de Cierre' :
+              selectedOperation ? `Detalle de Operación #${selectedOperation.id}` : 'Detalle'
+        }
       >
         {selectedOperation && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Solo mostramos la info si es detalles o si están cerrando/escaneando */}
             <div style={{ fontSize: '0.875rem', color: '#475569', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <p style={{ margin: 0 }}><strong>Origen:</strong> {selectedOperation.origen?.name}</p>
               <p style={{ margin: 0 }}><strong>Destino:</strong> {selectedOperation.destino?.name}</p>
-              <p style={{ margin: 0 }}><strong>Estado actual:</strong> {selectedOperation.estadoViaje || 'ACTIVO'}</p>
+              <p style={{ margin: 0 }}><strong>Estado actual:</strong> {selectedOperation.estadoViaje || 'ASIGNADO'}</p>
               <p style={{ margin: 0 }}><strong>Vehículo:</strong> {selectedOperation.vehicle?.plate}</p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
-              <Button
-                variant="primary"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                style={{ backgroundColor: '#059669' }}
-              >
-                📸 {uploading ? 'Subiendo...' : 'Tomar Foto o Elegir Imagen'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setIsModalOpen(false)}
-              >
-                Cerrar
-              </Button>
-            </div>
+            {modalType !== 'DETAILS' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+
+                <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', marginBottom: '8px' }}>
+                  {modalType === 'OCR'
+                    ? 'Toma una foto clara de la placa o los números del contenedor. La IA extraerá los datos automáticamente.'
+                    : 'Toma una foto del documento soporte (tirilla, factura o cumplido) para finalizar la operación.'}
+                </p>
+
+                <Button
+                  variant="primary"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || processingState}
+                  style={{ backgroundColor: modalType === 'OCR' ? '#9333ea' : '#059669' }}
+                >
+                  {(uploading || processingState) ? 'Procesando...' : '📸 Tomar Foto'}
+                </Button>
+              </div>
+            )}
+
+            <Button
+              variant="secondary"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cerrar
+            </Button>
           </div>
         )}
       </SuperModal>

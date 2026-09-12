@@ -16,10 +16,12 @@ export interface DriverPortalData {
   assignedOperations: Array<{
     id: number;
     createdAt: string;
+    type?: string;
     origen: { name: string };
     destino: { name: string };
     vehicle: { plate: string };
     status?: string;
+    estadoViaje?: string;
   }>;
 }
 
@@ -37,5 +39,25 @@ export const driverPortalService = {
     await api.post(`/operations/${operationId}/evidences`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+  },
+
+  // 👇 NUEVO: Avanzar estado del viaje
+  updateTravelState: async (operationId: number, estadoViaje: string, token: string): Promise<void> => {
+    await api.patch(`/portal/operations/${operationId}/status`, {
+      estadoViaje,
+      token,
+    });
+  },
+
+  // 👇 NUEVO: OCR de la placa con Gemini
+  scanPlate: async (operationId: number, file: File, token: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('token', token);
+
+    const { data } = await api.post(`/portal/operations/${operationId}/ocr-plate`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
   },
 };

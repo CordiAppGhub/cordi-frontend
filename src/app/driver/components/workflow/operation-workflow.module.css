@@ -1,0 +1,44 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+/* Colores específicos para cada etapa del viaje para guiar al conductor visualmente */
+.btnIniciar {
+  background-color: #2563eb !important; /* Azul */
+}
+
+.btnLlegadaPuerto {
+  background-color: #eab308 !important; /* Amarillo oscuro */
+  color: #fff !important;
+}
+
+.btnEscanear {
+  background-color: #9333ea !important; /* Morado */
+}
+
+.btnSalirPuerto {
+  background-color: #0ea5e9 !important; /* Azul claro / Celeste */
+}
+
+.btnLlegadaCliente {
+  background-color: #f97316 !important; /* Naranja */
+}
+
+.btnFinalizar {
+  background-color: #10b981 !important; /* Esmeralda / Verde */
+}
+
+.viajeFinalizado {
+  padding: 16px;
+  background-color: #dcfce7;
+  color: #166534;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  border: 1px solid #bbf7d0;
+  font-size: 0.9rem;
+}

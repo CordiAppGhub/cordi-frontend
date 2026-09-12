@@ -6,6 +6,7 @@ export function useDriverPortal(token: string | null) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
+  const [processingState, setProcessingState] = useState<boolean>(false); // 👈 Nuevo estado de carga para botones
 
   const loadData = async () => {
     if (!token) {
@@ -45,11 +46,45 @@ export function useDriverPortal(token: string | null) {
     }
   };
 
+  // 👇 NUEVO: Función para actualizar estado del viaje desde los botones
+  const updateTravelState = async (operationId: number, estadoViaje: string) => {
+    if (!token) return;
+    try {
+      setProcessingState(true);
+      await driverPortalService.updateTravelState(operationId, estadoViaje, token);
+      await loadData(); // Recarga los datos para reflejar el nuevo botón en la UI
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al actualizar el estado del viaje.');
+    } finally {
+      setProcessingState(false);
+    }
+  };
+
+  const scanPlate = async (operationId: number, file: File) => {
+    if (!token) return null;
+    try {
+      setProcessingState(true);
+      const result = await driverPortalService.scanPlate(operationId, file, token);
+      await loadData();
+      return result;
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al analizar la placa con IA.');
+      return null;
+    } finally {
+      setProcessingState(false);
+    }
+  };
+
   return {
     driver,
     loading,
     error,
     uploading,
+    processingState, 
     uploadEvidence,
+    updateTravelState,
+    scanPlate,
   };
 }

@@ -116,12 +116,11 @@ export default function DriversPage() {
             totalPages={1}
             currentPage={1}
             onPageChange={(page) => console.log(page)}
-            onOpenModal={() => setIsModalOpen(true)} // 👈 Conectado al botón de la tabla
+            onOpenModal={() => setIsModalOpen(true)}
           />
         )}
       </div>
 
-      {/* Renderizado del Modal con estilos nativos limpios */}
       <CreateDriverModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
