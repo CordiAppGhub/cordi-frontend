@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
-import AssignDriverModal from '@/components/organisms/fleet/AssignDriverModal';
+import AssignDriverModal from '@/app/(panel)/fleet/asignaciones/components/AssignDriverModal';
 import { useAssignments } from '@/hooks/useFleet';
 import { VehicleAssignment } from '@/types/fleet-types';
 import { ColumnDef } from '@/types/table';

@@ -14,7 +14,6 @@ export default function LoginPage() {
     setPassword,
     showPassword,
     setShowPassword,
-    error,
     isSubmitting,
     handleLogin,
   } = useAuthLogin();
@@ -30,12 +29,6 @@ export default function LoginPage() {
           <h1 className={styles.title}>CORDITRANS</h1>
           <p className={styles.subtitle}>Portal Administrativo (TMS)</p>
         </div>
-
-        {error && (
-          <div className={styles.errorMessage} role="alert">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleLogin} noValidate>
           <div className={styles.formGroup}>

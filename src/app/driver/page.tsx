@@ -10,7 +10,8 @@ import { SuperModal } from '@/components/organisms/modal/modal';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { DriverCardList } from './components/DriverCardList';
 import { OperationWorkflow } from './components/workflow/operation-workflow';
-
+import { ColumnDef } from '@/types/table';
+import { Operation } from '@/types/driver-portal.types';
 function DriverPortalContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -23,15 +24,14 @@ function DriverPortalContent() {
     processingState,
     uploadEvidence,
     updateTravelState,
-    scanPlate
+    scanPlate,
+    scanContainer
   } = useDriverPortal(token);
 
-  // Estado para alternar la vista: 'table' o 'cards'
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
 
-  // Estados para el Modal de Detalle / Soportes / OCR
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedOperation, setSelectedOperation] = useState<any | null>(null);
+  const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
   const [modalType, setModalType] = useState<'DETAILS' | 'OCR' | 'CLOSING'>('DETAILS');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,12 +41,22 @@ function DriverPortalContent() {
 
     try {
       if (modalType === 'OCR') {
-        const result = await scanPlate(selectedOperation.id, file);
-        if (result?.legible && result?.codigo) {
-          alert(`✅ Escaneo exitoso: ${result.codigo}`);
-          setIsModalOpen(false);
-        } else {
-          alert('⚠️ No se pudo leer correctamente. Intenta tomar otra foto.');
+        if (!selectedOperation.placaIA) {
+          const result = await scanPlate(selectedOperation.id, file);
+          if (result?.legible && result?.codigo) {
+            alert(`✅ Placa detectada: ${result.codigo}\n\nAhora toma la foto del contenedor.`);
+          } else {
+            alert('⚠️ No se pudo leer la placa. Intenta de nuevo.');
+          }
+        }
+        else {
+          const result = await scanContainer(selectedOperation.id, file);
+          if (result?.legible && result?.codigo) {
+            alert(`✅ Contenedor validado: ${result.codigo}`);
+            setIsModalOpen(false);
+          } else {
+            alert('⚠️ No se detectó un código ISO válido. Intenta de nuevo.');
+          }
         }
       } else if (modalType === 'CLOSING') {
         await uploadEvidence(selectedOperation.id, file);
@@ -72,16 +82,16 @@ function DriverPortalContent() {
     );
   }
 
-  const operationColumns = [
+  const operationColumns: ColumnDef<Operation>[] = [
     { id: 'id', header: 'ID', isDraggable: false },
-    { id: 'origen', header: 'Origen', isDraggable: true, renderCell: (row: any) => row.origen?.name || 'N/A' },
-    { id: 'destino', header: 'Destino', isDraggable: true, renderCell: (row: any) => row.destino?.name || 'N/A' },
-    { id: 'estadoViaje', header: 'Estado', isDraggable: false, renderCell: (row: any) => row.estadoViaje || 'ASIGNADO' },
+    { id: 'origen', header: 'Origen', isDraggable: true, renderCell: (row) => row.origen?.name || 'N/A' },
+    { id: 'destino', header: 'Destino', isDraggable: true, renderCell: (row) => row.destino?.name || 'N/A' },
+    { id: 'estadoViaje', header: 'Estado', isDraggable: false, renderCell: (row) => row.estadoViaje || 'ASIGNADO' },
     {
       id: 'acciones',
       header: 'Acciones',
       isDraggable: false,
-      renderCell: (row: any) => (
+      renderCell: (row) => (
         <Button
           variant="primary"
           onClick={() => {
@@ -213,8 +223,10 @@ function DriverPortalContent() {
 
                 <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', marginBottom: '8px' }}>
                   {modalType === 'OCR'
-                    ? 'Toma una foto clara de la placa o los números del contenedor. La IA extraerá los datos automáticamente.'
-                    : 'Toma una foto del documento soporte (tirilla, factura o cumplido) para finalizar la operación.'}
+                    ? (!selectedOperation.placaIA
+                      ? 'Paso 1: Toma una foto clara de la PLACA del vehículo.'
+                      : 'Paso 2: Toma una foto del número del CONTENEDOR.')
+                    : 'Toma una foto del documento soporte (tirilla, factura o cumplido).'}
                 </p>
 
                 <Button

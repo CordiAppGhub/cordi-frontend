@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Button } from '../../atoms/button/button';
-import { Location } from '../../../types/location.types';
+import { Button } from '../../../../components/atoms/button/button';
+import { Location } from '../../../../types/location.types';
 import { useLocations } from '@/hooks/useLocation';
-import { LocationModal } from '@/components/molecules/locationModal/locationModal';
 import { ColumnDef } from '@/types/table';
-import PaginationTable from '../pagination-table/pagination-table';
+import PaginationTable from '../../../../components/organisms/pagination-table/pagination-table';
+import { LocationModal } from '../../operations/components/locationModal/locationModal';
 
 export const LocationsManager: React.FC = () => {
   const { locations, isLoadingLocations, deleteLocation } = useLocations();

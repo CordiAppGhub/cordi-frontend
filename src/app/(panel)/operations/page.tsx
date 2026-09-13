@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 
 import { useUIStore } from '@/store/use-ui.store';
-import { AssignModal } from '@/components/organisms/assign-modal/assign-modal';
+import { AssignModal } from '@/app/(panel)/operations/components/assign-modal/assign-modal';
 import { CreateModal } from '@/app/(panel)/operations/components/create-modal/create-modal';
 import { Button } from '@/components/atoms/button/button';
 import { Operation } from '@/types/operation-types';

@@ -1,8 +1,7 @@
 import { create } from 'zustand';
-import Swal from 'sweetalert2';
 import { Location, CreateLocationInput, UpdateLocationInput } from '@/types/location.types';
 import { locationService } from '@/services/location.service';
-import { useAuthStore } from './use-auth.store'; 
+import { useAuthStore } from './use-auth.store';
 
 interface LocationState {
   locations: Location[];
@@ -25,8 +24,9 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     try {
       const data = await locationService.getAll();
       set({ locations: data, isLoadingLocations: false });
-    } catch (err: any) {
-      set({ isLoadingLocations: false, error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al obtener las ubicaciones';
+      set({ isLoadingLocations: false, error: message });
     }
   },
 
@@ -42,19 +42,10 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       };
 
       await locationService.create(dataToSend);
-      await get().fetchLocations(); // Recargamos la lista
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Empresa Creada',
-        text: 'La nueva ubicación ha sido registrada exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      });
-    } catch (err: any) {
+      await get().fetchLocations();
+    } catch (err: unknown) {
       set({ isLoadingLocations: false });
-      // El error de conflicto (nombre repetido) lo debería atajar el interceptor de tu api.service
-      throw err; 
+      throw err; // Propagamos el error al hook para disparar el showToast con el mensaje del backend
     }
   },
 
@@ -63,43 +54,20 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     try {
       await locationService.update(id, data);
       await get().fetchLocations();
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Empresa Actualizada',
-        timer: 2000,
-        showConfirmButton: false
-      });
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({ isLoadingLocations: false });
       throw err;
     }
   },
 
   deleteLocation: async (id) => {
+    set({ isLoadingLocations: true, error: null });
     try {
-      // Confirmación antes de borrar
-      const result = await Swal.fire({
-        title: '¿Estás seguro?',
-        text: "No podrás revertir esto. Si la empresa tiene viajes, no se podrá borrar.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-      });
-
-      if (result.isConfirmed) {
-        set({ isLoadingLocations: true });
-        await locationService.delete(id);
-        await get().fetchLocations();
-        
-        Swal.fire('Eliminada', 'La empresa ha sido eliminada.', 'success');
-      }
-    } catch (err: any) {
+      await locationService.delete(id);
+      await get().fetchLocations();
+    } catch (err: unknown) {
       set({ isLoadingLocations: false });
       throw err;
     }
-  }
+  },
 }));

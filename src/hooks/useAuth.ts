@@ -1,6 +1,13 @@
+'use client';
+
 import { useState } from 'react';
 import { useAuthStore } from '@/store/use-auth.store';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { showToast } from '@/utils/alerts';
+
+interface BackendErrorResponse {
+  message?: string;
+}
 
 export function useAuthLogin() {
   const loginStore = useAuthStore((state) => state.login);
@@ -8,16 +15,17 @@ export function useAuthLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
-    if (!email.trim() || !password.trim()) return;
+    if (!email.trim() || !password.trim()) {
+      showToast.error('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
 
     setIsSubmitting(true);
-    setError(null);
 
     try {
       await loginStore(email, password);
@@ -29,16 +37,16 @@ export function useAuthLogin() {
     } catch (err: unknown) {
       setIsSubmitting(false);
 
+      let message = 'Error al conectar con el servidor.';
+
       if (axios.isAxiosError(err)) {
-        setError(
-          err.response?.data?.message ||
-          'Error al conectar con el servidor.'
-        );
+        const axiosError = err as AxiosError<BackendErrorResponse>;
+        message = axiosError.response?.data?.message || message;
       } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Ocurrió un error inesperado.');
+        message = err.message;
       }
+
+      showToast.error(message);
     }
   };
 
@@ -49,7 +57,6 @@ export function useAuthLogin() {
     setPassword,
     showPassword,
     setShowPassword,
-    error,
     isSubmitting,
     handleLogin,
   };

@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useLocations } from '../../../hooks/useLocation';
-import { locationSchema } from '../../../schemas/location.schema';
-import { Input } from '../../atoms/input/input';
-import { Button } from '../../atoms/button/button';
-import { Location, Tarifa } from '../../../types/location.types';
+
 import styles from '../../organisms/assign-modal/assign-modal.module.css';
+import { useLocations } from '@/hooks/useLocation';
+import { Button } from '@/components/atoms/button/button';
+import { Input } from '@/components/atoms/input/input';
+import { locationSchema } from '@/schemas/location.schema';
+import { Tarifa, Location } from '@/types/location.types';
 
 
 // 1. 👇 LO MOVEMOS AFUERA DEL COMPONENTE para evitar el error del useEffect

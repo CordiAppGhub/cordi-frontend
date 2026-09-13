@@ -1,9 +1,15 @@
+import { useCallback } from 'react';
+import Swal from 'sweetalert2';
+import { AxiosError } from 'axios';
+
 import { assignmentsService } from '@/services/fleet.service';
 import { useAssignmentsStore } from '@/store/use-fleet.store';
 import { CreateAssignmentDto } from '@/types/fleet-types';
-import { useCallback } from 'react';
-import Swal from 'sweetalert2';
+import { showToast } from '@/utils/alerts';
 
+interface BackendErrorResponse {
+  message?: string;
+}
 
 export const useAssignments = () => {
   const store = useAssignmentsStore();
@@ -13,30 +19,35 @@ export const useAssignments = () => {
     try {
       const data = await assignmentsService.getActive();
       store.setActiveAssignments(data);
-    } catch (error) {
-      console.error('Error al cargar asignaciones', error);
-      Swal.fire('Error', 'No se pudieron cargar las asignaciones activas', 'error');
+    } catch (err: unknown) {
+      console.error('Error al cargar asignaciones', err);
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'No se pudieron cargar las asignaciones activas';
+      showToast.error(message);
     } finally {
       store.setIsLoading(false);
     }
-  }, []);
+  }, [store]);
 
-  const assignDriver = async (data: CreateAssignmentDto) => {
+  const assignDriver = async (data: CreateAssignmentDto): Promise<boolean> => {
     store.setIsLoading(true);
     try {
       await assignmentsService.assign(data);
-      Swal.fire({ icon: 'success', title: 'Asignado', text: 'Vehículo asignado exitosamente', timer: 1500 });
+      showToast.success('Vehículo asignado exitosamente');
       await loadActive(); // Recargar la tabla
       return true;
-    } catch (error: any) {
-      Swal.fire('Error', error.response?.data?.message || 'No se pudo realizar la asignación', 'error');
+    } catch (err: unknown) {
+      console.error('Error al realizar asignación:', err);
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'No se pudo realizar la asignación';
+      showToast.error(message);
       return false;
     } finally {
       store.setIsLoading(false);
     }
   };
 
-  const unassignVehicle = async (vehicleId: number, plate: string) => {
+  const unassignVehicle = async (vehicleId: number, plate: string): Promise<boolean> => {
     const confirm = await Swal.fire({
       title: '¿Liberar vehículo?',
       text: `¿Estás seguro de quitarle el conductor al vehículo ${plate}? El camión quedará libre.`,
@@ -47,17 +58,24 @@ export const useAssignments = () => {
       confirmButtonText: 'Sí, liberar'
     });
 
-    if (confirm.isConfirmed) {
-      store.setIsLoading(true);
-      try {
-        await assignmentsService.unassign(vehicleId);
-        Swal.fire('Liberado', `El vehículo ${plate} ahora está sin conductor`, 'success');
-        await loadActive(); // Recargar la tabla
-      } catch (error) {
-        Swal.fire('Error', 'No se pudo liberar el vehículo', 'error');
-      } finally {
-        store.setIsLoading(false);
-      }
+    if (!confirm.isConfirmed) {
+      return false;
+    }
+
+    store.setIsLoading(true);
+    try {
+      await assignmentsService.unassign(vehicleId);
+      showToast.success(`El vehículo ${plate} ahora está sin conductor`);
+      await loadActive(); // Recargar la tabla
+      return true;
+    } catch (err: unknown) {
+      console.error('Error al liberar vehículo:', err);
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'No se pudo liberar el vehículo';
+      showToast.error(message);
+      return false;
+    } finally {
+      store.setIsLoading(false);
     }
   };
 

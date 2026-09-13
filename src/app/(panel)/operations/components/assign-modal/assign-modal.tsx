@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useOperationStore } from '../../../store/use-operation.store';
+import { useOperationStore } from '../../../../../store/use-operation.store';
 
-import { Button } from '../../atoms/button/button';
+import { Button } from '../../../../../components/atoms/button/button';
 import styles from './assign-modal.module.css';
 import { Select } from '@/components/atoms/select/select';
 import { useUIStore } from '@/store/use-ui.store';

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/hooks/use-drivers';
 import { Loader2 } from 'lucide-react';
-import { SuperModal } from '../modal/modal';
+import { SuperModal } from '../../../../../components/organisms/modal/modal';
 
 interface AssignDriverModalProps {
   isOpen: boolean;
