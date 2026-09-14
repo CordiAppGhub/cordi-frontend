@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useVehicles } from '@/hooks/use-vehicles';
+
 import { ColumnDef } from '@/types/table';
 import { Vehicle } from '@/types/vehicles';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import UploadExcel from '@/components/organisms/fleet/UploadExcel';
 import { Button } from '@/components/atoms/button/button';
+import { useVehicles } from '@/hooks/use-vehicles';
 
 export default function VehiclesPage() {
   const { vehicles, isLoading, loadVehicles, removeVehicle, uploadExcel } = useVehicles();

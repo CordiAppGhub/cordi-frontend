@@ -12,29 +12,34 @@ interface BackendErrorResponse {
 }
 
 export const useAssignments = () => {
-  const store = useAssignmentsStore();
+  // 1. Extraemos los estados y acciones de forma independiente (Selectores)
+  const activeAssignments = useAssignmentsStore((state) => state.activeAssignments);
+  const isLoading = useAssignmentsStore((state) => state.isLoading);
+  const setActiveAssignments = useAssignmentsStore((state) => state.setActiveAssignments);
+  const setIsLoading = useAssignmentsStore((state) => state.setIsLoading);
 
+  // 2. Dependencias estables (setIsLoading y setActiveAssignments nunca cambian)
   const loadActive = useCallback(async () => {
-    store.setIsLoading(true);
+    setIsLoading(true);
     try {
       const data = await assignmentsService.getActive();
-      store.setActiveAssignments(data);
+      setActiveAssignments(data);
     } catch (err: unknown) {
       console.error('Error al cargar asignaciones', err);
       const axiosError = err as AxiosError<BackendErrorResponse>;
       const message = axiosError.response?.data?.message || 'No se pudieron cargar las asignaciones activas';
       showToast.error(message);
     } finally {
-      store.setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [store]);
+  }, [setIsLoading, setActiveAssignments]);
 
   const assignDriver = async (data: CreateAssignmentDto): Promise<boolean> => {
-    store.setIsLoading(true);
+    setIsLoading(true);
     try {
       await assignmentsService.assign(data);
       showToast.success('Vehículo asignado exitosamente');
-      await loadActive(); // Recargar la tabla
+      await loadActive(); 
       return true;
     } catch (err: unknown) {
       console.error('Error al realizar asignación:', err);
@@ -43,7 +48,7 @@ export const useAssignments = () => {
       showToast.error(message);
       return false;
     } finally {
-      store.setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -62,11 +67,11 @@ export const useAssignments = () => {
       return false;
     }
 
-    store.setIsLoading(true);
+    setIsLoading(true);
     try {
       await assignmentsService.unassign(vehicleId);
       showToast.success(`El vehículo ${plate} ahora está sin conductor`);
-      await loadActive(); // Recargar la tabla
+      await loadActive(); 
       return true;
     } catch (err: unknown) {
       console.error('Error al liberar vehículo:', err);
@@ -75,13 +80,13 @@ export const useAssignments = () => {
       showToast.error(message);
       return false;
     } finally {
-      store.setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return {
-    activeAssignments: store.activeAssignments,
-    isLoading: store.isLoading,
+    activeAssignments,
+    isLoading,
     loadActive,
     assignDriver,
     unassignVehicle,

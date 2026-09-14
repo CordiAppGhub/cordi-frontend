@@ -2,8 +2,9 @@ import { DriverPortalData, TripMicroState, OcrResult } from "@/types/driver-port
 import { api } from "./api.service";
 
 export const driverPortalService = {
-  getByToken: async (token: string): Promise<DriverPortalData> => {
-    const { data } = await api.get(`/drivers/portal?token=${token}`);
+  getByToken: async (token: string, cedula: string): Promise<DriverPortalData> => {
+    // 👈 Agregamos la cédula a la petición HTTP
+    const { data } = await api.get(`/drivers/portal?token=${token}&cedula=${cedula}`);
     return data;
   },
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-import styles from '../../organisms/assign-modal/assign-modal.module.css';
+import styles from '../assign-modal/assign-modal.module.css';
 import { useLocations } from '@/hooks/useLocation';
 import { Button } from '@/components/atoms/button/button';
 import { Input } from '@/components/atoms/input/input';

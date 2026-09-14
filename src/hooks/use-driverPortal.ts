@@ -10,15 +10,50 @@ interface BackendErrorResponse {
 
 export function useDriverPortal(token: string | null) {
   const [driver, setDriver] = useState<DriverPortalData | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!token);
+
+  // 👈 Nuevos estados para el control de acceso
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(token ? null : 'Token de acceso no proporcionado.');
+
   const [uploading, setUploading] = useState<boolean>(false);
   const [processingState, setProcessingState] = useState<boolean>(false);
 
+  // 👈 Función para validar la cédula ingresada por el conductor
+  const authenticateDriver = useCallback(async (cedula: string) => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await driverPortalService.getByToken(token, cedula);
+
+      setDriver(data);
+      setIsAuthenticated(true);
+      localStorage.setItem(`driver_cedula_${token}`, cedula);
+    } catch (err: unknown) {
+      console.error(err);
+      setIsAuthenticated(false);
+      localStorage.removeItem(`driver_cedula_${token}`);
+
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'Token o cédula incorrectos.';
+      setError(message);
+      showToast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  // Modificamos loadData para recargar silenciosamente usando la cédula guardada
   const loadData = useCallback(async () => {
     if (!token) return;
+    const savedCedula = localStorage.getItem(`driver_cedula_${token}`);
+    if (!savedCedula) return;
+
     try {
-      const data = await driverPortalService.getByToken(token);
+      const data = await driverPortalService.getByToken(token, savedCedula);
       setDriver(data);
       setError(null);
     } catch (err: unknown) {
@@ -31,32 +66,19 @@ export function useDriverPortal(token: string | null) {
 
     let isActive = true;
 
-    async function fetchInitialData() {
-      try {
-        setLoading(true);
-        const data = await driverPortalService.getByToken(token!);
-        if (isActive) {
-          setDriver(data);
-          setError(null);
-        }
-      } catch (err: unknown) {
-        if (isActive) {
-          console.error(err);
-          setError('El enlace es inválido, ha expirado o no se encontraron datos.');
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
+    async function checkSavedSession() {
+      const savedCedula = localStorage.getItem(`driver_cedula_${token}`);
+      if (savedCedula && isActive) {
+        await authenticateDriver(savedCedula);
       }
     }
 
-    fetchInitialData();
+    checkSavedSession();
 
     return () => {
       isActive = false;
     };
-  }, [token]);
+  }, [token, authenticateDriver]);
 
   const uploadEvidence = async (operationId: number, file: File): Promise<void> => {
     try {
@@ -75,11 +97,15 @@ export function useDriverPortal(token: string | null) {
     }
   };
 
-  const updateTravelState = async (operationId: number, estadoViaje: TripMicroState | 'FINALIZADO'): Promise<void> => {
+  const updateTravelState = async (operationId: number, estadoViaje: string): Promise<void> => {
     if (!token) return;
     try {
       setProcessingState(true);
-      await driverPortalService.updateTravelState(operationId, estadoViaje, token);
+      await driverPortalService.updateTravelState(
+        operationId,
+        estadoViaje as TripMicroState | 'FINALIZADO',
+        token
+      );
       showToast.success('Estado del viaje actualizado correctamente.');
       await loadData();
     } catch (err: unknown) {
@@ -134,6 +160,8 @@ export function useDriverPortal(token: string | null) {
     error,
     uploading,
     processingState,
+    isAuthenticated, // 👈 Exportado para la vista
+    authenticateDriver, // 👈 Exportado para la vista
     uploadEvidence,
     updateTravelState,
     scanPlate,

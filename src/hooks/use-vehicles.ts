@@ -14,28 +14,35 @@ interface BackendErrorResponse {
 }
 
 export const useVehicles = () => {
-    const store = useVehiclesStore();
+    const vehicles = useVehiclesStore((state) => state.vehicles);
+    const isLoading = useVehiclesStore((state) => state.isLoading);
+    const setVehicles = useVehiclesStore((state) => state.setVehicles);
+    const setIsLoading = useVehiclesStore((state) => state.setIsLoading);
+    const addVehicle = useVehiclesStore((state) => state.addVehicle);
+    const updateVehicleInStore = useVehiclesStore((state) => state.updateVehicleInStore);
+    const removeVehicleFromStore = useVehiclesStore((state) => state.removeVehicleFromStore);
 
+    // 2. Dependencias estables para el useCallback
     const loadVehicles = useCallback(async () => {
-        store.setIsLoading(true);
+        setIsLoading(true);
         try {
             const data = await vehiclesService.getAll();
-            store.setVehicles(data);
+            setVehicles(data);
         } catch (err: unknown) {
             console.error('Error al cargar vehículos', err);
             const axiosError = err as AxiosError<BackendErrorResponse>;
             const message = axiosError.response?.data?.message || 'No se pudieron cargar los vehículos';
             showToast.error(message);
         } finally {
-            store.setIsLoading(false);
+            setIsLoading(false);
         }
-    }, [store]);
+    }, [setIsLoading, setVehicles]);
 
     const createVehicle = async (data: CreateVehicleDto): Promise<boolean> => {
-        store.setIsLoading(true);
+        setIsLoading(true);
         try {
             const newVehicle = await vehiclesService.create(data);
-            store.addVehicle(newVehicle);
+            addVehicle(newVehicle);
             showToast.success('Vehículo registrado con éxito');
             return true;
         } catch (err: unknown) {
@@ -45,15 +52,15 @@ export const useVehicles = () => {
             showToast.error(message);
             return false;
         } finally {
-            store.setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
     const editVehicle = async (id: number, data: UpdateVehicleDto): Promise<boolean> => {
-        store.setIsLoading(true);
+        setIsLoading(true);
         try {
             const updated = await vehiclesService.update(id, data);
-            store.updateVehicleInStore(id, updated);
+            updateVehicleInStore(id, updated);
             showToast.success('Vehículo modificado con éxito');
             return true;
         } catch (err: unknown) {
@@ -63,7 +70,7 @@ export const useVehicles = () => {
             showToast.error(message);
             return false;
         } finally {
-            store.setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -82,10 +89,10 @@ export const useVehicles = () => {
             return false;
         }
 
-        store.setIsLoading(true);
+        setIsLoading(true);
         try {
             await vehiclesService.remove(id);
-            store.removeVehicleFromStore(id);
+            removeVehicleFromStore(id);
             showToast.success('El vehículo fue eliminado correctamente');
             return true;
         } catch (err: unknown) {
@@ -95,7 +102,7 @@ export const useVehicles = () => {
             showToast.error(message);
             return false;
         } finally {
-            store.setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -113,8 +120,8 @@ export const useVehicles = () => {
     };
 
     return {
-        vehicles: store.vehicles,
-        isLoading: store.isLoading,
+        vehicles,
+        isLoading,
         loadVehicles,
         createVehicle,
         editVehicle,

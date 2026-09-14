@@ -21,7 +21,6 @@ export default function AssignmentsPage() {
         loadActive();
     }, [loadActive]);
 
-    // Esto abre el modal cuando le dan clic al botón de la fila
     const handleReassign = (vehicleId: number) => {
         setSelectedVehicleForModal(vehicleId);
         setIsModalOpen(true);

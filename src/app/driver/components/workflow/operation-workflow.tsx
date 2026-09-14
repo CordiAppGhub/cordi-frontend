@@ -27,7 +27,7 @@ export function OperationWorkflow({
   onOpenOcrModal,
   onOpenClosingModal,
 }: OperationWorkflowProps) {
-  
+
   // Envoltorio para manejar el clic y llamar a la actualización de estado
   const handleAdvance = (newState: string) => {
     onUpdateState(operation.id, newState);
@@ -39,22 +39,22 @@ export function OperationWorkflow({
       case null:
       case undefined:
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnIniciar}
-            onClick={() => handleAdvance('RUMBO_AL_PUERTO')} 
+            onClick={() => handleAdvance('RUMBO_AL_PUERTO')}
             disabled={isLoading}
           >
             🚀 Iniciar Viaje (Rumbo al Puerto)
           </Button>
         );
-      
+
       case 'RUMBO_AL_PUERTO':
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnLlegadaPuerto}
-            onClick={() => handleAdvance('EN_PUERTO')} 
+            onClick={() => handleAdvance('EN_PUERTO')}
             disabled={isLoading}
           >
             📍 Llegué al Puerto
@@ -63,8 +63,8 @@ export function OperationWorkflow({
 
       case 'EN_PUERTO':
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnEscanear}
             onClick={onOpenOcrModal}
             disabled={isLoading}
@@ -75,10 +75,10 @@ export function OperationWorkflow({
 
       case 'EN_PUERTO_CARGADO':
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnSalirPuerto}
-            onClick={() => handleAdvance('RUMBO_AL_CLIENTE')} 
+            onClick={() => handleAdvance('RUMBO_AL_CLIENTE')}
             disabled={isLoading}
           >
             🚛 Salir del Puerto (En ruta)
@@ -87,10 +87,10 @@ export function OperationWorkflow({
 
       case 'RUMBO_AL_CLIENTE':
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnLlegadaCliente}
-            onClick={() => handleAdvance('EN_CLIENTE')} 
+            onClick={() => handleAdvance('EN_CLIENTE')}
             disabled={isLoading}
           >
             📍 Llegué a Instalaciones del Cliente
@@ -99,8 +99,8 @@ export function OperationWorkflow({
 
       case 'EN_CLIENTE':
         return (
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             className={styles.btnFinalizar}
             onClick={onOpenClosingModal}
             disabled={isLoading}
