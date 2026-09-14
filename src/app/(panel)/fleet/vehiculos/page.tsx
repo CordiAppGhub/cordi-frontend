@@ -8,6 +8,8 @@ import PaginationTable from '@/components/organisms/pagination-table/pagination-
 import UploadExcel from '@/components/organisms/fleet/UploadExcel';
 import { Button } from '@/components/atoms/button/button';
 import { useVehicles } from '@/hooks/use-vehicles';
+import { VehicleStatusLabels } from '@/constants/enum-mapping-types';
+import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 
 export default function VehiclesPage() {
   const { vehicles, isLoading, loadVehicles, removeVehicle, uploadExcel } = useVehicles();
@@ -23,7 +25,7 @@ export default function VehiclesPage() {
     { id: 'modelYear', header: 'Año', type: 'text', renderCell: (row) => row.modelYear || '--' },
     { id: 'capacityWeight', header: 'Capacidad', type: 'text', renderCell: (row) => row.capacityWeight || '--' },
     { id: 'tecnoExpiration', header: 'Venc. Tecno', type: 'text', renderCell: (row) => row.tecnoExpiration ? new Date(row.tecnoExpiration).toLocaleDateString() : '--' },
-    { id: 'status', header: 'Estado', type: 'text', renderCell: (row) => row.status },
+    { id: 'status', header: 'Estado', type: 'text', renderCell: (row) => <StatusBadge status={row.status} /> },
     {
       id: 'soatExpiration',
       header: 'Venc. SOAT',

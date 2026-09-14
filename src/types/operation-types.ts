@@ -1,8 +1,7 @@
-// 1. Interfaz para las evidencias fotográficas
 export interface Evidence {
   id: number;
   url: string;
-  type: string; // Ej: 'FOTO_PLACA', 'FOTO_CONTENEDOR', 'SOPORTE_ENTREGA'
+  type: string;
   createdAt?: string;
 }
 
@@ -12,7 +11,7 @@ export interface Vehicle {
   status?: string;
 }
 
-// 3. Interfaz para los nodos logísticos (ya que tu backend los envía)
+
 export interface LogisticNode {
   name: string;
 }
@@ -29,10 +28,12 @@ export interface Operation {
   status: 'CREADO' | 'ASIGNADO' | 'EN_CURSO' | 'FINALIZADO';
   containerNumber: string | null;
   driver?: UserDriver | null;
+  estadoViaje?: string | null;
+  scheduledAt?: string | null;
   
   vehicle?: Vehicle | null;
   evidences?: Evidence[];
-  placaIA?: string | null; // Placa detectada por IA
+  placaIA?: string | null;
   origen?: LogisticNode | null;
   cargue?: LogisticNode | null;
   descargue?: LogisticNode | null;

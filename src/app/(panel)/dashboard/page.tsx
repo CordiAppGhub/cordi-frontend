@@ -10,9 +10,9 @@ import { KpiCard } from '@/components/molecules/kpi-card/KpiCard';
 
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { Button } from '@/components/atoms/button/button';
-import { Badge } from '@/components/atoms/badge.tsx/badge';
 import { ColumnDef } from '@/types/table';
 import { LiveClock } from '@/components/atoms/liveClock/LiveClock';
+import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 
 
 interface DispatchRow {
@@ -28,22 +28,8 @@ export default function DashboardPage() {
   const { data, isLoading, error, refresh } = useDashboard();
 
   // 1. Helper para los Badges de Estado
-  const renderStatus = (estado: string) => {
-    switch (estado?.toUpperCase()) {
-      case 'DISPONIBLE':
-        return <Badge variant="success">Disponible</Badge>;
-      case 'EN_PROGRESO':
-      case 'EN TRANSITO':
-        return <Badge variant="info">En tránsito</Badge>;
-      case 'CON_NOVEDAD':
-      case 'EN MANTENIMIENTO':
-        return <Badge variant="warning">Con novedad</Badge>;
-      default:
-        return <Badge variant="default">{estado || 'Sin estado'}</Badge>;
-    }
-  };
+ 
 
-  // 2. Definición de Columnas adaptadas a tus datos de despachos
   const dispatchColumns: ColumnDef<DispatchRow>[] = [
     {
       id: 'vehiclePlate',
@@ -56,7 +42,7 @@ export default function DashboardPage() {
       id: 'status',
       header: 'Estado',
       type: 'text',
-      renderCell: (row: any) => renderStatus(row.status)
+      renderCell: (row: any) => <StatusBadge status={row.status} />
     },
     { id: 'route', header: 'Ruta / Viaje', type: 'text' },
     {

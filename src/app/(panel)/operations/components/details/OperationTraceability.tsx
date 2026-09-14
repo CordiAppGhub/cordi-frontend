@@ -5,6 +5,8 @@ import styles from './OperationTraceability.module.css';
 import { useOperations } from '../../hooks/useOperations';
 import { socket } from '@/lib/socket';
 import { useOperationStore } from '@/store/use-operation.store';
+import { OperationStatusLabels, TripMicroStateLabels } from '@/constants/enum-mapping-types';
+import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 
 interface Props {
   operationId: number;
@@ -71,8 +73,12 @@ export function OperationTraceability({ operationId }: Props) {
             <div>
               <p className={styles.label}>Estado de Operación</p>
               <span className={`${styles.badge} ${isFinished ? styles.badgeSuccess : styles.badgeDefault}`}>
-                {currentOperation.status}
+               <StatusBadge status={currentOperation.status} />
               </span>
+            </div>
+            <div>
+              <p className={styles.label}>Estado Conductor</p>
+              <StatusBadge status={currentOperation.estadoViaje} />
             </div>
             <div>
               <p className={styles.label}>Placa Registrada (IA)</p>

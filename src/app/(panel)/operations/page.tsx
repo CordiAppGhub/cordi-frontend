@@ -13,7 +13,7 @@ import { ColumnDef } from '@/types/table';
 import { OperationTraceability } from './components/details/OperationTraceability';
 
 import styles from './operations.module.css';
-import { Badge } from '@/components/atoms/badge.tsx/badge';
+import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 
 export default function OperationsPage() {
   const { operations, meta, isLoadingOperations, error, fetchOperations } = useOperations();
@@ -24,7 +24,6 @@ export default function OperationsPage() {
   const [activeTab, setActiveTab] = useState('TODAS');
   const [traceabilityId, setTraceabilityId] = useState<number | null>(null);
 
-  // Definición de las pestañas operativas de la Torre de Control
   const tabs = [
     { id: 'TODAS', label: 'Todas las Operaciones' },
     { id: 'EXPORTACION', label: 'Exportación' },
@@ -33,7 +32,6 @@ export default function OperationsPage() {
     { id: 'DEVOLUCION', label: 'Devolución' },
   ];
 
-  // Manejador de cambio de pestañas manteniendo filtros activos
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     fetchOperations({
@@ -45,7 +43,6 @@ export default function OperationsPage() {
     });
   };
 
-  // Manejador del botón de búsqueda / filtrado avanzado
   const handleFilter = () => {
     fetchOperations({
       page: 1,
@@ -56,7 +53,6 @@ export default function OperationsPage() {
     });
   };
 
-  // Manejador de paginación
   const handlePageChange = (newPage: number) => {
     fetchOperations({
       page: newPage,
@@ -67,16 +63,7 @@ export default function OperationsPage() {
     });
   };
 
-  // Helper para pintar los badges de estado con diseño Enterprise
-  const renderStatusBadge = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'CREADO': return <Badge variant="info">Creado</Badge>;
-      case 'ASIGNADO': return <Badge variant="warning">Asignado</Badge>;
-      case 'EN_CURSO': return <Badge variant="success">En Curso</Badge>;
-      case 'FINALIZADO': return <Badge variant="success">Finalizado</Badge>;
-      default: return <Badge variant="default">{status || 'N/A'}</Badge>;
-    }
-  };
+
 
   const columns: ColumnDef<Operation>[] = [
     { 
@@ -89,7 +76,7 @@ export default function OperationsPage() {
       id: 'scheduledAt',
       header: 'Fecha Prog.',
       type: 'text',
-      renderCell: (row: any) => (
+      renderCell: (row) => (
         <span style={{ color: '#475569', fontSize: '0.9rem' }}>
           {row.scheduledAt ? new Date(row.scheduledAt).toLocaleDateString('es-CO') : '--'}
         </span>
@@ -132,7 +119,7 @@ export default function OperationsPage() {
       id: 'status', 
       header: 'Estado', 
       type: 'text', 
-      renderCell: (row) => renderStatusBadge(row.status) 
+      renderCell: (row) => <StatusBadge status={row.status} /> 
     },
     { 
       id: 'driver', 
@@ -175,7 +162,6 @@ export default function OperationsPage() {
   return (
     <div className={styles.layout}>
       
-      {/* HEADER DE LA VISTA */}
       <div className={styles.pageHeader}>
         <div className={styles.headerTitleContainer}>
           <span className={styles.headerNumber}>2</span>
@@ -189,7 +175,6 @@ export default function OperationsPage() {
         </Button>
       </div>
 
-      {/* --- SISTEMA DE PESTAÑAS (TABS) MODERNAS --- */}
       <div className={styles.tabsContainer}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -205,7 +190,6 @@ export default function OperationsPage() {
         })}
       </div>
 
-      {/* --- ZONA DE FILTROS EMPRESARIALES Y BÚSQUEDA --- */}
       <div className={styles.filtersBar}>
         <input
           type="text"
@@ -232,7 +216,6 @@ export default function OperationsPage() {
 
       {error && <div className={styles.errorMessage} role="alert">⚠️ {error}</div>}
 
-      {/* TABLA PRINCIPAL DE DATOS */}
       <div className={styles.tableCard}>
         <PaginationTable
           data={operations ?? []}
@@ -245,11 +228,9 @@ export default function OperationsPage() {
         />
       </div>
 
-      {/* MODALES DE ACCIÓN */}
       <AssignModal />
       <CreateModal />
 
-      {/* MODAL DE TRAZABILIDAD (VISOR EMPRESARIAL) */}
       {traceabilityId && (
         <div
           style={{
@@ -288,7 +269,6 @@ export default function OperationsPage() {
               </p>
             </div>
 
-            {/* COMPONENTE DE TRAZABILIDAD INTERNA */}
             <OperationTraceability operationId={traceabilityId} />
 
           </div>
