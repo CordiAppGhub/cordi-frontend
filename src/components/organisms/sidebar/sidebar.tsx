@@ -53,10 +53,12 @@ export const Sidebar: React.FC = () => {
       ]
     },
     { path: '/locations', label: 'Ubicaciones', icon: <MapPin size={20} /> },
+    { path: '/cliente', label: 'Clientes', icon: <Users size={20} /> },
+    { path: '/novedades', label: 'Novedades', icon: <BarChart3 size={20} /> },
+
     // { path: '/map', label: 'Mapa', icon: <MapPin size={20} /> },
     // { path: '/fuel', label: 'Combustible', icon: <Fuel size={20} />, badge: 6 },
     // { path: '/alerts', label: 'Alertas', icon: <Bell size={20} />, badge: 12 },
-    // { path: '/reports', label: 'Reportes', icon: <BarChart3 size={20} /> },
     // { path: '/settings', label: 'Configuración', icon: <Settings size={20} /> },
   ];
 

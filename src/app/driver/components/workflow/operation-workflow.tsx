@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/atoms/button/button';
 import styles from './operation-workflow.module.css';
+import { Button } from '@/components/atoms/button/button';
 
-// Definimos la interfaz basándonos en tu DriverPortalData
 interface OperationData {
   id: number;
   type?: string;
@@ -20,6 +19,16 @@ interface OperationWorkflowProps {
   onOpenClosingModal: () => void;
 }
 
+// Mapeo lógico de estados a pasos visuales
+const WORKFLOW_STEPS = [
+  { id: 'ASIGNADO', label: 'INICIAR VIAJE AL PUERTO', nextState: 'RUMBO_AL_PUERTO', action: 'update' },
+  { id: 'RUMBO_AL_PUERTO', label: 'REPORTAR LLEGADA A PUERTO', nextState: 'EN_PUERTO', action: 'update' },
+  { id: 'EN_PUERTO', label: 'ESCANEAR CARGUE (OCR)', nextState: 'EN_PUERTO_CARGADO', action: 'ocr' },
+  { id: 'EN_PUERTO_CARGADO', label: 'INICIAR RUTA A CLIENTE', nextState: 'RUMBO_AL_CLIENTE', action: 'update' },
+  { id: 'RUMBO_AL_CLIENTE', label: 'LLEGADA A CLIENTE', nextState: 'EN_CLIENTE', action: 'update' },
+  { id: 'EN_CLIENTE', label: 'SOPORTE Y FINALIZAR', nextState: 'FINALIZADO', action: 'close' },
+];
+
 export function OperationWorkflow({
   operation,
   isLoading,
@@ -27,107 +36,68 @@ export function OperationWorkflow({
   onOpenOcrModal,
   onOpenClosingModal,
 }: OperationWorkflowProps) {
+  
+  const currentState = operation.estadoViaje || 'ASIGNADO';
+  
+  // Encontrar el índice del paso actual
+  let currentIndex = WORKFLOW_STEPS.findIndex(s => s.id === currentState);
+  if (currentState === 'FINALIZADO') currentIndex = WORKFLOW_STEPS.length;
 
-  // Envoltorio para manejar el clic y llamar a la actualización de estado
-  const handleAdvance = (newState: string) => {
-    onUpdateState(operation.id, newState);
-  };
-
-  const renderAction = () => {
-    switch (operation.estadoViaje) {
-      case 'ASIGNADO':
-      case null:
-      case undefined:
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnIniciar}
-            onClick={() => handleAdvance('RUMBO_AL_PUERTO')}
-            disabled={isLoading}
-          >
-            🚀 Iniciar Viaje (Rumbo al Puerto)
-          </Button>
-        );
-
-      case 'RUMBO_AL_PUERTO':
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnLlegadaPuerto}
-            onClick={() => handleAdvance('EN_PUERTO')}
-            disabled={isLoading}
-          >
-            📍 Llegué al Puerto
-          </Button>
-        );
-
-      case 'EN_PUERTO':
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnEscanear}
-            onClick={onOpenOcrModal}
-            disabled={isLoading}
-          >
-            📸 Escanear Placa y Contenedor
-          </Button>
-        );
-
-      case 'EN_PUERTO_CARGADO':
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnSalirPuerto}
-            onClick={() => handleAdvance('RUMBO_AL_CLIENTE')}
-            disabled={isLoading}
-          >
-            🚛 Salir del Puerto (En ruta)
-          </Button>
-        );
-
-      case 'RUMBO_AL_CLIENTE':
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnLlegadaCliente}
-            onClick={() => handleAdvance('EN_CLIENTE')}
-            disabled={isLoading}
-          >
-            📍 Llegué a Instalaciones del Cliente
-          </Button>
-        );
-
-      case 'EN_CLIENTE':
-        return (
-          <Button
-            variant="primary"
-            className={styles.btnFinalizar}
-            onClick={onOpenClosingModal}
-            disabled={isLoading}
-          >
-            ✅ Iniciar Descargue y Finalizar
-          </Button>
-        );
-
-      case 'FINALIZADO':
-        return (
-          <div className={styles.viajeFinalizado}>
-            🎉 Viaje Finalizado con Éxito
-          </div>
-        );
-
-      default:
-        return (
-          <div style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center' }}>
-            Estado desconocido: {operation.estadoViaje}
-          </div>
-        );
-    }
+  const handleAction = (step: any) => {
+    if (step.action === 'ocr') onOpenOcrModal();
+    else if (step.action === 'close') onOpenClosingModal();
+    else onUpdateState(operation.id, step.nextState);
   };
 
   return (
-    <div className={styles.container}>
-      {renderAction()}
+    <div className={styles.workflowContainer}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>SECUENCIA DEL VIAJE</h3>
+        <span className={styles.stepCounter}>
+          Paso {Math.min(currentIndex + 1, WORKFLOW_STEPS.length)} de {WORKFLOW_STEPS.length}
+        </span>
+      </div>
+
+      {/* PROGRESS BAR VISUAL (Circulitos) */}
+      <div className={styles.progressTracker}>
+        {WORKFLOW_STEPS.map((_, index) => (
+          <React.Fragment key={index}>
+            <div className={`${styles.dot} ${index < currentIndex ? styles.dotCompleted : index === currentIndex ? styles.dotActive : ''}`} />
+            {index < WORKFLOW_STEPS.length - 1 && (
+              <div className={`${styles.line} ${index < currentIndex ? styles.lineCompleted : ''}`} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* LISTA DE BOTONES VERTICAL */}
+      <div className={styles.actionList}>
+        {WORKFLOW_STEPS.map((step, index) => {
+          const isCompleted = index < currentIndex;
+          const isActive = index === currentIndex;
+          const isLocked = index > currentIndex;
+
+          return (
+            <button
+              key={step.id}
+              className={`${styles.stepBtn} ${isActive ? styles.activeBtn : isCompleted ? styles.completedBtn : styles.lockedBtn}`}
+              disabled={isLocked || isLoading}
+              onClick={() => isActive && handleAction(step)}
+            >
+              <span className={styles.stepIcon}>
+                {isCompleted ? '✅' : isActive ? '▶' : '🔒'}
+              </span>
+              {step.label}
+            </button>
+          );
+        })}
+
+        {currentState === 'FINALIZADO' && (
+          <div className={styles.finalizedState}>
+            <span>🎉</span> VIAJE FINALIZADO
+          </div>
+        )}
+      </div>
     </div>
   );
 }

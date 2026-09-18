@@ -1,96 +1,194 @@
 .container {
-  min-height: 100vh;
-  background-color: #f8fafc;
-  padding-bottom: 40px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  width: 100%;
-}
-
-.header {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  color: #ffffff;
-  padding: 32px 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  width: 100%;
-}
-
-.headerInner {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.badge {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 8px 0 4px 0;
-}
-
-.subtitle {
-  font-size: 0.95rem;
-  color: #bfdbfe;
-  margin: 0;
-}
-
-.main {
-  max-width: 1200px; /* 👈 Se alinea de forma fluida con la cabecera */
-  margin: 0 auto;
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  min-height: 100vh;
+  background-color: #f8fafc;
 }
 
-.card {
-  background-color: #ffffff;
-  border-radius: 16px;
+.dashboardContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.gridLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .gridLayout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.infoCard,
+.sequenceCard {
+  background: white;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
 }
 
-.cardTitle {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.vehicleHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.buttonPrimary {
-  width: 100%;
-  background-color: #2563eb;
-  color: #ffffff;
+.truckIconBox {
+  font-size: 2rem;
+  background: #f1f5f9;
   padding: 12px;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  border-radius: 8px;
 }
 
-.buttonPrimary:hover {
-  background-color: #1d4ed8;
+.truckData h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #0f172a;
 }
 
-.buttonSecondary {
-  width: 100%;
-  background-color: #e2e8f0;
-  color: #334155;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 0.875rem;
+.truckData p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.statusBadgeGreen {
+  margin-left: auto;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border: 1px solid #bbf7d0;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 20px 0;
+}
+
+.tripDataGrid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px 8px;
+  align-items: center;
+}
+
+.label {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.value {
+  color: #0f172a;
   font-weight: 600;
-  border: none;
+  font-size: 0.9rem;
+}
+
+.linkDetails {
+  display: block;
+  text-align: right;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
+.actionButtonsRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.secondaryBtn,
+.dangerBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   cursor: pointer;
+  text-align: left;
+}
+
+.dangerBtn {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.btnTexts {
+  display: flex;
+  flex-direction: column;
+}
+
+.btnTexts strong {
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.btnTexts span {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* LA BARRA INFERIOR (GPS y Tiempos) */
+.liveStatsStrip {
+  display: flex;
+  justify-content: space-between;
+  background: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statItem span {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.statItem strong {
+  font-size: 1.1rem;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dotGreen {
+  width: 10px;
+  height: 10px;
+  background-color: #16a34a;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.emptyState, .emptyWorkflow {
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 24px 0;
 }

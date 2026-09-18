@@ -1,0 +1,241 @@
+/* ==========================================
+   ESTILOS DEL MÓDULO DE NOVEDADES
+   ========================================== */
+
+.container {
+  padding: 24px;
+  background-color: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.errorAlert {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid #fecaca;
+  font-size: 0.9rem;
+}
+
+.loading, .emptyState {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  color: #64748b;
+  font-weight: 500;
+  font-size: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.emptyState span {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* --- GRID DE TARJETAS DE INCIDENCIAS --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Bordes laterales indicadores de severidad */
+.card.critical { border-left: 5px solid #ef4444; }
+.card.high { border-left: 5px solid #f97316; }
+.card.medium { border-left: 5px solid #eab308; }
+.card.low { border-left: 5px solid #3b82f6; }
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.critical { background-color: #fee2e2; color: #dc2626; }
+.badge.high { background-color: #ffedd5; color: #ea580c; }
+.badge.medium { background-color: #fef9c3; color: #ca8a04; }
+.badge.low { background-color: #eff6ff; color: #2563eb; }
+
+.targetTag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.description {
+  font-size: 0.95rem;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.metaInfo {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: #475569;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reporter {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 4px;
+}
+
+/* --- ACCIONES Y CAJA DE RESOLUCIÓN --- */
+.resolveTriggerBtn {
+  width: 100%;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resolveTriggerBtn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.resolveBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.textarea {
+  width: 100%;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  outline: none;
+  resize: none;
+  min-height: 70px;
+}
+
+.textarea:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+}
+
+.resolveActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cancelBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.cancelBtn:hover {
+  color: #1e293b;
+}
+
+.confirmResolveBtn {
+  background-color: #059669;
+  border: none;
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.confirmResolveBtn:hover {
+  background-color: #047857;
+}

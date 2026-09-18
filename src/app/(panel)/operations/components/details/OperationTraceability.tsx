@@ -78,7 +78,7 @@ export function OperationTraceability({ operationId }: Props) {
             </div>
             <div>
               <p className={styles.label}>Estado Conductor</p>
-              <StatusBadge status={currentOperation.estadoViaje} />
+              <StatusBadge status={currentOperation.estadoViaje} textNull="Sin Asignar" />
             </div>
             <div>
               <p className={styles.label}>Placa Registrada (IA)</p>

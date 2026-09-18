@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { GetOperationsParams, operationService } from '@/services/operation.service';
 import { CreateOperationInput } from '@/schemas/operation.schema';
 import { useOperationStore } from '@/store/use-operation.store';
 import { useAuthStore } from '@/store/use-auth.store';
 import { useUIStore } from '@/store/use-ui.store';
-import { socket } from '@/lib/socket'; // 👈 Importamos la instancia del socket
+import { socket } from '@/lib/socket';
 import { Operation } from '@/types/operation-types';
 
 export function useOperations() {
@@ -25,17 +25,16 @@ export function useOperations() {
   const setIsLoadingOperations = useOperationStore((state) => state.setIsLoadingOperations);
   const setIsLoadingCurrent = useOperationStore((state) => state.setIsLoadingCurrent);
   const setError = useOperationStore((state) => state.setError);
-  const updateOperation = useOperationStore((state) => state.updateOperation); // 👈 Acción de Zustand para actualización atómica
+  const updateOperation = useOperationStore((state) => state.updateOperation);
 
   // ─────────────────────────────
-  // LOAD OPERATIONS (Con Fusión de Filtros)
+  // LOAD OPERATIONS
   // ─────────────────────────────
   const fetchOperations = useCallback(
     async (params: GetOperationsParams = {}) => {
       setIsLoadingOperations(true);
       setError(null);
 
-      // Fusionamos parámetros actuales con paginación por defecto
       const queryParams: GetOperationsParams = {
         page: 1,
         limit: 10,
@@ -92,7 +91,7 @@ export function useOperations() {
   );
 
   // ─────────────────────────────
-  // ASSIGN DRIVER
+  // ASSIGN DRIVER (Inicial)
   // ─────────────────────────────
   const assignDriver = useCallback(
     async (operationId: number, driverId: number) => {
@@ -138,6 +137,59 @@ export function useOperations() {
   );
 
   // ─────────────────────────────
+  // NUEVO: REASIGNACIÓN DE EMERGENCIA
+  // ─────────────────────────────
+  const reassignDriverAndVehicle = useCallback(
+    async (operationId: number, driverId: number, vehicleId: number) => {
+      const currentUser = useAuthStore.getState().user;
+
+      if (!currentUser?.id) {
+        await Swal.fire({ icon: 'error', title: 'Sesión inválida', text: 'No hay una sesión activa.' });
+        return false;
+      }
+
+      setIsLoadingOperations(true);
+      setError(null);
+
+      try {
+        // Llamamos al backend para hacer el parche y la notificación
+        const updatedOp = await operationService.reassignOperation(operationId, {
+          driverId,
+          vehicleId,
+        });
+
+        // Actualizamos el estado global para que la tabla y los modales se refresquen solos sin llamar todo
+        updateOperation(operationId, updatedOp);
+        
+        // También recargamos todo para mantener sincronizado
+        await fetchOperations();
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Reasignación Completa',
+          text: 'El nuevo conductor fue asignado, notificado, y el viaje regresó a estado ASIGNADO.',
+          timer: 3000,
+          showConfirmButton: false,
+        });
+
+        return true;
+      } catch (error: any) {
+        console.error('Error reasignando operación:', error);
+        const errorMessage = error.response?.data?.message || 'Hubo un problema reasignando la operación.';
+        await Swal.fire({
+          icon: 'error',
+          title: 'Fallo en reasignación',
+          text: errorMessage,
+        });
+        return false;
+      } finally {
+        setIsLoadingOperations(false);
+      }
+    },
+    [fetchOperations, updateOperation, setError, setIsLoadingOperations]
+  );
+
+  // ─────────────────────────────
   // CREATE OPERATION
   // ─────────────────────────────
   const createOperation = useCallback(
@@ -178,12 +230,10 @@ export function useOperations() {
     const handleGlobalUpdate = (data: Operation) => {
       if (data && data.id) {
         console.log(`🔄 [WebSocket] Actualización global para operación #${data.id}`);
-        // Actualiza de forma inmediata tanto en la tabla como en el estado actual si coincide
         updateOperation(data.id, data);
       }
     };
 
-    // Escuchamos el canal global emitido por el EventsGateway de NestJS
     socket.on('global_operations_updated', handleGlobalUpdate);
 
     return () => {
@@ -191,10 +241,6 @@ export function useOperations() {
     };
   }, [updateOperation]);
 
-  // INITIAL LOAD
-  useEffect(() => {
-    fetchOperations();
-  }, [fetchOperations]);
 
   return {
     operations,
@@ -206,6 +252,7 @@ export function useOperations() {
     fetchOperations,
     fetchOperationById,
     assignDriver,
+    reassignDriverAndVehicle, // EXPORTAMOS LA NUEVA FUNCIÓN
     createOperation,
   };
 }

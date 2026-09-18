@@ -3,10 +3,10 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '../../../../components/atoms/button/button';
 import { Location } from '../../../../types/location.types';
-import { useLocations } from '@/hooks/useLocation';
+import { useLocations } from '@/app/(panel)/locations/hooks/useLocation';
 import { ColumnDef } from '@/types/table';
 import PaginationTable from '../../../../components/organisms/pagination-table/pagination-table';
-import { LocationModal } from '../../operations/components/locationModal/locationModal';
+import { LocationModal } from './locationModal/locationModal';
 
 export const LocationsManager: React.FC = () => {
   const { locations, isLoadingLocations, deleteLocation } = useLocations();
@@ -27,9 +27,6 @@ export const LocationsManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // ==========================================
-  // CONFIGURACIÓN DE COLUMNAS (SuperTable)
-  // ==========================================
   const columns: ColumnDef<Location>[] = useMemo(() => [
     {
       id: 'name',

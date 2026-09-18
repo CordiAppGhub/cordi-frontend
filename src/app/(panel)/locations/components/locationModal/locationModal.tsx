@@ -1,26 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-
-import styles from '../assign-modal/assign-modal.module.css';
-import { useLocations } from '@/hooks/useLocation';
+import React, { useState } from 'react';
+import styles from './location-modal.module.css';
+import { useLocations } from '@/app/(panel)/locations/hooks/useLocation';
 import { Button } from '@/components/atoms/button/button';
 import { Input } from '@/components/atoms/input/input';
 import { locationSchema } from '@/schemas/location.schema';
-import { Tarifa, Location } from '@/types/location.types';
-
-
-// 1. 👇 LO MOVEMOS AFUERA DEL COMPONENTE para evitar el error del useEffect
-const defaultState = {
-  name: '', 
-  address: '', 
-  isPort: false, 
-  isDepot: false, 
-  isClient: false, 
-  isOrigin: true, 
-  isDestination: true,
-  tarifas: [] as Tarifa[]
-};
+import { Location } from '@/types/location.types';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -41,17 +27,14 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
         isClient: locationToEdit.isClient,
         isOrigin: locationToEdit.isOrigin,
         isDestination: locationToEdit.isDestination,
-        tarifas: (locationToEdit as Location & { tarifas?: Tarifa[] }).tarifas || [], 
       };
     }
     return {
       name: '', address: '', isPort: false, isDepot: false, isClient: false, isOrigin: true, isDestination: true,
-      tarifas: [] as Tarifa[]
     };
   });
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
-
- 
 
   if (!isOpen) return null;
 
@@ -60,40 +43,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
     setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
-  // ==========================================
-  // MANEJO DINÁMICO DEL TARIFARIO
-  // ==========================================
-const handleAddTarifa = () => {
-    setFormData((prev) => ({
-      ...prev,
-      tarifas: [...prev.tarifas, { operacion: '', valor: 0 } as Tarifa]
-    }));
-  };
-
-  const handleRemoveTarifa = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      tarifas: prev.tarifas.filter((_, i) => i !== index)
-    }));
-  };
-
-const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) => {
-  const newTarifas = [...formData.tarifas];
-  newTarifas[index] = { 
-    ...newTarifas[index], 
-    [field]: field === 'valor' ? Number(value) || 0 : value 
-  };
-  setFormData((prev) => ({ ...prev, tarifas: newTarifas }));
-}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const invalidTarifas = formData.tarifas.some(t => !t.operacion || !t.valor);
-    if (invalidTarifas) {
-      setErrors({ ...errors, tarifas: 'Todas las tarifas deben tener operación y valor.' });
-      return;
-    }
-
+    // Inyectamos analystId temporal (luego vendrá de tu AuthContext)
     const validation = locationSchema.safeParse({ ...formData, analystId: 1 }); 
     
     if (!validation.success) {
@@ -119,15 +72,15 @@ const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) =
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal} style={{ width: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 className={styles.title}>{locationToEdit ? 'Editar Empresa' : 'Registrar Nueva Empresa'}</h2>
+      <div className={styles.modal} style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 className={styles.title}>{locationToEdit ? 'Editar Ubicación' : 'Registrar Nueva Ubicación'}</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div className="form-group">
-            <label className="text-sm font-semibold mb-1 block text-gray-700">Nombre de la Empresa / Patio</label>
+            <label className="text-sm font-semibold mb-1 block text-gray-700">Nombre del Lugar / Patio</label>
             <Input 
-              placeholder="Ej: Contecar, Gamalog..."
+              placeholder="Ej: Sociedad Portuaria SPRC"
               value={formData.name}
               onChange={(e: any) => handleChange('name', e.target.value)}
               error={errors.name}
@@ -137,7 +90,7 @@ const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) =
           <div className="form-group">
             <label className="text-sm font-semibold mb-1 block text-gray-700">Dirección (Opcional)</label>
             <Input 
-              placeholder="Ej: Mamonal Km 1"
+              placeholder="Ej: Manga, Terminal Marítimo"
               value={formData.address}
               onChange={(e: any) => handleChange('address', e.target.value)}
             />
@@ -154,7 +107,7 @@ const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) =
                 <input type="checkbox" checked={formData.isDepot} onChange={(e) => handleChange('isDepot', e.target.checked)} /> Es Patio de Vacíos
               </label>
               <label style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
-                <input type="checkbox" checked={formData.isClient} onChange={(e) => handleChange('isClient', e.target.checked)} /> Es Bodega Cliente
+                <input type="checkbox" checked={formData.isClient} onChange={(e) => handleChange('isClient', e.target.checked)} /> Es Bodega Privada
               </label>
             </div>
 
@@ -170,62 +123,12 @@ const handleTarifaChange = (index: number, field: keyof Tarifa, value: string) =
             </div>
           </div>
 
-          {/* ========================================== */}
-          {/* SECCIÓN DEL TARIFARIO */}
-          {/* ========================================== */}
-          <div style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px', marginTop: '8px', backgroundColor: '#f9fafb' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>Tarifario de Operaciones</h4>
-              <Button type="button" variant="secondary" onClick={handleAddTarifa} style={{ padding: '4px 8px', fontSize: '12px' }}>
-                + Añadir Tarifa
-              </Button>
-            </div>
-
-            {errors.tarifas && <p style={{ color: 'red', fontSize: '12px', marginBottom: '8px' }}>{errors.tarifas}</p>}
-
-            {formData.tarifas.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#6b7280', textAlign: 'center', fontStyle: 'italic' }}>
-                No hay tarifas configuradas para este cliente.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {formData.tarifas.map((tarifa, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div style={{ flex: 2 }}>
-                      <Input 
-                        placeholder="Operación (Ej: Urbano Directo Exportacion)" 
-                        value={tarifa.operacion}
-                        onChange={(e: any) => handleTarifaChange(index, 'operacion', e.target.value)}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <Input 
-                        type="number"
-                        placeholder="Valor ($)" 
-                        value={tarifa.valor.toString()}
-                        onChange={(e: any) => handleTarifaChange(index, 'valor', e.target.value)}
-                      />
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveTarifa(index)}
-                      style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', fontSize: '18px' }}
-                      title="Eliminar tarifa"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className={styles.actions} style={{ marginTop: '20px' }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={isLoadingLocations}>
               Cancelar
             </Button>
             <Button type="submit" variant="primary" disabled={isLoadingLocations}>
-              {isLoadingLocations ? 'Guardando...' : 'Guardar Empresa'}
+              {isLoadingLocations ? 'Guardando...' : 'Guardar Ubicación'}
             </Button>
           </div>
         </form>

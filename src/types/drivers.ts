@@ -7,6 +7,7 @@ export interface Driver {
   isActive: boolean;
   drivenVehicles?: { plate: string }[];
   portalLink: string | null;
+  isAvailable: boolean;
 }
 
 export type CreateDriverDto = {

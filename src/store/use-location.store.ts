@@ -45,7 +45,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       await get().fetchLocations();
     } catch (err: unknown) {
       set({ isLoadingLocations: false });
-      throw err; // Propagamos el error al hook para disparar el showToast con el mensaje del backend
+      throw err;
     }
   },
 

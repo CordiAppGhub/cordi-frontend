@@ -25,6 +25,12 @@ export interface AssignOperationPayload {
   analystId: number;
 }
 
+// NUEVO: Interfaz para la reasignación de emergencia
+export interface ReassignOperationPayload {
+  driverId: number;
+  vehicleId: number;
+}
+
 export const operationService = {
   getActiveOperations: async (params?: GetOperationsParams): Promise<PaginatedOperations> => {
     const response = await api.get<PaginatedOperations>('/operations/active', {
@@ -40,6 +46,12 @@ export const operationService = {
 
   assignDriver: async (operationId: number, payload: AssignOperationPayload): Promise<void> => {
     await api.put(`/operations/${operationId}/assign`, payload);
+  },
+
+  // NUEVO: Método para reasignar conductor y vehículo en ruta
+  reassignOperation: async (operationId: number, payload: ReassignOperationPayload): Promise<Operation> => {
+    const response = await api.patch<Operation>(`/operations/${operationId}/reassign`, payload);
+    return response.data;
   },
 
   createOperation: async (data: CreateOperationInput): Promise<void> => {

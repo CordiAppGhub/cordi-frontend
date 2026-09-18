@@ -7,10 +7,7 @@ import { useDriverPortal } from '@/hooks/use-driverPortal';
 import styles from './driver.module.css';
 import { Button } from '@/components/atoms/button/button';
 import { SuperModal } from '@/components/organisms/modal/modal';
-import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
-import { DriverCardList } from './components/DriverCardList';
 import { OperationWorkflow } from './components/workflow/operation-workflow';
-import { ColumnDef } from '@/types/table';
 import { Operation } from '@/types/driver-portal.types';
 
 function DriverPortalContent() {
@@ -32,7 +29,6 @@ function DriverPortalContent() {
   } = useDriverPortal(token);
 
   const [cedulaInput, setCedulaInput] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
   const [modalType, setModalType] = useState<'DETAILS' | 'OCR' | 'CLOSING'>('DETAILS');
@@ -97,7 +93,7 @@ function DriverPortalContent() {
     );
   }
 
-  // 3. Pantalla de Autenticación por Cédula (Si el token es válido pero aún no pone la cédula)
+  // 3. Pantalla de Autenticación por Cédula
   if (!isAuthenticated) {
     return (
       <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
@@ -131,7 +127,7 @@ function DriverPortalContent() {
     );
   }
 
-  // Si por alguna razón pasó la autenticación pero el driver viene nulo
+  // 4. Si pasó autenticación pero driver es nulo
   if (!driver) {
     return (
       <div className={styles.container} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
@@ -141,114 +137,126 @@ function DriverPortalContent() {
     );
   }
 
-  const operationColumns: ColumnDef<Operation>[] = [
-    { id: 'id', header: 'ID', isDraggable: false },
-    { id: 'origen', header: 'Origen', isDraggable: true, renderCell: (row) => row.origen?.name || 'N/A' },
-    { id: 'destino', header: 'Destino', isDraggable: true, renderCell: (row) => row.destino?.name || 'N/A' },
-    { id: 'estadoViaje', header: 'Estado', isDraggable: false, renderCell: (row) => row.estadoViaje || 'ASIGNADO' },
-    {
-      id: 'acciones',
-      header: 'Acciones',
-      isDraggable: false,
-      renderCell: (row) => (
-        <Button
-          variant="primary"
-          onClick={() => {
-            setSelectedOperation(row);
-            setModalType('DETAILS');
-            setIsModalOpen(true);
-          }}
-        >
-          Ver Detalle
-        </Button>
-      )
-    }
-  ];
+  // --- LOGICA PRINCIPAL DEL DASHBOARD TIPO APP ---
+  const activeOperation = driver?.assignedOperations?.[0]; 
+  const vehiculo = activeOperation?.vehicle || driver?.drivenVehicles?.[0];
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <span className={styles.badge}>Portal Seguro</span>
-          <h1 className={styles.title}>{driver.name}</h1>
-          <p className={styles.subtitle}>Cédula: {driver.cedula}</p>
-        </div>
-      </header>
+    <div className={styles.dashboardContainer}>
+      
+      {/* SECCIÓN SUPERIOR: Vehículo y Viaje Actual */}
+      <div className={styles.gridLayout}>
+        
+        {/* TARJETA IZQUIERDA (Info del viaje) */}
+        <div className={styles.infoCard}>
+          
+          {/* Cabecera Vehículo */}
+          <div className={styles.vehicleHeader}>
+            <div className={styles.truckIconBox}>🚛</div>
+            <div className={styles.truckData}>
+              <h2>{vehiculo?.plate || 'SIN ASIGNAR'}</h2>
+              <p>KM actual: 125.680</p>
+            </div>
+            <span className={styles.statusBadgeGreen}>Operativa</span>
+          </div>
 
-      <main className={styles.main}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
-          <h2 className={styles.cardTitle} style={{ margin: 0 }}>📦 Mis Operaciones y Viajes</h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              variant={viewMode === 'cards' ? 'primary' : 'secondary'}
-              onClick={() => setViewMode('cards')}
-            >
-              📋 Tarjetas
-            </Button>
-            <Button
-              variant={viewMode === 'table' ? 'primary' : 'secondary'}
-              onClick={() => setViewMode('table')}
-            >
-              📊 Tabla
-            </Button>
+          <hr className={styles.divider} />
+
+          {/* Datos del Viaje */}
+          <div className={styles.tripDetails}>
+            <h3 style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '12px' }}>VIAJE ACTUAL</h3>
+            {activeOperation ? (
+              <div className={styles.tripDataGrid}>
+                <span className={styles.label}>Cliente</span>
+                <span className={styles.value}>{activeOperation.destino?.name || '---'}</span>
+                
+                <span className={styles.label}>Remesa</span>
+                <span className={styles.value}>OT-{activeOperation.id}</span>
+                
+                <span className={styles.label}>Ruta</span>
+                <span className={styles.value}>{activeOperation.origen?.name} ➡️ {activeOperation.destino?.name}</span>
+                
+                <span className={styles.label}>Cita cargue</span>
+                <span className={styles.value}>08:00 AM</span>
+              </div>
+            ) : (
+              <p className={styles.emptyState}>No tienes viajes asignados en este momento.</p>
+            )}
+            
+            {activeOperation && (
+              <a 
+                href="#" 
+                className={styles.linkDetails}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedOperation(activeOperation);
+                  setModalType('DETAILS');
+                  setIsModalOpen(true);
+                }}
+              >
+                Ver detalles &gt;
+              </a>
+            )}
+          </div>
+
+          {/* Botones de Acción */}
+          <div className={styles.actionButtonsRow}>
+            <button className={styles.secondaryBtn}>
+              <span className={styles.btnIcon}>🛡️</span>
+              <div className={styles.btnTexts}>
+                <strong>PREOPERACIONAL</strong>
+                <span>Inspección diaria</span>
+              </div>
+            </button>
+            <button className={styles.dangerBtn}>
+              <span className={styles.btnIcon}>⚠️</span>
+              <div className={styles.btnTexts}>
+                <strong>REPORTAR NOVEDAD</strong>
+                <span>Fallas, incidentes, otros</span>
+              </div>
+            </button>
           </div>
         </div>
 
-        {viewMode === 'cards' ? (
-          <DriverCardList
-            data={driver.assignedOperations}
-            getStatus={(op) => op.estadoViaje || 'ASIGNADO'}
-            renderCardContent={(op) => (
-              <>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>
-                  {op.origen?.name} ➡️ {op.destino?.name}
-                </p>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                  Vehículo Placa: <strong>{op.vehicle?.plate || 'Sin asignar'}</strong>
-                </p>
+        {/* TARJETA DERECHA (Secuencia de Viaje) */}
+        <div className={styles.sequenceCard}>
+          {activeOperation ? (
+            <OperationWorkflow
+              operation={activeOperation}
+              isLoading={processingState}
+              onUpdateState={updateTravelState}
+              onOpenOcrModal={() => {
+                setSelectedOperation(activeOperation);
+                setModalType('OCR');
+                setIsModalOpen(true);
+              }}
+              onOpenClosingModal={() => {
+                setSelectedOperation(activeOperation);
+                setModalType('CLOSING');
+                setIsModalOpen(true);
+              }}
+            />
+          ) : (
+            <div className={styles.emptyWorkflow}>
+              <span style={{ fontSize: '2rem' }}>☕</span>
+              <p style={{ color: '#64748b', marginTop: '12px' }}>Esperando asignación de viaje...</p>
+            </div>
+          )}
+        </div>
+      </div>
 
-                <OperationWorkflow
-                  operation={op}
-                  isLoading={processingState}
-                  onUpdateState={updateTravelState}
-                  onOpenOcrModal={() => {
-                    setSelectedOperation(op);
-                    setModalType('OCR');
-                    setIsModalOpen(true);
-                  }}
-                  onOpenClosingModal={() => {
-                    setSelectedOperation(op);
-                    setModalType('CLOSING');
-                    setIsModalOpen(true);
-                  }}
-                />
+      {/* STRIP DE DATOS EN TIEMPO REAL */}
+      <div className={styles.liveStatsStrip}>
+        <div className={styles.statItem}><span>Km recorrido</span><strong>18.6</strong></div>
+        <div className={styles.statItem}><span>Horas motor</span><strong>01:42</strong></div>
+        <div className={styles.statItem}><span>Velocidad prom.</span><strong>32 km/h</strong></div>
+        <div className={styles.statItem}>
+          <span>Estado GPS</span>
+          <strong><span className={styles.dotGreen}></span> Conectado</strong>
+        </div>
+      </div>
 
-                <Button
-                  variant="secondary"
-                  style={{ marginTop: '8px', width: '100%', fontSize: '0.75rem', padding: '6px' }}
-                  onClick={() => {
-                    setSelectedOperation(op);
-                    setModalType('DETAILS');
-                    setIsModalOpen(true);
-                  }}
-                >
-                  ℹ️ Ver Información del Viaje
-                </Button>
-              </>
-            )}
-          />
-        ) : (
-          <PaginationTable
-            data={driver.assignedOperations}
-            columns={operationColumns}
-            totalPages={1}
-            currentPage={1}
-            onPageChange={() => { }}
-            nameButton="Actualizar"
-          />
-        )}
-      </main>
-
+      {/* MODAL UNIVERSAL PARA DETALLES Y FOTOS */}
       <SuperModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -312,7 +320,7 @@ function DriverPortalContent() {
 
 export default function DriverPortalPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Cargando...</div>}>
+    <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Cargando app...</div>}>
       <DriverPortalContent />
     </Suspense>
   );

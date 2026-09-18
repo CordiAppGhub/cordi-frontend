@@ -1,9 +1,10 @@
-import { LocationsManager } from "@/app/(panel)/locations/components/LocationManager";
+import { LocationsView } from "./views/location-views";
 
 export const metadata = {
-  title: 'Gestión de Nodos Logísticos | Corditrans',
+  title: 'Directorio de Empresas | Corditrans TMS',
+  description: 'Gestión de nodos, patios y clientes',
 };
 
 export default function LocationsPage() {
-  return <LocationsManager />;
+  return <LocationsView />;
 }

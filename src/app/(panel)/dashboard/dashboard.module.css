@@ -1,159 +1,49 @@
-/* ==========================================
-   LAYOUT PRINCIPAL Y CONTENEDORES (MOBILE-FIRST)
-   ========================================== */
-.dashboardLayout {
-  background-color: #f8fafc;
+.dashboardContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background-color: #f8fafc; /* Fondo gris súper claro */
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: system-ui, -apple-system, sans-serif;
 }
 
-.mainContent {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* --- TOPBAR RESPONSIVE --- */
-.topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background-color: #1e293b;
-  padding: 16px;
-  color: white;
-}
-
-.brand h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  letter-spacing: 1px;
-}
-
-.brand span {
-  color: #3b82f6;
-}
-
-.userInfo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 0.9rem;
-}
-
-.roleBadge {
-  background-color: #334155;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.logoutBtn {
-  background: none;
-  border: 1px solid #475569;
-  color: #cbd5e1;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-}
-
-.logoutBtn:hover {
-  background-color: #ef4444;
-  border-color: #ef4444;
-  color: white;
-}
-
-/* --- SUB-HEADER (TORRE DE CONTROL) --- */
-.pageHeader {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.headerTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.headerNumber {
-  background-color: #2563eb;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-
-.headerSubtitle {
-  font-size: 0.9rem;
-  font-weight: 400;
-  color: #64748b;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 16px;
-}
-
-.timeText {
-  font-size: 0.85rem;
-  color: #475569;
-  font-weight: 500;
-}
-
-.refreshBtn {
-  background: none;
-  border: none;
-  color: #475569;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.refreshBtn:hover {
-  color: #0f172a;
-}
-
-/* Mensaje de Error */
-.errorMessage {
-  background-color: #fee2e2;
-  color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  border: 1px solid #fecaca;
-  font-size: 0.9rem;
-}
-
-/* --- GRID DE KPIs (MÓVIL: 1 COLUMNA) --- */
-.kpiRow {
+/* TOP CARDS */
+.topCardsGrid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
 }
 
-/* --- TABLA CENTRAL --- */
-.tableSection {
-  background: #ffffff;
+.card {
+  background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  overflow-x: auto;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.card h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+  color: #0f172a;
+}
+
+.card p {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* TABLA CENTRAL */
+.tableSection {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .tableHeader {
@@ -163,183 +53,86 @@
   margin-bottom: 16px;
 }
 
-.tableTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0;
+.searchInput {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  width: 300px;
 }
 
-/* --- WIDGETS INFERIORES (MÓVIL: 1 COLUMNA) --- */
-.bottomRow {
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.85rem;
+}
+
+.table th {
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* BADGES (Los colores de la imagen) */
+.badgeBlue { background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+.badgeGreen { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+.badgeRed { background: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+.badgeOrange { background: #ffedd5; color: #c2410c; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+.badgeLightGreen { background: #f0fdf4; color: #166534; padding: 4px 8px; border-radius: 4px; border: 1px solid #bbf7d0; font-weight: 600; }
+
+/* BOTTOM WIDGETS */
+.bottomWidgetsGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
 .widgetCard {
-  background: #ffffff;
+  background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.widgetTitle {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-top: 0;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 8px;
-}
-
-/* Estilos de Lista de Alertas e Items */
-.alertList {
-  display: flex;
-  flex-direction: column;
-}
-
-.alertItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  font-size: 0.85rem;
-  color: #334155;
-  border-bottom: 1px dashed #e2e8f0;
-}
-
-.alertItem:last-child {
-  border-bottom: none;
-}
-
-.alertIcon {
-  margin-right: 8px;
-  font-size: 0.9rem;
-}
-
-.emptyText {
-  color: #64748b;
-  font-size: 0.85rem;
-  text-align: center;
-  padding: 16px 0;
-}
-
-.ghostLink {
-  margin-top: auto;
-  text-align: center;
-  color: #2563eb;
-  font-size: 0.85rem;
-  font-weight: 500;
-  text-decoration: none;
-  padding-top: 12px;
-}
-
-.ghostLink:hover {
-  text-decoration: underline;
-}
-
-/* Placeholder del mapa */
-.mapContainer {
-  background-color: #f1f5f9;
-  flex: 1;
   border-radius: 8px;
+  padding: 16px;
+  position: relative;
+}
+
+.widgetCard h3 {
+  font-size: 1rem;
+  margin: 0 0 12px 0;
+  color: #0f172a;
+}
+
+/* BOTTOM STRIP */
+.bottomStrip {
   display: flex;
+  justify-content: space-around;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.stripItem {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 180px;
-  border: 1px dashed #cbd5e1;
 }
 
-.mapText {
-  color: #64748b;
-  font-weight: 500;
-  font-size: 0.85rem;
-}
+.stripItem span { font-size: 0.75rem; color: #64748b; }
+.stripItem strong { font-size: 1.1rem; color: #0f172a; }
 
 
-/* ==========================================
-   MEDIA QUERIES (ESCRITORIO / MIN-WIDTH)
-   ========================================== */
+/* Para la cuadrícula de arriba de 5 cajas */
+.topCardsGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
 
-@media (min-width: 640px) {
-  .topbar {
-    flex-direction: row;
-    align-items: center;
-    padding: 12px 24px;
-  }
+/* Para los 3 widgets de abajo */
+.bottomWidgetsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 
-  .logoutBtn {
-    width: auto;
-  }
+/* Para los indicadores del final (Footer) */
+.bottomStrip { display: flex; justify-content: space-around; background: white; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
 
-  .mainContent {
-    padding: 24px;
-    gap: 20px;
-  }
-
-  .pageHeader {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .headerActions {
-    width: auto;
-    justify-content: flex-end;
-  }
-
-  .headerTitle {
-    font-size: 1.5rem;
-    gap: 12px;
-  }
-
-  .headerNumber {
-    padding: 4px 12px;
-    font-size: 1.2rem;
-  }
-
-  .headerSubtitle {
-    font-size: 1rem;
-  }
-
-  .kpiRow {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .kpiRow {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
-  .bottomRow {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .tableSection, .widgetCard {
-    padding: 20px;
-  }
-
-  .tableTitle {
-    font-size: 1.1rem;
-  }
-
-  .widgetTitle {
-    font-size: 1rem;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-  }
-
-  .alertItem {
-    font-size: 0.9rem;
-  }
-
-  .mapContainer {
-    min-height: 200px;
-  }
-}
+.widgetLink { display: block; margin-top: 16px; color: #2563eb; text-decoration: none; font-size: 0.85rem; font-weight: 600; text-align: center; }

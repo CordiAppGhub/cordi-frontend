@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { AxiosError } from 'axios';
-import { useLocationStore } from '../store/use-location.store';
+import { useLocationStore } from '../../../../store/use-location.store';
 import { showToast } from '@/utils/alerts';
 import { CreateLocationInput, UpdateLocationInput } from '@/types/location.types';
 
@@ -22,9 +22,7 @@ export function useLocations() {
     deleteLocation: storeDelete,
   } = useLocationStore();
 
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+  // ❌ ELIMINADO EL useEffect PARA EVITAR EL AUTO-FETCH
 
   const createLocation = useCallback(async (data: Omit<CreateLocationInput, 'analystId'>): Promise<boolean> => {
     try {

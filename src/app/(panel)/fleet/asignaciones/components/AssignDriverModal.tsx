@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useVehicles } from '@/hooks/use-vehicles';
-import { useDrivers } from '@/hooks/use-drivers';
+import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
 import { Loader2 } from 'lucide-react';
 import { SuperModal } from '../../../../../components/organisms/modal/modal';
 

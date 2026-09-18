@@ -5,8 +5,16 @@ export interface Evidence {
   createdAt?: string;
 }
 
+
+export interface NovedadHistorial {
+  id: number;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  description: string;
+}
+
 // 2. Interfaz para el vehículo
 export interface Vehicle {
+  id: number;
   plate: string;
   status?: string;
 }
@@ -25,7 +33,7 @@ export interface UserDriver {
 export interface Operation {
   id: number;
   type: string;
-  status: 'CREADO' | 'ASIGNADO' | 'EN_CURSO' | 'FINALIZADO';
+  status: 'CREADO' | 'ASIGNADO' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA';
   containerNumber: string | null;
   driver?: UserDriver | null;
   estadoViaje?: string | null;
@@ -38,4 +46,6 @@ export interface Operation {
   cargue?: LogisticNode | null;
   descargue?: LogisticNode | null;
   destino?: LogisticNode | null;
+
+  novedadesHistorial?: NovedadHistorial[];
 }
