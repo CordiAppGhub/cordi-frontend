@@ -1,32 +1,31 @@
-/* ==========================================
-   1. ESTILOS BASE (MÓVILES / PANTALLAS PEQUEÑAS)
-   ========================================== */
 .layout {
-  /* Reducimos el padding y el gap para móviles */
-  padding: 16px;
-  background-color: #f8fafc;
-  min-height: 100vh;
+  width: 100%;
+  flex-grow: 1;
+  padding: 12px 0;
+  background-color: transparent;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   font-family: system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
 }
 
-/* --- Header Estilo Torre de Control --- */
+/* Header */
+
 .pageHeader {
   display: flex;
-  /* En móvil, el botón "+ Nueva Operación" irá debajo del título */
-  flex-direction: column; 
+  flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 10px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Hacemos que el botón dentro del header ocupe todo el ancho en móvil si es necesario */
 .pageHeader > button {
   width: 100%;
 }
@@ -34,20 +33,22 @@
 .headerTitleContainer {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .headerNumber {
   background-color: #2563eb;
   color: white;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 1.1rem;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 0.85rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .titleText {
-  font-size: 1.25rem; /* Letra un poco más pequeña en móvil */
+  font-size: 1.05rem;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
@@ -55,81 +56,47 @@
 }
 
 .subtitleText {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: #64748b;
-  margin: 4px 0 0 0;
+  margin: 3px 0 0;
 }
 
-/* --- Barra de Filtros Avanzada --- */
-.filtersBar {
-  display: flex;
-  /* En móvil, los filtros van uno debajo del otro */
-  flex-direction: column; 
-  gap: 12px;
-  background: #ffffff;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  align-items: stretch; /* Estira los inputs al 100% del ancho */
-}
+/* Tabs */
 
-.searchInput,
-.selectInput {
-  width: 100%; /* Obligatorio 100% en móvil */
-  padding: 12px 14px; /* Un poco más alto para touch */
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.95rem; /* Evita zoom automático en iOS Safari */
-  outline: none;
-  transition: border-color 0.2s;
-  background-color: #fff;
-  color: #334155;
-}
-
-.searchInput:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.selectInput:focus {
-  border-color: #2563eb;
-}
-
-/* --- Pestañas (Tabs) --- */
 .tabsContainer {
   display: flex;
-  gap: 4px;
-  border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 16px;
-  /* Scroll horizontal suave para móvil */
+  gap: 2px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 0;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; 
-  scrollbar-width: none; /* Oculta scrollbar en Firefox */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   background: #ffffff;
-  padding: 0 16px;
-  border-radius: 12px 12px 0 0;
+  padding: 0 10px;
+  border-radius: 8px 8px 0 0;
+  width: 100%;
+  box-sizing: border-box;
 }
-/* Oculta scrollbar en Chrome/Safari/Edge */
+
 .tabsContainer::-webkit-scrollbar {
-  display: none; 
+  display: none;
 }
 
 .tabButton {
   background: none;
   border: none;
-  padding: 14px 16px; /* Ajustado para móvil */
-  font-size: 0.85rem; /* Un poco más compacto */
+  padding: 9px 13px;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #64748b;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-  white-space: nowrap; /* Evita que el texto salte de línea */
+  margin-bottom: -1px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tabButton:hover {
@@ -144,66 +111,95 @@
   background-color: #f8fafc;
 }
 
-.tabBadge {
-  background-color: #e2e8f0;
-  color: #475569;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 600;
+/* Filtros */
+
+.filtersBar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.tabButtonActive .tabBadge {
-  background-color: #dbeafe;
-  color: #1e40af;
+.searchInput,
+.selectInput {
+  width: 100%;
+  height: 36px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.15s;
+  background-color: #fff;
+  color: #334155;
+  box-sizing: border-box;
 }
 
-/* --- Contenedor de la Tabla --- */
+.searchInput:focus,
+.selectInput:focus {
+  border-color: #2563eb;
+}
+
+.searchInput:focus {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+}
+
+/* Tabla */
+
 .tableCard {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px; /* Menos padding en móvil */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   width: 100%;
-  overflow-x: auto; /* Vital para que la tabla no rompa el diseño en móvil */
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
-/* Alertas de Error */
+/* Error */
+
 .errorMessage {
   background-color: #fee2e2;
   color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 9px 12px;
+  border-radius: 6px;
   font-weight: 500;
   border: 1px solid #fecaca;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Celda de Acciones de la Tabla */
+/* Acciones */
+
 .actionsContainer {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  flex-wrap: wrap; /* En móvil, si hay muchos botones, se envuelven */
+  flex-wrap: wrap;
 }
 
-
-/* ==========================================
-   2. MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
+/* Tablet / Desktop */
 
 @media (min-width: 768px) {
   .layout {
-    padding: 24px;
-    gap: 20px;
+    padding: 16px 0;
+    gap: 12px;
   }
 
   .pageHeader {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 12px 16px;
   }
 
   .pageHeader > button {
@@ -211,46 +207,48 @@
   }
 
   .headerNumber {
-    padding: 6px 14px;
-    font-size: 1.25rem;
+    padding: 4px 10px;
+    font-size: 0.9rem;
   }
 
   .titleText {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
   }
 
   .subtitleText {
-    font-size: 0.9rem;
+    font-size: 0.78rem;
   }
 
   .filtersBar {
     flex-direction: row;
     align-items: center;
+    gap: 8px;
   }
 
   .searchInput,
   .selectInput {
     width: auto;
-    font-size: 0.9rem;
-    padding: 10px 14px;
+    height: 34px;
+    font-size: 0.8rem;
+    padding: 6px 10px;
   }
 
   .searchInput {
-    flex: 1; /* El buscador toma el espacio sobrante en desktop */
+    flex: 1;
+    min-width: 180px;
   }
 
   .tabsContainer {
-    margin-bottom: 20px;
+    padding: 0 8px;
   }
 
   .tabButton {
-    padding: 14px 20px;
-    font-size: 0.9rem;
+    padding: 8px 13px;
+    font-size: 0.78rem;
   }
 
   .tableCard {
-    padding: 20px;
-    /* overflow-x: visible; (Opcional, depende de tu componente de tabla) */
+    padding: 12px 16px;
   }
 
   .actionsContainer {

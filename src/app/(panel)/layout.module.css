@@ -3,47 +3,103 @@
    ========================================== */
 .panelWrapper {
   display: flex;
+  flex-direction: column; /* 🚀 CLAVE: Fuerza a que la Navbar esté arriba y el contenido abajo */
   min-height: 100vh;
   width: 100%;
-  background-color: #f4f7f6;
-  /* Si en móvil tu sidebar flota por encima, 
-     necesitamos que el wrapper no haga desbordes raros */
+  background-color: #f4f7fe;
   overflow-x: hidden; 
 }
 
+/* Envolvemos el header y el main para manejarlos juntos */
+.mainWrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  /* 🚀 Ya no necesitamos transiciones de margin-left porque no hay sidebar lateral */
+  transition: width 0.3s ease; 
+}
+
+/* --- ESTILOS DE LA TOPBAR / NAVBAR --- */
+.topbar {
+  height: 70px;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.searchInput {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  width: 200px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  width: 250px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* --- ESTILOS DEL CONTENIDO PRINCIPAL --- */
 .mainContent {
   flex-grow: 1;
-  /* Padding reducido para aprovechar el espacio en teléfonos */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Fuerza a los hijos a ocupar el 100% del ancho */
+  width: 100%;
+  max-width: 1600px; /* 🚀 Evita que en pantallas ultra-anchas los elementos se estiren demasiado */
+  margin: 0 auto;    /* Centra el contenido elegantemente en monitores grandes */
   padding: 1rem; 
-  min-height: 100vh;
   box-sizing: border-box;
-  
-  /* En móvil, el Sidebar no ocupa espacio físico (está oculto o flota),
-     así que el contenido toma todo el ancho desde el borde izquierdo */
-  margin-left: 0; 
-  width: 100%; 
-  overflow-x: auto;
-  
-  /* Transición suave por si el Sidebar se abre/cierra dinámicamente en desktop */
-  transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
 /* ==========================================
    2. MEDIA QUERIES (ESCRITORIOS / PANTALLAS GRANDES)
    ========================================== */
-/* Usamos 1024px (Desktop) porque un sidebar de 260px + una tabla 
-   suele verse apretado en tablets de 768px */
 @media (min-width: 1024px) {
+  .mainWrapper {
+    /* 🚀 ELIMINADO: margin-left y calc de 260px porque ya no hay sidebar izquierdo */
+    width: 100%; 
+  }
+  
+  .topbar {
+    padding: 0 32px;
+  }
+
   .mainContent {
-    /* Devolvemos el padding generoso */
-    padding: 2rem;
-    
-    /* 🪄 LA MAGIA DEL DESKTOP APARECE AQUÍ: 
-       Empujamos el contenido a la derecha exactamente el mismo ancho del Sidebar fijo */
-    margin-left: 260px; 
-    
-    /* Restamos esos 260px al ancho total para que el scroll horizontal 
-       funcione perfecto dentro de la tabla y no en toda la página */
-    width: calc(100% - 260px); 
+    padding: 24px 32px;
   }
 }

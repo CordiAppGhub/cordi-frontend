@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import styles from './novedades.module.css';
-import { Button } from '@/components/atoms/button/button';
 import { Tabs } from '@/components/molecules/tabs/tabs';
 import { useNovedades } from '@/hooks/ueNovedades';
+import { LiveClock } from '@/components/atoms/liveClock/LiveClock';
 
 // Definición de las Tabs con íconos
 const NOVEDADES_TABS = [
@@ -38,7 +38,7 @@ export function NovedadesPageView() {
           <h1 className={styles.title}>Centro de Control de Novedades e Incidentes</h1>
           <p className={styles.subtitle}>Gestión de bloqueos operativos, fallas mecánicas e incapacidades.</p>
         </div>
-        <Button onClick={refresh}>Actualizar 🔄</Button>
+       <LiveClock onRefresh={refresh} isRefetching={isLoading} />
       </div>
 
       {/* AQUÍ VA TU NUEVO COMPONENTE UNIVERSAL SÚPER POTENTE */}

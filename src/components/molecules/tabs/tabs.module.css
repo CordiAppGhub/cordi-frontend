@@ -6,6 +6,26 @@
   border-radius: 12px;
   width: fit-content;
   border: 1px solid #e2e8f0;
+  
+  /* 🔥 MEJORA MÓVIL: Permite scroll horizontal si hay muchas pestañas */
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none; /* Oculta scrollbar en Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Oculta scrollbar en Chrome/Safari */
+.tabsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.fullWidth .tabBtn {
+  flex: 1;
+  justify-content: center;
 }
 
 .tabBtn {
@@ -21,14 +41,43 @@
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
+  white-space: nowrap; /* Evita que el texto de la pestaña se rompa en dos líneas */
 }
 
 .tabBtn:hover {
   color: #0f172a;
 }
 
+/* 🔥 MEJORA DE ACCESIBILIDAD: Anillo de foco por teclado */
+.tabBtn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .activeTab {
   background-color: white;
   color: #0f172a;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Estilo para los contadores (Badges) */
+.badge {
+  background-color: #e2e8f0;
+  color: #475569;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.activeBadge {
+  background-color: #eff6ff;
+  color: #2563eb;
 }

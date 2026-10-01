@@ -1,6 +1,6 @@
 import { api } from './api.service'; 
 import { Operation } from '@/types/operation-types';
-import { CreateOperationInput } from '@/schemas/operation.schema';
+import { CreateOperationFormData } from '@/schemas/operation.schema';
 
 export interface GetOperationsParams {
   page?: number;
@@ -23,12 +23,15 @@ export interface PaginatedOperations {
 export interface AssignOperationPayload {
   driverId: number;
   analystId: number;
+  vehicleId: number;
+  fletePagoManual?: number;
 }
 
 // NUEVO: Interfaz para la reasignación de emergencia
 export interface ReassignOperationPayload {
   driverId: number;
   vehicleId: number;
+  fletePagoManual?: number;
 }
 
 export const operationService = {
@@ -54,7 +57,7 @@ export const operationService = {
     return response.data;
   },
 
-  createOperation: async (data: CreateOperationInput): Promise<void> => {
+  createOperation: async (data: CreateOperationFormData): Promise<void> => {
     await api.post('/operations', data);
   },
 };

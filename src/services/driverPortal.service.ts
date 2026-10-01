@@ -1,34 +1,27 @@
-import { DriverPortalData, TripMicroState, OcrResult } from "@/types/driver-portal.types";
+import { TripMicroState, OcrResult } from "@/types/driver-portal.types";
 import { api } from "./api.service";
 
 export const driverPortalService = {
-  getByToken: async (token: string, cedula: string): Promise<DriverPortalData> => {
-    // 👈 Agregamos la cédula a la petición HTTP
-    const { data } = await api.get(`/drivers/portal?token=${token}&cedula=${cedula}`);
-    return data;
-  },
+  // 🗑️ Se eliminó getByToken porque ya usamos getDriverProfile en /me
 
   uploadEvidence: async (operationId: number, file: File): Promise<void> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('operationId', String(operationId));
 
     await api.post(`/portal/operations/${operationId}/evidences`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
 
-  updateTravelState: async (operationId: number, estadoViaje: TripMicroState | 'FINALIZADO', token: string): Promise<void> => {
+  updateTravelState: async (operationId: number, estadoViaje: TripMicroState | 'FINALIZADO'): Promise<void> => {
     await api.patch(`/portal/operations/${operationId}/status`, {
       estadoViaje,
-      token,
     });
   },
 
-  scanPlate: async (operationId: number, file: File, token: string): Promise<OcrResult> => {
+  scanPlate: async (operationId: number, file: File): Promise<OcrResult> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('token', token);
 
     const { data } = await api.post(`/portal/operations/${operationId}/ocr-plate`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -36,14 +29,37 @@ export const driverPortalService = {
     return data;
   },
 
-  scanContainer: async (operationId: number, file: File, token: string): Promise<OcrResult> => {
+  scanContainer: async (operationId: number, file: File): Promise<OcrResult> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('token', token);
 
     const { data } = await api.post(`/portal/operations/${operationId}/ocr-container`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data;
   },
+   async getDriverHistory() {
+    const response = await api.get('/auth/driver/history');
+    return response.data;
+  },
+};
+
+export const driverAuthService = {
+  requestOtp: async (cedula: string) => {
+    const { data } = await api.post('/auth/driver/request-otp', { cedula });
+    return data;
+  },
+
+  verifyOtp: async (cedula: string, code: string) => {
+    const { data } = await api.post('/auth/driver/verify-otp', { cedula, code });
+    return data;
+  },
+  
+  getDriverProfile: async () => {
+    // 🚀 La cookie driver_access_token hace la magia aquí automáticamente
+    const { data } = await api.get('/auth/driver/me'); 
+    return data;
+  },
+ 
+
 };

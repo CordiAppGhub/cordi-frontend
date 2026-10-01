@@ -38,17 +38,24 @@ export interface Operation {
   estadoViaje?: TripMicroState;
   placaIA?: string | null;
   containerNumber?: string | null;
+  
+  // 🚀 Campos planos enviados por el backend
+  clientName?: string;
+  clientLocationName?: string;
+  origenName?: string;
+  destinoName?: string;
+  vehiclePlate?: string;
+
+  // Objetos originales por si los necesitas en otro lado
   origen?: Location;
   destino?: Location;
   vehicle?: Pick<Vehicle, 'plate'>;
 }
-
 export interface DriverPortalData {
   id: number;
   name: string;
   cedula: string;
   telefono: string;
-  portalLink: string;
   drivenVehicles: Vehicle[];
   assignedOperations: Operation[];
 }

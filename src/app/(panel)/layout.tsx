@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sidebar } from '@/components/organisms/sidebar/sidebar';
+import { Navbar } from '@/components/organisms/navbar/Navbar';
 import styles from './layout.module.css';
 
 export default function PanelLayout({
@@ -9,13 +9,15 @@ export default function PanelLayout({
 }) {
   return (
     <div className={styles.panelWrapper}>
-      {/* El Sidebar se renderiza una sola vez para todas las rutas privadas */}
-      <Sidebar />
-      
-      {/* Aquí Next.js inyectará la página en la que estés (dashboard, operaciones, etc) */}
+      <Navbar />
+
+
+
+
       <main className={styles.mainContent}>
         {children}
       </main>
+
     </div>
   );
 }

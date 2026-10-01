@@ -1,0 +1,209 @@
+.filtersPanel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+  animation: slideDown 0.18s ease-out;
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(190px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.filterLabel {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Selectores y fechas */
+.filterField select,
+.filterField input[type="date"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background-color: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 400;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.filterField select {
+  cursor: pointer;
+}
+
+.filterField input[type="date"] {
+  padding-right: 9px;
+}
+
+.filterField select:focus,
+.filterField input[type="date"]:focus {
+  border-color: #93b4df;
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 8%);
+}
+
+.filterField select:disabled,
+.filterField input[type="date"]:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Opciones adicionales */
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  padding-bottom: 1px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxInput {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Botón de limpieza */
+.clearButtonWrapper {
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.clearButtonWrapper button {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #e2e8f0;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.clearButtonWrapper button:hover {
+  background: #dbe3ed;
+  border-color: #b8c5d6;
+}
+
+.clearButtonWrapper button:focus-visible {
+  outline: 2px solid #93b4df;
+  outline-offset: 2px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pantallas medianas */
+@media (max-width: 1400px) {
+  .filtersGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .checkboxGroup {
+    grid-column: span 2;
+  }
+
+  .clearButtonWrapper {
+    grid-column: span 2;
+  }
+}
+
+/* Tablets */
+@media (max-width: 900px) {
+  .filtersPanel {
+    padding: 12px;
+  }
+
+  .filtersGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 10px;
+  }
+
+  .checkboxGroup,
+  .clearButtonWrapper {
+    grid-column: span 1;
+  }
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  .filtersGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .checkboxGroup,
+  .clearButtonWrapper {
+    grid-column: auto;
+  }
+
+  .checkboxGroup {
+    padding: 4px 0;
+  }
+
+  .clearButtonWrapper button {
+    min-height: 38px;
+  }
+}

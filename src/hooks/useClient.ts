@@ -2,39 +2,98 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { AxiosError } from 'axios';
-import { useClientStore } from '@/store/use-client.store';
+import axios, { AxiosError } from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { showToast } from '@/utils/alerts';
 import { CreateClientInput, UpdateClientInput } from '@/types/client.-types';
+import { clientService } from '@/services/client-service';
+
 
 interface BackendErrorResponse { message?: string; }
 
 export function useClients() {
-  const { clients, isLoadingClients, error, fetchClients, createClient: storeCreate, updateClient: storeUpdate, deleteClient: storeDelete } = useClientStore();
+  const queryClient = useQueryClient();
 
+  // ==========================================
+  // QUERY: OBTENER CLIENTES (Con Caché)
+  // ==========================================
+  const {
+    data: clients = [],
+    isLoading: isLoadingClients,
+    error: queryError,
+    refetch: refreshClients,
+  } = useQuery({
+    queryKey: ['clients'],
+    queryFn: clientService.getAll,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  let errorMessage: string | null = null;
+  if (queryError) {
+    errorMessage = axios.isAxiosError(queryError)
+      ? queryError.response?.data?.message || 'Error al cargar clientes'
+      : queryError.message || 'Error al cargar clientes';
+  }
+
+  // ==========================================
+  // MUTACIONES
+  // ==========================================
+  const createMutation = useMutation({
+    mutationFn: (data: CreateClientInput) => clientService.create(data),
+    onSuccess: () => {
+      showToast.success('El cliente comercial ha sido registrado.');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'Error al registrar el cliente.';
+      showToast.error(message);
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateClientInput }) => clientService.update(id, data),
+    onSuccess: () => {
+      showToast.success('Datos comerciales actualizados.');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'Error al actualizar.';
+      showToast.error(message);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => clientService.delete(id),
+    onSuccess: () => {
+      showToast.success('Cliente eliminado del sistema.');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo eliminar el cliente.';
+      showToast.error(message);
+    }
+  });
+
+  // ==========================================
+  // WRAPPERS (Mantiene tu UI intacta)
+  // ==========================================
   const createClient = useCallback(async (data: CreateClientInput): Promise<boolean> => {
     try {
-      await storeCreate(data);
-      showToast.success('El cliente comercial ha sido registrado.');
+      await createMutation.mutateAsync(data);
       return true;
-    } catch (err: unknown) {
-      const message = (err as AxiosError<BackendErrorResponse>).response?.data?.message || 'Error al registrar el cliente.';
-      showToast.error(message);
+    } catch (err) {
       return false;
     }
-  }, [storeCreate]);
+  }, [createMutation]);
 
   const updateClient = useCallback(async (id: number, data: UpdateClientInput): Promise<boolean> => {
     try {
-      await storeUpdate(id, data);
-      showToast.success('Datos comerciales actualizados.');
+      await updateMutation.mutateAsync({ id, data });
       return true;
-    } catch (err: unknown) {
-      const message = (err as AxiosError<BackendErrorResponse>).response?.data?.message || 'Error al actualizar.';
-      showToast.error(message);
+    } catch (err) {
       return false;
     }
-  }, [storeUpdate]);
+  }, [updateMutation]);
 
   const deleteClient = useCallback(async (id: number): Promise<boolean> => {
     const result = await Swal.fire({
@@ -51,15 +110,20 @@ export function useClients() {
     if (!result.isConfirmed) return false;
 
     try {
-      await storeDelete(id);
-      showToast.success('Cliente eliminado del sistema.');
+      await deleteMutation.mutateAsync(id);
       return true;
-    } catch (err: unknown) {
-      const message = (err as AxiosError<BackendErrorResponse>).response?.data?.message || 'No se pudo eliminar el cliente.';
-      showToast.error(message);
+    } catch (err) {
       return false;
     }
-  }, [storeDelete]);
+  }, [deleteMutation]);
 
-  return { clients, isLoadingClients, error, createClient, updateClient, deleteClient, refreshClients: fetchClients };
+  return { 
+    clients, 
+    isLoadingClients, 
+    error: errorMessage, 
+    createClient, 
+    updateClient, 
+    deleteClient, 
+    refreshClients 
+  };
 }

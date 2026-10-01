@@ -1,31 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-
-// Si prefieres usar tu CSS module, puedes migrar estos estilos allí
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 1000,
-  padding: '1rem',
-};
-
-const defaultModalStyle: React.CSSProperties = {
-  backgroundColor: '#fff',
-  borderRadius: '8px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  padding: '24px',
-  display: 'flex',
-  flexDirection: 'column',
-  overflowY: 'auto',
-};
+import styles from './SuperModal.module.css'; // 🚀 Importamos el módulo CSS
 
 interface SuperModalProps {
   isOpen: boolean;
@@ -54,22 +30,20 @@ export const SuperModal: React.FC<SuperModalProps> = ({
   };
 
   return (
-    <div style={overlayStyle} onClick={handleOverlayClick}>
+    <div className={styles.overlay} onClick={handleOverlayClick}>
       <div 
-        style={{ 
-          ...defaultModalStyle, 
-          width, 
-          maxHeight 
-        }}
+        className={styles.modal}
+        // Conservamos los estilos en línea solo para las props dinámicas
+        style={{ width, maxHeight }} 
       >
         {title && (
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
+          <h2 className={styles.title}>
             {title}
           </h2>
         )}
         
         {/* Aquí se inyectará cualquier contenido que le pasemos (Formularios, Tablas, Textos) */}
-        <div style={{ width: '100%' }}>
+        <div className={styles.content}>
           {children}
         </div>
       </div>
