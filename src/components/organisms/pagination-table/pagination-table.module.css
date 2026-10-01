@@ -1,169 +1,177 @@
-/* ==========================================
-   SUPER TABLA RESPONSIVA (MOBILE-FIRST)
-   ========================================== */
 .tableContainer {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  box-sizing: border-box;
+  background: #fff;
   border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 0;
 }
 
-/* 1. TOOLBAR / BARRA SUPERIOR */
+/* Toolbar */
 .toolbar {
-  padding: 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
-  flex-direction: column; /* 🔥 Apilado en móvil para evitar desbordes */
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   justify-content: space-between;
-  align-items: stretch; /* Elementos ocupan todo el ancho en móvil */
-  background-color: #f8fafc;
+  align-items: stretch;
+  background: #fff;
 }
 
 .searchContainer {
   position: relative;
   width: 100%;
+  min-width: 0;
 }
 
 .searchInput {
-  padding: 12px 16px 12px 40px; /* Padding mayor para mejor accesibilidad táctil */
+  box-sizing: border-box;
+  padding: 8px 12px 8px 34px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 16px; /* 🔥 16px previene el zoom automático molesto en iOS */
-  width: 100%; /* Ocupa todo el ancho disponible en móvil */
-  background-color: #ffffff;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  width: 100%;
+  min-height: 36px;
+  background: #fff;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s ease;
 }
 
 .searchInput:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
 .searchIcon {
   position: absolute;
-  left: 14px;
-  top: 14px;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #94a3b8;
-  font-size: 14px;
+  font-size: 13px;
+  pointer-events: none;
 }
 
 .actionButtons {
   display: flex;
-  flex-direction: column; /* Botones apilados verticalmente en pantallas estrechas */
+  flex-direction: column;
   gap: 8px;
   width: 100%;
 }
 
 .btnSecondary,
 .btnPrimary {
-  width: 100%; /* Ancho completo para facilitar clics con el pulgar */
-  min-height: 44px; /* Altura táctil estándar */
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 15px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: background-color 0.2s;
+  gap: 7px;
+  transition: background-color 0.15s ease;
 }
 
 .btnSecondary {
   border: 1px solid #cbd5e1;
-  background-color: #ffffff;
+  background: #fff;
   color: #334155;
+}
+
+.btnPrimary {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .btnSecondary:hover {
-    background-color: #f1f5f9;
+    background: #f8fafc;
   }
-}
 
-.btnPrimary {
-  border: none;
-  background-color: #2563eb;
-  color: #ffffff;
-}
-
-@media (hover: hover) and (pointer: fine) {
   .btnPrimary:hover {
-    background-color: #1d4ed8;
+    background: #1d4ed8;
   }
 }
 
-/* 2. TABLA Y ESTRUCTURA */
+/* Tabla */
 .tableWrapper {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Scroll horizontal fluido en móviles */
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  min-width: 600px; /* Asegura que la tabla no colapse feo en pantallas muy angostas */
+  min-width: 600px;
 }
 
 .th {
-  background-color: #f8fafc;
-  color: #475569;
-  font-size: 11px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e2e8f0;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .td {
-  padding: 12px 14px;
-  font-size: 13px;
-  color: #1e293b;
+  padding: 9px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .row {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .row:hover {
-    background-color: rgba(248, 250, 252, 0.8);
+    background: #f8fafc;
   }
 }
 
 .rowSelected {
-  background-color: #eff6ff !important;
+  background: #eff6ff !important;
 }
 
-/* 3. CONTROLES DE EDICIÓN EN LÍNEA */
+/* Edición en línea */
 .cellInput,
 .cellSelect {
+  box-sizing: border-box;
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background-color: #ffffff;
-  font-size: 14px;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 12px;
   color: #1e293b;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s ease;
 }
 
 .cellInput:focus,
 .cellSelect:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
 .cellSelect {
@@ -171,36 +179,40 @@
 }
 
 .checkbox {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border-radius: 3px;
   border: 1px solid #cbd5e1;
   cursor: pointer;
   accent-color: #2563eb;
 }
 
-/* 4. PAGINACIÓN Y PIE DE PÁGINA */
+/* Paginación */
 .pagination {
+  box-sizing: border-box;
   display: flex;
-  flex-direction: column; /* Apilado en móvil */
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background-color: #f8fafc;
+  padding: 10px 14px;
+  background: #fff;
   border-top: 1px solid #e2e8f0;
 }
 
 .pageInfo {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .selectedBadge {
-  margin-left: 8px;
+  margin-left: 6px;
   color: #2563eb;
   font-weight: 500;
 }
@@ -210,51 +222,54 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 12px;
+  gap: 10px;
 }
 
 .pageSizeSelector {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #475569;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .selectPageSize {
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 6px 8px;
-  background-color: #ffffff;
-  font-size: 13px;
-  color: #1e293b;
+  border-radius: 5px;
+  padding: 5px 7px;
+  min-height: 30px;
+  background: #fff;
+  font-size: 12px;
+  color: #334155;
   outline: none;
   cursor: pointer;
 }
 
 .pageButtons {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   width: 100%;
 }
 
 .pageBtn {
-  flex: 1; /* Botones de paginación expandidos simétricamente en móvil */
-  padding: 8px 12px;
+  flex: 1;
+  min-height: 32px;
+  padding: 5px 10px;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 14px;
-  background-color: #ffffff;
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
   color: #334155;
   cursor: pointer;
   text-align: center;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .pageBtn:hover:not(:disabled) {
-    background-color: #f1f5f9;
+    background: #f8fafc;
   }
 }
 
@@ -264,60 +279,82 @@
 }
 
 .emptyState {
-  padding: 32px;
+  padding: 24px 16px;
   text-align: center;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-
-/* ==========================================
-   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
+/* Tablet y escritorio */
 @media (min-width: 768px) {
   .toolbar {
     flex-direction: row;
     align-items: center;
+    padding: 10px 14px;
   }
 
   .searchContainer {
-    width: auto;
+    width: 240px;
   }
 
   .searchInput {
-    width: 256px;
-    padding: 8px 16px 8px 36px;
-    font-size: 14px;
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 10px 7px 32px;
+    font-size: 13px;
   }
 
   .searchIcon {
-    top: 10px;
-    left: 12px;
+    left: 10px;
   }
 
   .actionButtons {
     flex-direction: row;
+    align-items: center;
     width: auto;
   }
 
   .btnSecondary,
   .btnPrimary {
     width: auto;
-    min-height: auto;
-    padding: 6px 12px;
-    font-size: 14px;
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 12px;
   }
 
   .pagination {
     flex-direction: row;
+    padding: 10px 14px;
   }
 
   .paginationControls {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .pageButtons {
     width: auto;
   }
 
   .pageBtn {
     flex: initial;
-    padding: 6px 12px;
+    min-height: 30px;
+    padding: 5px 10px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .table {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .paginationControls {
+    flex-wrap: wrap;
+  }
+
+  .pageButtons {
+    width: 100%;
   }
 }

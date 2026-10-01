@@ -1,0 +1,54 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px; /* Forma de píldora redonda */
+  padding: 6px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.timeWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-right: 1px solid #e2e8f0;
+  padding-right: 12px;
+  margin-right: 12px;
+}
+
+.refreshBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #2563eb;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0;
+  outline: none;
+}
+
+.refreshBtn:hover {
+  color: #1d4ed8;
+}
+
+.refreshBtn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Animación de rotación para cuando está cargando */
+.spinIcon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}

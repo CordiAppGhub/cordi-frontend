@@ -1,7 +1,7 @@
-// src/hooks/useAuth.ts
 'use client';
 
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { authService } from '@/services/auth.services';
 import { showToast } from '@/utils/alerts';
 import axios, { AxiosError } from 'axios';
@@ -11,32 +11,27 @@ interface BackendErrorResponse {
 }
 
 export function useAuthLogin() {
-  const [step, setStep] = useState<1 | 2>(1); // 👈 Control de pasos (1: Credenciales, 2: 2FA)
+  // ==========================================
+  // ESTADOS DE UI (Mantenemos useState para inputs y vistas)
+  // ==========================================
+  const [step, setStep] = useState<1 | 2>(1); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState(''); // 👈 Código de 6 dígitos
+  const [code, setCode] = useState(''); 
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // PASO 1: Enviar credenciales
-  const handleLogin = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-
-    if (!email.trim() || !password.trim()) {
-      showToast.error('Por favor, ingresa tu correo y contraseña.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const data = await authService.loginStepOne(email, password);
-
+  // ==========================================
+  // MUTACIÓN 1: LOGIN Y ENVÍO DE OTP
+  // ==========================================
+  const loginMutation = useMutation({
+    mutationFn: () => authService.loginStepOne(email, password),
+    onSuccess: (data) => {
       if (data?.requires2FA) {
         showToast.success('¡Credenciales correctas! Código enviado a tu correo.');
-        setStep(2); // 👈 Pasamos a la vista del código OTP
+        setStep(2); // Pasamos al paso 2
       }
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       let message = 'Error al conectar con el servidor.';
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<BackendErrorResponse>;
@@ -45,31 +40,20 @@ export function useAuthLogin() {
         message = err.message;
       }
       showToast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  // PASO 2: Verificar el código OTP de 6 dígitos
-  const handleVerify2FA = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-
-    if (!code.trim() || code.length < 6) {
-      showToast.error('Ingresa el código de 6 dígitos enviado a tu correo.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await authService.verifyTwoFactor(email, code);
-
+  // ==========================================
+  // MUTACIÓN 2: VERIFICACIÓN DEL CÓDIGO (2FA)
+  // ==========================================
+  const verifyMutation = useMutation({
+    mutationFn: () => authService.verifyTwoFactor(email, code),
+    onSuccess: () => {
       showToast.success('¡Autenticación de doble factor exitosa!');
-      
       // Fuerza una navegación completa para que el proxy detecte la cookie HttpOnly
       window.location.assign('/dashboard');
-    } catch (err: unknown) {
-      setIsSubmitting(false);
+    },
+    onError: (err: unknown) => {
       let message = 'Código de verificación inválido o expirado.';
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<BackendErrorResponse>;
@@ -79,7 +63,33 @@ export function useAuthLogin() {
       }
       showToast.error(message);
     }
+  });
+
+  // ==========================================
+  // WRAPPERS DE VALIDACIÓN CLIENTE
+  // ==========================================
+  const handleLogin = (e: React.FormEvent): void => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      showToast.error('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
+    // Disparamos la mutación de TanStack Query
+    loginMutation.mutate();
   };
+
+  const handleVerify2FA = (e: React.FormEvent): void => {
+    e.preventDefault();
+    if (!code.trim() || code.length < 6) {
+      showToast.error('Ingresa el código de 6 dígitos enviado a tu correo.');
+      return;
+    }
+    // Disparamos la mutación de verificación
+    verifyMutation.mutate();
+  };
+
+  // Centralizamos el estado de carga
+  const isSubmitting = loginMutation.isPending || verifyMutation.isPending;
 
   return {
     step,
@@ -92,7 +102,7 @@ export function useAuthLogin() {
     setCode,
     showPassword,
     setShowPassword,
-    isSubmitting,
+    isSubmitting, // 👈 Se computa automáticamente por las mutaciones
     handleLogin,
     handleVerify2FA,
   };

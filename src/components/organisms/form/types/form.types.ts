@@ -1,7 +1,9 @@
-export type FormFieldType = 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'radio' | 'date';
+export type FormFieldType = 
+  | 'text' | 'number' | 'email' | 'password' 
+  | 'select' | 'checkbox' | 'radio' | 'textarea'
+  | 'multiselect' | 'datetime-local' | 'date';
 
-export type FormFieldValue = string | number | boolean | undefined;
-
+export type FormFieldValue = string | number | boolean | string[] | number[]; // 🚀 Añadimos arrays para los valores múltiples
 export interface FormOption {
   label: string;
   value: string | number;
@@ -15,6 +17,7 @@ export interface FormField {
   options?: FormOption[];
   disabled?: boolean;
   visible?: boolean;
+  gridSpan?: number;
 }
 
 export interface SuperFormProps {

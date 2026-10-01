@@ -1,0 +1,106 @@
+.timelineContainer {
+  position: relative;
+  padding-left: 28px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* La línea vertical central */
+.timelineContainer::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  bottom: 0;
+  width: 2px;
+  background-color: #e2e8f0;
+}
+
+.eventNode {
+  position: relative;
+}
+
+/* El punto de cada evento */
+.dot {
+  position: absolute;
+  left: -28px;
+  top: 16px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  border: 3px solid #eff6ff;
+  box-shadow: 0 0 0 1px #3b82f6;
+  z-index: 2;
+}
+
+.content {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  transition: border-color 0.2s;
+}
+
+.content:hover {
+  border-color: #cbd5e1;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opId {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.routeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.dateRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.driverRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 0.85rem;
+  color: #475569;
+}

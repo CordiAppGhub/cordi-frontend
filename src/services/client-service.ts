@@ -1,4 +1,4 @@
-import { Client, CreateClientInput, UpdateClientInput } from '../types/client.types';
+import { Client, CreateClientInput, UpdateClientInput } from '@/types/client.-types';
 import { api } from './api.service';
 
 export const clientService = {

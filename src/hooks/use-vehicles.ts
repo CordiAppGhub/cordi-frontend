@@ -2,10 +2,10 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { vehiclesService } from '@/services/vehicles.service';
-import { useVehiclesStore } from '@/store/use-vehicles.store';
 import { CreateVehicleDto, UpdateVehicleDto } from '@/types/vehicles';
 import { showToast } from '@/utils/alerts';
 
@@ -14,118 +14,134 @@ interface BackendErrorResponse {
 }
 
 export const useVehicles = () => {
-    const vehicles = useVehiclesStore((state) => state.vehicles);
-    const isLoading = useVehiclesStore((state) => state.isLoading);
-    const setVehicles = useVehiclesStore((state) => state.setVehicles);
-    const setIsLoading = useVehiclesStore((state) => state.setIsLoading);
-    const addVehicle = useVehiclesStore((state) => state.addVehicle);
-    const updateVehicleInStore = useVehiclesStore((state) => state.updateVehicleInStore);
-    const removeVehicleFromStore = useVehiclesStore((state) => state.removeVehicleFromStore);
+  const queryClient = useQueryClient();
 
-    // 2. Dependencias estables para el useCallback
-    const loadVehicles = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const data = await vehiclesService.getAll();
-            setVehicles(data);
-        } catch (err: unknown) {
-            console.error('Error al cargar vehículos', err);
-            const axiosError = err as AxiosError<BackendErrorResponse>;
-            const message = axiosError.response?.data?.message || 'No se pudieron cargar los vehículos';
-            showToast.error(message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [setIsLoading, setVehicles]);
+  // ==========================================
+  // QUERY: CARGAR VEHÍCULOS
+  // ==========================================
+  const {
+    data: vehicles = [],
+    isLoading: isQueryLoading,
+    refetch: loadVehicles,
+  } = useQuery({
+    queryKey: ['vehicles'],
+    queryFn: vehiclesService.getAll,
+    staleTime: 1000 * 60 * 5, // 5 minutos en caché para el catálogo principal
+  });
 
-    const createVehicle = async (data: CreateVehicleDto): Promise<boolean> => {
-        setIsLoading(true);
-        try {
-            const newVehicle = await vehiclesService.create(data);
-            addVehicle(newVehicle);
-            showToast.success('Vehículo registrado con éxito');
-            return true;
-        } catch (err: unknown) {
-            console.error('Error al crear vehículo:', err);
-            const axiosError = err as AxiosError<BackendErrorResponse>;
-            const message = axiosError.response?.data?.message || 'No se pudo crear el vehículo.';
-            showToast.error(message);
-            return false;
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  // ==========================================
+  // MUTACIONES: CRUD Y EXCEL
+  // ==========================================
+  const createMutation = useMutation({
+    mutationFn: (data: CreateVehicleDto) => vehiclesService.create(data),
+    onSuccess: () => {
+      showToast.success('Vehículo registrado con éxito');
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] }); // 👈 Recarga la tabla
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo crear el vehículo.';
+      showToast.error(message);
+    }
+  });
 
-    const editVehicle = async (id: number, data: UpdateVehicleDto): Promise<boolean> => {
-        setIsLoading(true);
-        try {
-            const updated = await vehiclesService.update(id, data);
-            updateVehicleInStore(id, updated);
-            showToast.success('Vehículo modificado con éxito');
-            return true;
-        } catch (err: unknown) {
-            console.error('Error al actualizar vehículo:', err);
-            const axiosError = err as AxiosError<BackendErrorResponse>;
-            const message = axiosError.response?.data?.message || 'No se pudo actualizar el vehículo.';
-            showToast.error(message);
-            return false;
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateVehicleDto }) => vehiclesService.update(id, data),
+    onSuccess: () => {
+      showToast.success('Vehículo modificado con éxito');
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo actualizar el vehículo.';
+      showToast.error(message);
+    }
+  });
 
-    const removeVehicle = async (id: number): Promise<boolean> => {
-        const confirm = await Swal.fire({
-            title: '¿Estás seguro?',
-            text: "Esta acción eliminará el vehículo de la base de datos.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminar'
-        });
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => vehiclesService.remove(id),
+    onSuccess: () => {
+      showToast.success('El vehículo fue eliminado correctamente');
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo eliminar el vehículo.';
+      showToast.error(message);
+    }
+  });
 
-        if (!confirm.isConfirmed) {
-            return false;
-        }
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => vehiclesService.importExcel(file),
+    onSuccess: (response: any) => {
+      showToast.success(response.message || 'Carga masiva completada con éxito');
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'Error al procesar el archivo Excel de vehículos.';
+      showToast.error(message);
+    }
+  });
 
-        setIsLoading(true);
-        try {
-            await vehiclesService.remove(id);
-            removeVehicleFromStore(id);
-            showToast.success('El vehículo fue eliminado correctamente');
-            return true;
-        } catch (err: unknown) {
-            console.error('Error al eliminar vehículo:', err);
-            const axiosError = err as AxiosError<BackendErrorResponse>;
-            const message = axiosError.response?.data?.message || 'No se pudo eliminar el vehículo.';
-            showToast.error(message);
-            return false;
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  // ==========================================
+  // WRAPPERS (Para mantener compatibilidad con tu UI)
+  // ==========================================
+  const createVehicle = useCallback(async (data: CreateVehicleDto): Promise<boolean> => {
+    try {
+      await createMutation.mutateAsync(data);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }, [createMutation]);
 
-    const uploadExcel = async (file: File): Promise<void> => {
-        try {
-            const response = await vehiclesService.importExcel(file);
-            showToast.success(response.message || 'Carga masiva completada con éxito');
-        } catch (err: unknown) {
-            console.error('Error en hook uploadExcel:', err);
-            const axiosError = err as AxiosError<BackendErrorResponse>;
-            const message = axiosError.response?.data?.message || 'Error al procesar el archivo Excel de vehículos.';
-            showToast.error(message);
-            throw err;
-        }
-    };
+  const editVehicle = useCallback(async (id: number, data: UpdateVehicleDto): Promise<boolean> => {
+    try {
+      await updateMutation.mutateAsync({ id, data });
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }, [updateMutation]);
 
-    return {
-        vehicles,
-        isLoading,
-        loadVehicles,
-        createVehicle,
-        editVehicle,
-        removeVehicle,
-        uploadExcel,
-    };
+  const removeVehicle = useCallback(async (id: number): Promise<boolean> => {
+    const confirm = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: "Esta acción eliminará el vehículo de la base de datos.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirm.isConfirmed) return false;
+
+    try {
+      await removeMutation.mutateAsync(id);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }, [removeMutation]);
+
+  const uploadExcel = useCallback(async (file: File): Promise<void> => {
+    try {
+      await uploadMutation.mutateAsync(file);
+    } catch (err) {
+      // Mantenemos el throw original por si el componente del input file necesita limpiar su estado en error
+      throw err; 
+    }
+  }, [uploadMutation]);
+
+  // Unificamos el estado de carga para lectura, escritura y subida de archivos
+  const isLoading = isQueryLoading || createMutation.isPending || updateMutation.isPending || removeMutation.isPending || uploadMutation.isPending;
+
+  return {
+    vehicles,
+    isLoading,
+    loadVehicles,
+    createVehicle,
+    editVehicle,
+    removeVehicle,
+    uploadExcel,
+  };
 };

@@ -5,6 +5,7 @@ import { Input } from '../../atoms/input/input';
 import { Select } from '../../atoms/select/select';
 import { Button } from '../../atoms/button/button';
 import { SuperFormProps, FormFieldValue } from './types/form.types';
+import styles from './SuperForm.module.css';
 
 export const SuperForm: React.FC<SuperFormProps> = ({
   fields,
@@ -17,7 +18,6 @@ export const SuperForm: React.FC<SuperFormProps> = ({
   onCancel,
   onChange,
 }) => {
-  // 1. Usamos el tipo estricto en el estado (Chao "any")
   const [formData, setFormData] = useState<Record<string, FormFieldValue>>(defaultValues);
 
   const handleChange = (name: string, value: FormFieldValue) => {
@@ -32,91 +32,136 @@ export const SuperForm: React.FC<SuperFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData); 
+    onSubmit(formData);
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      
-      {fields.map((field) => {
-        if (field.visible === false) return null;
+    <form onSubmit={handleSubmit} className={styles.form}>
 
-        const value = formData[field.name] !== undefined ? formData[field.name] : '';
-        const errorMessage = errors[field.name];
+      <div className={styles.fieldsGrid}>
+        {fields.map((field) => {
+          if (field.visible === false) return null;
 
-        return (
-          <div key={field.name} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label className="text-sm font-semibold text-gray-700">
-              {field.label}
-            </label>
+          const value = formData[field.name] !== undefined ? formData[field.name] : '';
+          const errorMessage = errors[field.name];
 
-            {(() => {
-              switch (field.type) {
-                case 'select':
-                  return (
-                    <Select
-                      name={field.name}
-                      options={field.options || []}
-                      value={String(value)}
-                      onChange={(e) => handleChange(field.name, e.target.value)}
-                      disabled={field.disabled || isLoading}
-                      error={errorMessage}
-                    />
-                  );
+          return (
+            <div
+              key={field.name}
+              /* 🚀 MAGIA AQUÍ: Si es textarea, inyecta fullWidth para ocupar 2 columnas */
+              className={`${styles.formGroup} ${field.type === 'textarea' ? styles.fullWidth : ''}`}
+            >
+              <label className={styles.label}>
+                {field.label}
+              </label>
 
-                case 'checkbox':
-                  return (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                      <input
-                        type="checkbox"
+              {(() => {
+                switch (field.type) {
+                  // 🚀 NUEVO CASO: Renderiza un textarea real y grande
+                  case 'textarea':
+                    return (
+                      <textarea
                         name={field.name}
-                        checked={Boolean(value)}
-                        onChange={(e) => handleChange(field.name, e.target.checked)}
+                        placeholder={field.placeholder}
+                        value={String(value)}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
                         disabled={field.disabled || isLoading}
-                        style={{ width: '16px', height: '16px' }}
+                        className={styles.textareaInput} /* Clase para darle altura */
                       />
-                      <span>{field.placeholder || 'Activar'}</span>
-                    </label>
-                  );
+                    );
 
-                case 'radio':
-                  return (
-                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
-                      {field.options?.map((opt) => (
-                        <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px' }}>
-                          <input
-                            type="radio"
-                            name={field.name}
-                            value={opt.value}
-                            checked={String(value) === String(opt.value)}
-                            onChange={(e) => handleChange(field.name, e.target.value)}
-                            disabled={field.disabled || isLoading}
-                          />
-                          {opt.label}
-                        </label>
-                      ))}
-                    </div>
-                  );
+                  case 'select':
+                    return (
+                      <Select
+                        name={field.name}
+                        options={field.options || []}
+                        value={String(value)}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
+                        disabled={field.disabled || isLoading}
+                        error={errorMessage}
+                      />
+                    );
+                  case 'multiselect':
+                    return (
+                      <select
+                        multiple
+                        name={field.name}
+                        // Aseguramos que el valor siempre sea un array
+                        value={Array.isArray(value) ? value.map(String) : []}
+                        onChange={(e) => {
+                          // 🚀 Extraemos todos los <option> que el usuario haya seleccionado
+                          const selectedValues = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                          handleChange(field.name, selectedValues);
+                        }}
+                        disabled={field.disabled || isLoading}
+                        className={`${styles.textareaInput} ${styles.multiselect}`} // Reciclamos las clases grandes
+                        style={{ height: '120px', padding: '8px' }} // Altura fija para que se vean varias opciones
+                      >
+                        {field.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value} style={{ padding: '6px', cursor: 'pointer' }}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    );
 
-                default:
-                  return (
-                    <Input
-                      type={field.type}
-                      name={field.name}
-                      placeholder={field.placeholder}
-                      value={String(value)}
-                      onChange={(e) => handleChange(field.name, e.target.value)}
-                      disabled={field.disabled || isLoading}
-                      error={errorMessage}
-                    />
-                  );
-              }
-            })()}
-          </div>
-        );
-      })}
+                  case 'checkbox':
+                    return (
+                      <label className={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          name={field.name}
+                          checked={Boolean(value)}
+                          onChange={(e) => handleChange(field.name, e.target.checked)}
+                          disabled={field.disabled || isLoading}
+                          className={styles.checkboxInput}
+                        />
+                        <span>{field.placeholder || 'Activar'}</span>
+                      </label>
+                    );
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                  case 'radio':
+                    return (
+                      <div className={styles.radioGroup}>
+                        {field.options?.map((opt) => (
+                          <label key={opt.value} className={styles.radioLabel}>
+                            <input
+                              type="radio"
+                              name={field.name}
+                              value={opt.value}
+                              checked={String(value) === String(opt.value)}
+                              onChange={(e) => handleChange(field.name, e.target.value)}
+                              disabled={field.disabled || isLoading}
+                            />
+                            {opt.label}
+                          </label>
+                        ))}
+                      </div>
+                    );
+
+                  default:
+                    return (
+                      <Input
+                        type={field.type}
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        value={String(value)}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
+                        disabled={field.disabled || isLoading}
+                        error={errorMessage}
+                      />
+                    );
+                }
+              })()}
+
+              {/* Opcional: Mostrar el error si existe */}
+              {errorMessage && <span className={styles.errorMessage}>{errorMessage}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={styles.actions}>
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>
             {cancelText}

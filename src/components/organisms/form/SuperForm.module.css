@@ -1,0 +1,105 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px; /* Separación entre los campos y los botones de acción */
+  width: 100%;
+}
+
+/* 🚀 NUEVA CLASE: Contenedor Grid para los inputs */
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  column-gap: 16px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #475569;
+  cursor: pointer;
+  margin-top: 8px; /* Un poco de aire extra para alinear con inputs */
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.radioGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+/* Acciones siempre al final y a la derecha */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0; /* Una sutil línea separadora */
+}
+
+
+/* src/components/organisms/form/SuperForm.module.css */
+
+/* 1. Obliga al campo a ocupar todas las columnas disponibles (las 2 enteras) */
+.fullWidth {
+  grid-column: 1 / -1; 
+}
+
+/* 2. Da el aspecto de bloque de notas gigante */
+.textareaInput {
+  width: 100%;
+  min-height: 160px; /* Altura ideal para novedades */
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  resize: vertical; /* Permite estirarlo con el ratón */
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.textareaInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.textareaInput:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+}

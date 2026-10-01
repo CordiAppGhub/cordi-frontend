@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '@/store/use-ui.store';
 import { useOperations } from '../hooks/useOperations';
 
@@ -9,11 +9,13 @@ import { CreateModal } from '../components/create-modal/create-modal';
 import { OperationTraceability } from '../components/details/OperationTraceability';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { Button } from '@/components/atoms/button/button';
+import { SuperModal } from '@/components/organisms/modal/modal'; // 🚀 Importamos SuperModal
 
 import styles from '../operations.module.css';
 import { getOperationsColumns } from '../components/operations-colums';
-import { NovedadModal } from '@/components/organisms/novedades-modal/novedades-modal';
-import { Operation } from '@/types/operation-types';
+import { ApplySurchargeModal } from '../components/ApplySurchargeModal'; 
+import { NovedadForm } from '../../novedades/components/novedades-modal/novedades-modal';
+// 🚀 Importamos el nuevo formulario de novedades (sin el envoltorio del modal)
 
 const tabs = [
   { id: 'TODAS', label: 'Todas las Operaciones' },
@@ -25,25 +27,18 @@ const tabs = [
 
 export function OperationsView() {
   const { operations, meta, isLoadingOperations, error, fetchOperations } = useOperations();
-
   const { openCreateModal, openAssignModal } = useUIStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('TODAS');
+  
+  // 🚀 Estados del SuperModal Integrado (Trazabilidad & Novedades)
   const [traceabilityId, setTraceabilityId] = useState<number | null>(null);
+  const [modalTab, setModalTab] = useState<'DETAILS' | 'NOVEDAD'>('DETAILS');
 
-  // Estados para Novedades
-  const [isNovedadModalOpen, setIsNovedadModalOpen] = useState(false);
-  const [selectedOperationForNovedad, setSelectedOperationForNovedad] = useState<Operation | null>(null);
-
-  const handleOpenOperationNovedad = (operationId: number) => {
-    const operation = operations.find((op) => op.id === operationId);
-    if (operation) {
-      setSelectedOperationForNovedad(operation);
-      setIsNovedadModalOpen(true);
-    }
-  };
+  // Estado para el Modal de Novedades de Facturación / Recargos
+  const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
 
   const handleOpenReassign = (operationId: number) => {
     setTraceabilityId(null);
@@ -58,7 +53,7 @@ export function OperationsView() {
     }
   }, [fetchOperations]);
 
-  const columns = getOperationsColumns(setTraceabilityId);
+  const columns = getOperationsColumns(setTraceabilityId, setSurchargeModalOpId);
 
   const applyFilters = (overrides?: { tab?: string; page?: number }) => {
     const currentTab = overrides?.tab || activeTab;
@@ -76,7 +71,7 @@ export function OperationsView() {
     applyFilters({ tab: tabId, page: 1 });
   };
 
-  const traceabilityOperation = operations.find(op => String(op.id) === String(traceabilityId));
+  const traceabilityOperation = operations.find(op => op.id === traceabilityId);
   const isPausada =
     traceabilityOperation?.status === 'PAUSADA' ||
     traceabilityOperation?.estadoViaje === 'PAUSADA';
@@ -143,100 +138,106 @@ export function OperationsView() {
           data={operations ?? []}
           nameButton="+ Nueva Operación"
           columns={columns}
-          totalPages={meta?.totalPages ?? 1}
+          totalPages={meta?.total ?? 1}
           currentPage={meta?.page ?? 1}
           onPageChange={(newPage) => applyFilters({ page: newPage })}
           onOpenModal={openCreateModal}
         />
       </div>
 
-      {selectedOperationForNovedad && (
-        <NovedadModal
-          isOpen={isNovedadModalOpen}
-          onClose={() => {
-            setIsNovedadModalOpen(false);
-            setSelectedOperationForNovedad(null);
-          }}
-          onSuccess={() => {
-            alert('Novedad reportada con éxito en la Torre de Control.');
-            fetchOperations();
-          }}
-          operationId={selectedOperationForNovedad.id}
-          vehicleId={selectedOperationForNovedad.vehicle?.id}
-          driverId={selectedOperationForNovedad.driver?.id}
-          rawOperation={selectedOperationForNovedad}
-          operationTitle={`${selectedOperationForNovedad.type} — ${selectedOperationForNovedad.origen?.name || 'Ruta'}`}
-        />
-      )}
-
+      {/* MODALES GLOBALES */}
       <AssignModal />
       <CreateModal />
 
-      {/* OVERLAY DE TRAZABILIDAD */}
-      {traceabilityId && (
-        <div
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
-            zIndex: 999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1.2rem'
-          }}
-          onClick={() => setTraceabilityId(null)}
-        >
-          <div
-            style={{
-              backgroundColor: 'white', borderRadius: '12px', width: '100%', maxWidth: '950px',
-              maxHeight: '90vh', overflowY: 'auto', padding: '28px', position: 'relative',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setTraceabilityId(null)}
-              style={{
-                position: 'absolute', top: '20px', right: '20px',
-                background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%',
-                fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#64748b', transition: 'background 0.2s'
-              }}
-            >
-              &times;
-            </button>
+      {/* MODAL DE RECARGOS FINANCIEROS */}
+      <ApplySurchargeModal 
+        isOpen={surchargeModalOpId !== null} 
+        operationId={surchargeModalOpId} 
+        onClose={() => {
+          setSurchargeModalOpId(null);
+          fetchOperations(); 
+        }} 
+      />
 
-            <div style={{ marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                Torre de Control — Trazabilidad #{traceabilityId}
-              </h2>
+      {/* 🚀 SUPERMODAL DE TRAZABILIDAD (CON TABS INTERNOS) */}
+      <SuperModal
+        isOpen={traceabilityId !== null}
+        onClose={() => {
+          setTraceabilityId(null);
+          setModalTab('DETAILS'); // Reinicia la pestaña al cerrar
+        }}
+        width="1000px" // Ancho expandido para acomodar las 2 columnas de trazabilidad
+      >
+        {traceabilityId && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* CABECERA Y PESTAÑAS DEL MODAL */}
+            <div style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Torre de Control — Viaje #{traceabilityId}
+                </h2>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => handleOpenOperationNovedad(traceabilityId)}
-                  style={{
-                    backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
-                    padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  🚨 Reportar Novedad
-                </button>
-
-                {/* 🛑 BOTÓN INTELIGENTE: Solo sale si el viaje se varó (PAUSADA) */}
-                {isPausada && (
+                {/* Botón rápido de emergencia (Solo visible si está pausada y en la vista de detalles) */}
+                {isPausada && modalTab === 'DETAILS' && (
                   <button
                     onClick={() => handleOpenReassign(traceabilityId)}
                     style={{
                       backgroundColor: '#fffbeb', color: '#d97706', border: '1px solid #fde68a',
-                      padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer'
+                      padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer'
                     }}
                   >
                     ⚠️ Reasignar Emergencia
                   </button>
                 )}
               </div>
+              
+              <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
+                <button
+                  onClick={() => setModalTab('DETAILS')}
+                  style={{
+                    background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+                    color: modalTab === 'DETAILS' ? '#2563eb' : '#64748b',
+                    borderBottom: modalTab === 'DETAILS' ? '3px solid #2563eb' : '3px solid transparent',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Trazabilidad y Liquidación
+                </button>
+                <button
+                  onClick={() => setModalTab('NOVEDAD')}
+                  style={{
+                    background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+                    color: modalTab === 'NOVEDAD' ? '#dc2626' : '#64748b',
+                    borderBottom: modalTab === 'NOVEDAD' ? '3px solid #dc2626' : '3px solid transparent',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  🚨 Reportar Novedad
+                </button>
+              </div>
             </div>
 
-            <OperationTraceability operationId={traceabilityId} />
+            {/* CONTENIDO DINÁMICO SEGÚN LA PESTAÑA */}
+            {modalTab === 'DETAILS' ? (
+              <OperationTraceability operationId={traceabilityId} />
+            ) : (
+              <NovedadForm 
+                operationId={traceabilityId}
+                rawOperation={traceabilityOperation}
+                onCancel={() => setModalTab('DETAILS')}
+                onSuccess={() => {
+                  alert('¡Novedad registrada con éxito en la Torre de Control!');
+                  setModalTab('DETAILS'); // Vuelve automáticamente a detalles
+                  fetchOperations(); // Refresca los estados
+                }}
+              />
+            )}
+
           </div>
-        </div>
-      )}
+        )}
+      </SuperModal>
+
     </div>
   );
 }

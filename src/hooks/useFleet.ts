@@ -1,9 +1,11 @@
+'use client';
+
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { AxiosError } from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { assignmentsService } from '@/services/fleet.service';
-import { useAssignmentsStore } from '@/store/use-fleet.store';
 import { CreateAssignmentDto } from '@/types/fleet-types';
 import { showToast } from '@/utils/alerts';
 
@@ -12,47 +14,60 @@ interface BackendErrorResponse {
 }
 
 export const useAssignments = () => {
-  // 1. Extraemos los estados y acciones de forma independiente (Selectores)
-  const activeAssignments = useAssignmentsStore((state) => state.activeAssignments);
-  const isLoading = useAssignmentsStore((state) => state.isLoading);
-  const setActiveAssignments = useAssignmentsStore((state) => state.setActiveAssignments);
-  const setIsLoading = useAssignmentsStore((state) => state.setIsLoading);
+  const queryClient = useQueryClient();
 
-  // 2. Dependencias estables (setIsLoading y setActiveAssignments nunca cambian)
-  const loadActive = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await assignmentsService.getActive();
-      setActiveAssignments(data);
-    } catch (err: unknown) {
-      console.error('Error al cargar asignaciones', err);
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      const message = axiosError.response?.data?.message || 'No se pudieron cargar las asignaciones activas';
-      showToast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setIsLoading, setActiveAssignments]);
+  // ==========================================
+  // QUERY: CARGAR ASIGNACIONES ACTIVAS
+  // ==========================================
+  const {
+    data: activeAssignments = [],
+    isLoading: isQueryLoading,
+    refetch: loadActive,
+  } = useQuery({
+    queryKey: ['active-assignments'],
+    queryFn: assignmentsService.getActive,
+    staleTime: 1000 * 60 * 2,
+  });
 
-  const assignDriver = async (data: CreateAssignmentDto): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      await assignmentsService.assign(data);
+  // ==========================================
+  // MUTACIONES
+  // ==========================================
+  const assignMutation = useMutation({
+    mutationFn: (data: CreateAssignmentDto) => assignmentsService.assign(data),
+    onSuccess: () => {
       showToast.success('Vehículo asignado exitosamente');
-      await loadActive(); 
-      return true;
-    } catch (err: unknown) {
-      console.error('Error al realizar asignación:', err);
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      const message = axiosError.response?.data?.message || 'No se pudo realizar la asignación';
+      queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo realizar la asignación';
       showToast.error(message);
-      return false;
-    } finally {
-      setIsLoading(false);
     }
-  };
+  });
 
-  const unassignVehicle = async (vehicleId: number, plate: string): Promise<boolean> => {
+  const unassignMutation = useMutation({
+    mutationFn: (vehicleId: number) => assignmentsService.unassign(vehicleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo liberar el vehículo';
+      showToast.error(message);
+    }
+  });
+
+  // ==========================================
+  // WRAPPERS (Para mantener tu UI intacta)
+  // ==========================================
+  const assignDriver = useCallback(async (data: CreateAssignmentDto): Promise<boolean> => {
+    try {
+      await assignMutation.mutateAsync(data);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }, [assignMutation]);
+
+  const unassignVehicle = useCallback(async (vehicleId: number, plate: string): Promise<boolean> => {
     const confirm = await Swal.fire({
       title: '¿Liberar vehículo?',
       text: `¿Estás seguro de quitarle el conductor al vehículo ${plate}? El camión quedará libre.`,
@@ -60,29 +75,22 @@ export const useAssignments = () => {
       showCancelButton: true,
       confirmButtonColor: '#f59e0b',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, liberar'
+      confirmButtonText: 'Sí, liberar',
+      cancelButtonText: 'Cancelar'
     });
 
-    if (!confirm.isConfirmed) {
-      return false;
-    }
+    if (!confirm.isConfirmed) return false;
 
-    setIsLoading(true);
     try {
-      await assignmentsService.unassign(vehicleId);
+      await unassignMutation.mutateAsync(vehicleId);
       showToast.success(`El vehículo ${plate} ahora está sin conductor`);
-      await loadActive(); 
       return true;
-    } catch (err: unknown) {
-      console.error('Error al liberar vehículo:', err);
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      const message = axiosError.response?.data?.message || 'No se pudo liberar el vehículo';
-      showToast.error(message);
+    } catch (err) {
       return false;
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [unassignMutation]);
+
+  const isLoading = isQueryLoading || assignMutation.isPending || unassignMutation.isPending;
 
   return {
     activeAssignments,

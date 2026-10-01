@@ -1,0 +1,56 @@
+/* SuperModal.module.css */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.6); /* Fondo oscuro con blur sutil */
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh; /* Evita que rebase la pantalla */
+  overflow-y: auto;  /* Scroll solo si es estrictamente necesario */
+  box-sizing: border-box;
+}
+
+/* Scrollbar moderno y delgado */
+.modal::-webkit-scrollbar {
+  width: 6px;
+}
+.modal::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.modal::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.modal::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.content {
+  width: 100%;
+}

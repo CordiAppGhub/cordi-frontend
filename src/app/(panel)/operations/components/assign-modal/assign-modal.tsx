@@ -4,37 +4,60 @@ import { Select } from '@/components/atoms/select/select';
 import { useUIStore } from '@/store/use-ui.store';
 import { useOperations } from '@/app/(panel)/operations/hooks/useOperations';
 import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
-
-// 👉 Asegúrate de tener/importar este hook para traer la lista de mulas disponibles
+import { useVehicles } from '@/hooks/use-vehicles';
 
 import styles from './assign-modal.module.css';
-import { useVehicles } from '@/hooks/use-vehicles';
 
 export const AssignModal: React.FC = () => {
   const { isAssignModalOpen, closeAssignModal, selectedOperationId } = useUIStore();
   
-  // Traemos operaciones y las 2 funciones del hook
   const { operations, assignDriver, reassignDriverAndVehicle } = useOperations();
-  
-  // Flota
   const { drivers, loadDrivers } = useDrivers();
   const { vehicles, loadVehicles } = useVehicles();
 
-  // Estados locales
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
+  const [fletePagoManual, setFletePagoManual] = useState<string>(''); 
   const [error, setError] = useState<string>('');
 
-  // Identificamos el modo del modal basado en la operación seleccionada
   const operationTarget = operations.find(op => op.id === selectedOperationId);
   const isEmergencyReassign = operationTarget?.status === 'PAUSADA' || operationTarget?.status === 'EN_CURSO';
+
+  // 🚀 LÓGICA DE AUTOCOMPLETADO: Cuando seleccionan un conductor, buscamos su vehículo preasignado
+  const handleDriverChange = (driverIdStr: string) => {
+    setSelectedDriver(driverIdStr);
+    setError('');
+
+    const driverIdNum = Number(driverIdStr);
+    // Buscamos en la lista de vehículos cuál tiene este driverId amarrado
+    const vehicleAssigned = vehicles.find(v => v.driverId === driverIdNum);
+
+    if (vehicleAssigned) {
+      setSelectedVehicle(String(vehicleAssigned.id));
+    } else {
+      // Si el conductor no tiene vehículo fijo, dejamos libre para que el analista elija
+      setSelectedVehicle('');
+    }
+  };
+
+  // Verificamos si el vehículo seleccionado es externo para pedir el flete manual
+  const selectedVehicleObj = vehicles.find(v => v.id === Number(selectedVehicle));
+  const isExternal = selectedVehicleObj?.affiliation === 'TERCEROS';
 
   useEffect(() => {
     if (isAssignModalOpen) {
       loadDrivers();
-      loadVehicles(); // Cargamos vehículos al abrir
+      loadVehicles();
     }
   }, [isAssignModalOpen, loadDrivers, loadVehicles]);
+
+  const handleClose = () => {
+    closeAssignModal();
+    setSelectedDriver(''); 
+    setSelectedVehicle('');
+    setFletePagoManual('');
+    setError('');
+  };
 
   if (!isAssignModalOpen) return null;
 
@@ -44,42 +67,46 @@ export const AssignModal: React.FC = () => {
       return;
     }
     
-    if (isEmergencyReassign && !selectedVehicle) {
-      setError('Para un relevo de emergencia debes asignar un vehículo.');
+    if (!selectedVehicle) {
+      setError('El conductor seleccionado no tiene un vehículo vinculado. Por favor asígnale uno o selecciónalo manualmente.');
+      return;
+    }
+
+    if (isExternal && !fletePagoManual) {
+      setError('Para vehículos externos es obligatorio ingresar el Flete a Pagar negociado.');
       return;
     }
     
     if (selectedOperationId) {
       try {
+        const flete = fletePagoManual ? Number(fletePagoManual) : undefined;
+
         if (isEmergencyReassign) {
-          // Llama al endpoint nuevo (Relevo en ruta)
-          await reassignDriverAndVehicle(selectedOperationId, Number(selectedDriver), Number(selectedVehicle));
+          await reassignDriverAndVehicle(selectedOperationId, Number(selectedDriver), Number(selectedVehicle), flete);
         } else {
-          // Llama al endpoint tradicional (Primer despacho)
-          await assignDriver(selectedOperationId, Number(selectedDriver));
+          await assignDriver(selectedOperationId, Number(selectedDriver), Number(selectedVehicle), flete);
         }
       } catch (err) {
         console.warn('La operación fue rechazada por el servidor.');
       } finally {
-        closeAssignModal();
-        setSelectedDriver(''); 
-        setSelectedVehicle('');
-        setError(''); 
+        handleClose();
       }
     }
   };
 
-  // Filtramos opciones (Opcional: puedes filtrar para que solo salgan los isAvailable === true)
   const driverOptions = drivers.map(d => ({ value: d.id, label: d.name || 'Sin nombre' }));
-  const vehicleOptions = vehicles.map(v => ({ value: v.id, label: `${v.plate} - ${v.brand || 'Mula'}` }));
+  
+  const vehicleOptions = vehicles.map(v => {
+    const tag = v.affiliation === 'CORDIVEHICULOS' ? 'Propio' : v.affiliation === 'CORDIHUB' ? 'Afiliado' : 'Externo';
+    return { value: v.id, label: `${v.plate} - ${v.brand || 'Mula'} (${tag})` };
+  });
 
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
         
-        {/* Cabecera Dinámica */}
         <h2 className={styles.title} style={{ color: isEmergencyReassign ? '#d97706' : '#0f172a' }}>
-          {isEmergencyReassign ? '⚠️ Reasignación de Emergencia' : 'Asignar Conductor Inicial'}
+          {isEmergencyReassign ? '⚠️ Reasignación de Emergencia' : 'Asignar Conductor y Costear'}
         </h2>
         
         {isEmergencyReassign && (
@@ -88,29 +115,55 @@ export const AssignModal: React.FC = () => {
           </p>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
           
-          <Select 
-            value={selectedDriver}
-            onChange={(e) => { setSelectedDriver(e.target.value); setError(''); }}
-            options={driverOptions}
-            error={isEmergencyReassign ? undefined : error} 
-          />
+          {/* 1. SELECCIONAR CONDUCTOR (Dispara el autocompletado del vehículo) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Conductor</label>
+            <Select 
+              value={selectedDriver}
+              onChange={(e) => handleDriverChange(e.target.value)}
+              options={driverOptions}
+              error={error && !selectedDriver ? error : undefined} 
+            />
+          </div>
 
-          {/* Si es reasignación, OBLIGAMOS a escoger la nueva mula */}
-          {isEmergencyReassign && (
+          {/* 2. VEHÍCULO (Se autocompleta con el del módulo de flotas, pero permite edición) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+              Vehículo Asignado <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#64748b' }}>(Autocompletado por flota)</span>
+            </label>
             <Select 
               value={selectedVehicle}
               onChange={(e) => { setSelectedVehicle(e.target.value); setError(''); }}
               options={vehicleOptions}
-              error={error} 
+              error={error && !selectedVehicle ? error : undefined} 
             />
+          </div>
+
+          {/* 3. FLETE MANUAL (Solo si el vehículo es EXTERNO) */}
+          {isExternal && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                Flete a Pagar al Tercero (Negociado) *
+              </label>
+              <input
+                type="number"
+                placeholder="Ej: 950000"
+                value={fletePagoManual}
+                onChange={(e) => { setFletePagoManual(e.target.value); setError(''); }}
+                style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none' }}
+              />
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Camión externo detectado. Se requiere valor neto de pago.
+              </span>
+            </div>
           )}
 
         </div>
 
         <div className={styles.actions}>
-          <Button variant="secondary" onClick={closeAssignModal}>Cancelar</Button>
+          <Button variant="secondary" onClick={handleClose}>Cancelar</Button>
           <Button 
             variant="primary" 
             onClick={handleSubmit}
