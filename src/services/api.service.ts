@@ -2,10 +2,7 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import Swal from 'sweetalert2';
 import { useUIStore } from '@/store/use-ui.store';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api` 
-  : '/api';
-
+const API_BASE_URL = '/api';
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
