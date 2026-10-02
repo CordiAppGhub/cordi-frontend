@@ -11,7 +11,6 @@ import { getLocationColumns } from '../components/LocationColumns';
 export const LocationsView: React.FC = () => {
   const { locations, isLoadingLocations, deleteLocation, refreshLocations } = useLocations();
   
-  // Estados para el Modal de Crear/Editar
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<Locations | null>(null);
   
@@ -27,7 +26,6 @@ export const LocationsView: React.FC = () => {
     }
   }, [refreshLocations]);
 
-  // Handlers Modal Crear/Editar
   const handleOpenCreate = () => {
     setLocationToEdit(null);
     setIsModalOpen(true);
@@ -38,11 +36,9 @@ export const LocationsView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // 🚀 Handler para abrir el Modal de Asignación (Se lo pasaremos a las columnas)
  
 
   const columns = useMemo(
-    // 🚀 Pasamos el nuevo handler al generador de columnas
     () => getLocationColumns(handleOpenEdit, deleteLocation),
     [deleteLocation]
   );
@@ -55,8 +51,6 @@ export const LocationsView: React.FC = () => {
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
-      
-      {/* Cabecera */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Directorio de Empresas (Nodos)</h2>
@@ -67,7 +61,6 @@ export const LocationsView: React.FC = () => {
         </Button>
       </div>
 
-      {/* Tabla */}
       {isLoadingLocations ? (
         <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Cargando información...</div>
       ) : (
@@ -82,7 +75,6 @@ export const LocationsView: React.FC = () => {
         </div>
       )}
 
-      {/* 🚀 MODAL 1: Crear/Editar Ubicación */}
       {isModalOpen && (
         <LocationModal
           isOpen={isModalOpen}

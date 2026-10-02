@@ -25,7 +25,6 @@ export const Navbar: React.FC = () => {
   const { user } = useAuthStore();
   const userRole = user?.role;
 
-  // 🚀 Tus rutas originales del sistema
   const rawTabs: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={16} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={16} /> },
@@ -35,7 +34,6 @@ export const Navbar: React.FC = () => {
     { path: '/novedades', label: 'Novedades', icon: <BarChart3 size={16} /> },
   ];
 
-  // 🛡️ Filtramos según el rol (Ej: ANALISTA no ve Flota)
   const tabs = rawTabs.filter((item) => {
     if (userRole === 'ANALISTA' && item.label === 'Flota') {
       return false;
@@ -46,7 +44,6 @@ export const Navbar: React.FC = () => {
   return (
     <header className={styles.headerContainer}>
       
-      {/* BARRA SUPERIOR OSCURA (Corporativa) */}
       <div className={styles.topBar}>
         <div className={styles.topLeft}>
           <div className={styles.logoBadge}>
@@ -71,7 +68,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* BARRA SECUNDARIA DE TABS (Tus rutas) */}
       <div className={styles.subNav}>
         <div className={styles.tabsContainer}>
           {tabs.map((tab) => {

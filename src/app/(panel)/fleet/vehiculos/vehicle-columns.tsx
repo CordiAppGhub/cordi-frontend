@@ -6,18 +6,16 @@ import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 
 export const getVehicleColumns = (
   removeVehicle: (id: number) => void
-  // onEdit: (vehicle: Vehicle) => void  <-- Descomenta esto cuando armes el modal de edición
+  // onEdit: (vehicle: Vehicle) => void
 ): ColumnDef<Vehicle>[] => [
   { id: 'plate', header: 'Placa', type: 'text', renderCell: (row: Vehicle) => <strong style={{ color: '#0f172a' }}>{row.plate}</strong> },
   
-  // 🚀 NUEVO: Etiqueta visual para la afiliación
   { 
     id: 'affiliation', 
     header: 'Afiliación', 
     type: 'text', 
 
     renderCell: (row: Vehicle) => {
-      // Un pequeño mapeo para que se vea más profesional que el texto plano del ENUM
       const affiliationLabels: Record<string, string> = {
         CORDIVEHICULO: 'Propio (2%)',
         CORDIHUB: 'Afiliado (10%)',
@@ -26,9 +24,9 @@ export const getVehicleColumns = (
       
       const label = affiliationLabels[row.affiliation || 'EXTERNAL'];
       const colorMap: Record<string, string> = {
-        CORDIVEHICULO: '#16a34a', // Verde
-        CORDIHUB: '#2563eb', // Azul
-        EXTERNAL: '#64748b' // Gris
+        CORDIVEHICULO: '#16a34a', 
+        CORDIHUB: '#2563eb',
+        EXTERNAL: '#64748b' 
       };
       
       return (

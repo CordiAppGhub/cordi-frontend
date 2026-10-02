@@ -13,7 +13,6 @@ const PROTECTED_ROUTES = [
   '/settings',
 ];
 
-// Rutas estrictamente prohibidas para el rol ANALISTA
 const RESTRICTED_FOR_ANALYST = ['/fleet'];
 
 function decodeJwtRole(token: string): string | null {
@@ -68,7 +67,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 🛡️ Bloqueo de seguridad por roles en el Middleware
   if (sessionToken) {
     const userRole = decodeJwtRole(sessionToken);
     

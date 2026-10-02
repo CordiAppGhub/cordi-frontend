@@ -71,7 +71,6 @@ export const RouteTariffModal: React.FC<RouteTariffModalProps> = ({ isOpen, onCl
         name: 'locationId',
         label: 'Bodega / Zona Franca (Opcional)',
         type: 'select',
-        // Bloqueamos el campo si no hay cliente seleccionado para guiar al usuario
         disabled: !selectedClientId, 
         options: [
           { 
@@ -97,7 +96,6 @@ export const RouteTariffModal: React.FC<RouteTariffModalProps> = ({ isOpen, onCl
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     
-    // 🚀 NUEVO: Actualizamos el estado interno cuando cambian el cliente
     if (name === 'clientId') {
       setSelectedClientId(Number(value) || null);
     }

@@ -19,7 +19,6 @@ interface OperationWorkflowProps {
   onOpenClosingModal: () => void;
 }
 
-// Mapeo lógico de estados a pasos visuales
 const WORKFLOW_STEPS = [
   { id: 'ASIGNADO', label: 'INICIAR VIAJE AL PUERTO', nextState: 'RUMBO_AL_PUERTO', action: 'update' },
   { id: 'RUMBO_AL_PUERTO', label: 'REPORTAR LLEGADA A PUERTO', nextState: 'EN_PUERTO', action: 'update' },
@@ -39,7 +38,6 @@ export function OperationWorkflow({
   
   const currentState = operation.estadoViaje || 'ASIGNADO';
   
-  // Encontrar el índice del paso actual
   let currentIndex = WORKFLOW_STEPS.findIndex(s => s.id === currentState);
   if (currentState === 'FINALIZADO') currentIndex = WORKFLOW_STEPS.length;
 
@@ -58,7 +56,6 @@ export function OperationWorkflow({
         </span>
       </div>
 
-      {/* PROGRESS BAR VISUAL (Circulitos) */}
       <div className={styles.progressTracker}>
         {WORKFLOW_STEPS.map((_, index) => (
           <React.Fragment key={index}>
@@ -70,7 +67,6 @@ export function OperationWorkflow({
         ))}
       </div>
 
-      {/* LISTA DE BOTONES VERTICAL */}
       <div className={styles.actionList}>
         {WORKFLOW_STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;

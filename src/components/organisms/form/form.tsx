@@ -48,7 +48,6 @@ export const SuperForm: React.FC<SuperFormProps> = ({
           return (
             <div
               key={field.name}
-              /* 🚀 MAGIA AQUÍ: Si es textarea, inyecta fullWidth para ocupar 2 columnas */
               className={`${styles.formGroup} ${field.type === 'textarea' ? styles.fullWidth : ''}`}
             >
               <label className={styles.label}>
@@ -57,7 +56,6 @@ export const SuperForm: React.FC<SuperFormProps> = ({
 
               {(() => {
                 switch (field.type) {
-                  // 🚀 NUEVO CASO: Renderiza un textarea real y grande
                   case 'textarea':
                     return (
                       <textarea
@@ -66,7 +64,7 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                         value={String(value)}
                         onChange={(e) => handleChange(field.name, e.target.value)}
                         disabled={field.disabled || isLoading}
-                        className={styles.textareaInput} /* Clase para darle altura */
+                        className={styles.textareaInput} 
                       />
                     );
 
@@ -86,16 +84,14 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                       <select
                         multiple
                         name={field.name}
-                        // Aseguramos que el valor siempre sea un array
                         value={Array.isArray(value) ? value.map(String) : []}
                         onChange={(e) => {
-                          // 🚀 Extraemos todos los <option> que el usuario haya seleccionado
                           const selectedValues = Array.from(e.target.selectedOptions).map(opt => opt.value);
                           handleChange(field.name, selectedValues);
                         }}
                         disabled={field.disabled || isLoading}
-                        className={`${styles.textareaInput} ${styles.multiselect}`} // Reciclamos las clases grandes
-                        style={{ height: '120px', padding: '8px' }} // Altura fija para que se vean varias opciones
+                        className={`${styles.textareaInput} ${styles.multiselect}`} 
+                        style={{ height: '120px', padding: '8px' }} 
                       >
                         {field.options?.map((opt) => (
                           <option key={opt.value} value={opt.value} style={{ padding: '6px', cursor: 'pointer' }}>
@@ -154,7 +150,6 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                 }
               })()}
 
-              {/* Opcional: Mostrar el error si existe */}
               {errorMessage && <span className={styles.errorMessage}>{errorMessage}</span>}
             </div>
           );

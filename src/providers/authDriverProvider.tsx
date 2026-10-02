@@ -3,7 +3,6 @@
 import React, { createContext, useContext } from 'react';
 import { useDriverPortal } from '@/hooks/use-driverPortal';
 
-// Creamos un contexto limpio y exclusivo para la PWA de conductores
 const DriverAuthContext = createContext<ReturnType<typeof useDriverPortal> | null>(null);
 
 export function DriverAuthProvider({ children }: { children: React.ReactNode }) {
@@ -16,7 +15,6 @@ export function DriverAuthProvider({ children }: { children: React.ReactNode }) 
   );
 }
 
-// Hook personalizado para consumir los datos del conductor en cualquier parte de la PWA
 export function useDriverAuth() {
   const context = useContext(DriverAuthContext);
   if (!context) {

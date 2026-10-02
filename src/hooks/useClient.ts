@@ -14,9 +14,6 @@ interface BackendErrorResponse { message?: string; }
 export function useClients() {
   const queryClient = useQueryClient();
 
-  // ==========================================
-  // QUERY: OBTENER CLIENTES (Con Caché)
-  // ==========================================
   const {
     data: clients = [],
     isLoading: isLoadingClients,
@@ -35,9 +32,6 @@ export function useClients() {
       : queryError.message || 'Error al cargar clientes';
   }
 
-  // ==========================================
-  // MUTACIONES
-  // ==========================================
   const createMutation = useMutation({
     mutationFn: (data: CreateClientInput) => clientService.create(data),
     onSuccess: () => {
@@ -74,9 +68,6 @@ export function useClients() {
     }
   });
 
-  // ==========================================
-  // WRAPPERS (Mantiene tu UI intacta)
-  // ==========================================
   const createClient = useCallback(async (data: CreateClientInput): Promise<boolean> => {
     try {
       await createMutation.mutateAsync(data);

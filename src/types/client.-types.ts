@@ -1,6 +1,5 @@
 import { Locations } from "./location.types";
 
-// 🚀 NUEVO: Representa la relación de la tabla intermedia en el frontend
 export interface ClientLocationRelation {
   clientId: number;
   locationId: number;
@@ -17,7 +16,6 @@ export interface Client {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  // 🚀 ACTUALIZADO: Apunta a la relación intermedia
   locations: ClientLocationRelation[]; 
 }
 

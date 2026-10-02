@@ -16,7 +16,6 @@ export interface NovedadItem {
 }
 
 export const novedadesService = {
-  // Ahora recibe un estado opcional para las tabs
   getAll: async (status?: string): Promise<NovedadItem[]> => {
     const params = status && status !== 'TODAS' ? { status } : {};
     const res = await api.get('/novedades', { params });

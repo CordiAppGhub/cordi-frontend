@@ -103,7 +103,6 @@ export function OperationTraceability({ operationId }: Props) {
   return (
     <div className={styles.wrapper}>
 
-      {/* DATOS PRINCIPALES */}
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>
@@ -224,7 +223,6 @@ export function OperationTraceability({ operationId }: Props) {
         </div>
       </div>
 
-      {/* LIQUIDACIÓN */}
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>
@@ -297,7 +295,6 @@ export function OperationTraceability({ operationId }: Props) {
         </div>
       </div>
 
-      {/* EVIDENCIAS */}
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>
@@ -341,7 +338,6 @@ export function OperationTraceability({ operationId }: Props) {
         </div>
       </div>
 
-      {/* LÍNEA DE TIEMPO */}
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>
@@ -357,7 +353,6 @@ export function OperationTraceability({ operationId }: Props) {
         </div>
       </div>
 
-      {/* VISOR DE EVIDENCIA */}
 
       {selectedImage && (
         <div

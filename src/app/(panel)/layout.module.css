@@ -3,25 +3,22 @@
    ========================================== */
 .panelWrapper {
   display: flex;
-  flex-direction: column; /* 🚀 CLAVE: Fuerza a que la Navbar esté arriba y el contenido abajo */
+  flex-direction: column; 
   min-height: 100vh;
   width: 100%;
   background-color: #f4f7fe;
   overflow-x: hidden; 
 }
 
-/* Envolvemos el header y el main para manejarlos juntos */
 .mainWrapper {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   width: 100%;
-  /* 🚀 Ya no necesitamos transiciones de margin-left porque no hay sidebar lateral */
   transition: width 0.3s ease; 
 }
 
-/* --- ESTILOS DE LA TOPBAR / NAVBAR --- */
 .topbar {
   height: 70px;
   background-color: rgba(255, 255, 255, 0.85);
@@ -73,25 +70,21 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* --- ESTILOS DEL CONTENIDO PRINCIPAL --- */
 .mainContent {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  align-items: stretch; /* Fuerza a los hijos a ocupar el 100% del ancho */
+  align-items: stretch; 
   width: 100%;
-  max-width: 1600px; /* 🚀 Evita que en pantallas ultra-anchas los elementos se estiren demasiado */
-  margin: 0 auto;    /* Centra el contenido elegantemente en monitores grandes */
+  max-width: 1600px; 
+  margin: 0 auto;    
   padding: 1rem; 
   box-sizing: border-box;
 }
 
-/* ==========================================
-   2. MEDIA QUERIES (ESCRITORIOS / PANTALLAS GRANDES)
-   ========================================== */
+
 @media (min-width: 1024px) {
   .mainWrapper {
-    /* 🚀 ELIMINADO: margin-left y calc de 260px porque ya no hay sidebar izquierdo */
     width: 100%; 
   }
   

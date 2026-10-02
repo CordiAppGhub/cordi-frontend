@@ -7,7 +7,6 @@
   align-items: center;
   justify-content: center;
   background-color: #f0f2f5;
-  /* 🔥 CRÍTICO MÓVIL: Padding lateral cómodo para evitar que la tarjeta toque los bordes */
   padding: 1rem; 
 }
 
@@ -15,9 +14,9 @@
   width: 100%;
   max-width: 420px;
   background-color: #ffffff;
-  border-radius: 16px; /* Ligeramente más redondeado y moderno en móvil */
+  border-radius: 16px; 
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  /* 🔥 CRÍTICO MÓVIL: Padding adaptado para aprovechar mejor el espacio vertical en celulares */
+  
   padding: 1.75rem 1.25rem; 
   box-sizing: border-box;
 }
@@ -28,7 +27,6 @@
 }
 
 .title {
-  /* 🔥 Tipografía fluida para que el título no rompa en pantallas pequeñas de 320px */
   font-size: 1.5rem; 
   font-weight: 700;
   color: #1a1a1a;
@@ -58,12 +56,10 @@
 
 .input {
   width: 100%;
-  /* 🔥 CRÍTICO MÓVIL: Padding vertical amplio para garantizar el área táctil */
   padding: 0.85rem 1rem; 
   border: 1px solid #d1d5db;
   border-radius: 8px;
   
-  /* 🔥 EL TRUCO DE ORO: 16px previene el zoom automático molesto en iOS (Safari) */
   font-size: 16px; 
   
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -79,7 +75,6 @@
 
 .submitBtn {
   width: 100%;
-  /* 🔥 CRÍTICO MÓVIL: Altura mínima táctil (min 48px) para el pulgar */
   min-height: 48px; 
   padding: 0.875rem;
   background-color: #0056b3;
@@ -120,9 +115,7 @@
 }
 
 
-/* ==========================================
-   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
+
 @media (min-width: 768px) {
   .loginContainer {
     padding: 0 1rem;
@@ -130,7 +123,7 @@
 
   .loginCard {
     border-radius: 12px;
-    padding: 2.5rem; /* Retorna al padding generoso de escritorio */
+    padding: 2.5rem; 
   }
 
   .loginHeader {
@@ -138,7 +131,7 @@
   }
 
   .title {
-    font-size: 1.75rem; /* Retorna al tamaño grande original */
+    font-size: 1.75rem;
     margin: 0 0 0.5rem 0;
   }
 
@@ -151,7 +144,6 @@
   }
 
   .input {
-    /* Retorna a 14px/0.75rem para mayor densidad de datos en monitores */
     padding: 0.75rem 1rem;
     font-size: 0.95rem; 
   }

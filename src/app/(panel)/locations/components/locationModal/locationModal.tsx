@@ -22,7 +22,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
 
   if (!isOpen) return null;
 
-  // Extraemos los IDs de los clientes que ya operan en esta ubicación al editar
   const initialClientIds = locationToEdit?.clients
     ? locationToEdit.clients.map((item) => String(item.clientId))
     : [];
@@ -35,7 +34,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
     isClient: locationToEdit.isClient,
     isOrigin: locationToEdit.isOrigin,
     isDestination: locationToEdit.isDestination,
-    exigeCita: locationToEdit.exigeCita || false, // 🚀 NUEVO: Cargamos el estado si estamos editando
+    exigeCita: locationToEdit.exigeCita || false, 
     clientIds: initialClientIds,
   } : {
     name: '', 
@@ -45,7 +44,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
     isClient: false, 
     isOrigin: true, 
     isDestination: true,
-    exigeCita: false, // 🚀 NUEVO: Por defecto no exige cita
+    exigeCita: false, 
     clientIds: [],
   };
 
@@ -80,7 +79,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose, l
   ];
 
   const handleSubmit = async (formData: Record<string, any>) => {
-    // Convertimos los IDs seleccionados a un arreglo numérico para la API
     const rawClientIds = Array.isArray(formData.clientIds) ? formData.clientIds : [];
     const clientIds = rawClientIds.map((id: string | number) => Number(id)).filter(Boolean);
 

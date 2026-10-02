@@ -13,7 +13,6 @@ import { getSurchargeColumns } from '../components/surcharge-columns';
 
 import { AffiliationTariff } from '@/types/tariff-ypes';
 
-// 🚀 NUEVO: Importamos tu componente de Tabs (ajusta la ruta si es necesario)
 import { Tabs, TabOption } from '@/components/molecules/tabs/tabs';
 import { VehicleTariffModal } from '../components/ModalVehicleTariff';
 import { getVehicleTariffColumns } from '../components/Vehicle-Tariff-columns';
@@ -53,18 +52,14 @@ export const TariffsView: React.FC = () => {
     }
   }, [refreshTariffs, refreshSurcharges, fetchVehicleTariffs]);
 
-  // ==========================================
-  // CONFIGURACIÓN DE LAS PESTAÑAS
-  // ==========================================
+
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'BASE', label: 'Tarifas de Viaje' },
     { id: 'NOVEDADES', label: 'Novedades y Recargos' },
     { id: 'VEHICULOS', label: 'Tarifas de Vehículos' },
   ], []);
 
-  // ==========================================
-  // LÓGICA DE TABLAS
-  // ==========================================
+ 
   const tariffColumns = useMemo(() => getTariffColumns(), []);
   const totalPagesBase = Math.ceil((clientTariffs?.length || 0) / itemsPerPage) || 1;
   const paginatedTariffs = useMemo(() => {
@@ -89,9 +84,7 @@ export const TariffsView: React.FC = () => {
     return (vehicleTariffs || []).slice(startIndex, startIndex + itemsPerPage);
   }, [vehicleTariffs, currentPageVehicle]);
 
-  // ==========================================
-  // HANDLER BOTÓN PRINCIPAL
-  // ==========================================
+  
   const handleOpenMainModal = () => {
     if (activeTab === 'BASE') setIsTariffModalOpen(true);
     else if (activeTab === 'NOVEDADES') setIsSurchargeModalOpen(true);
@@ -104,7 +97,6 @@ export const TariffsView: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       
-      {/* HEADER DINÁMICO */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>
           {activeTab === 'BASE' && 'Tarifario de Viajes (Base)'}
@@ -118,7 +110,6 @@ export const TariffsView: React.FC = () => {
         </Button>
       </div>
 
-      {/* 🚀 NUEVO: USO DE TU COMPONENTE TABS */}
       <div style={{ marginBottom: '24px' }}>
         <Tabs 
           tabs={tabOptions}
@@ -127,7 +118,6 @@ export const TariffsView: React.FC = () => {
         />
       </div>
 
-      {/* RENDERIZADO DE TABLAS */}
       {isLoadingTariffs ? (
         <p style={{ color: '#64748b', textAlign: 'center', padding: '40px' }}>Cargando datos...</p>
       ) : (
@@ -155,7 +145,6 @@ export const TariffsView: React.FC = () => {
         </>
       )}
 
-      {/* MODALES */}
       <RouteTariffModal isOpen={isTariffModalOpen} onClose={() => setIsTariffModalOpen(false)} />
 
       {isSurchargeModalOpen && (
@@ -167,7 +156,6 @@ export const TariffsView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL DE VEHÍCULOS */}
       {isVehicleModalOpen && (
         <VehicleTariffModal 
           isOpen={isVehicleModalOpen}

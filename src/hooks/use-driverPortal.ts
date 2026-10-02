@@ -15,7 +15,6 @@ interface BackendErrorResponse {
 export function useDriverPortal() {
   const queryClient = useQueryClient();
 
-  // 🚀 1. EXTRAEMOS ESTADOS Y ACCIONES DE ZUSTAND
   const { 
     authStep, 
     setAuthStep, 
@@ -25,12 +24,8 @@ export function useDriverPortal() {
     isAuthenticated: storeIsAuthenticated
   } = useDriverAuthStore();
 
-  // Estado local exclusivo para errores de los inputs
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // ==========================================
-  // 2. QUERY: VERIFICAR SESIÓN Y TRAER DATOS
-  // ==========================================
   const {
     data: queryDriver = null,
     isLoading: loadingProfile,
@@ -40,12 +35,9 @@ export function useDriverPortal() {
     queryKey: ['driver-portal-profile'],
     queryFn: () => driverAuthService.getDriverProfile(),
     retry: false,
-    staleTime: 1000 * 60 * 2, // Cache de 2 minutos
+    staleTime: 1000 * 60 * 2,
   });
 
-  // ==========================================
-  // 3. QUERY: HISTORIAL Y TRAZABILIDAD DE VIAJES
-  // ==========================================
   const {
     data: history = [],
     isLoading: loadingHistory,
@@ -53,24 +45,19 @@ export function useDriverPortal() {
   } = useQuery({
     queryKey: ['driver-trip-history'],
     queryFn: () => driverPortalService.getDriverHistory(),
-    enabled: storeIsAuthenticated || (isProfileSuccess && !!queryDriver), // Solo busca si está autenticado
-    staleTime: 1000 * 60 * 5, // Cache de 5 minutos
+    enabled: storeIsAuthenticated || (isProfileSuccess && !!queryDriver), 
+    staleTime: 1000 * 60 * 5, 
   });
 
-  // 🚀 4. SINCRONIZAR REACT QUERY -> ZUSTAND
   useEffect(() => {
     if (isProfileSuccess && queryDriver) {
       setLoginSuccess(queryDriver);
     }
   }, [isProfileSuccess, queryDriver, setLoginSuccess]);
 
-  // Combinamos los datos para evitar parpadeos en la UI
   const driver = storeDriver || queryDriver;
   const isAuthenticated = storeIsAuthenticated || (isProfileSuccess && !!queryDriver);
 
-  // ==========================================
-  // 5. MUTACIONES: AUTENTICACIÓN (OTP)
-  // ==========================================
   const requestOtpMutation = useMutation({
     mutationFn: (cedula: string) => driverAuthService.requestOtp(cedula),
     onSuccess: () => {
@@ -105,9 +92,6 @@ export function useDriverPortal() {
     logoutStore();
   };
 
-  // ==========================================
-  // 6. MUTACIONES: OPERATIVAS DEL VIAJE
-  // ==========================================
   const uploadEvidenceMutation = useMutation({
     mutationFn: ({ operationId, file }: { operationId: number; file: File }) =>
       driverPortalService.uploadEvidence(operationId, file),
@@ -160,9 +144,6 @@ export function useDriverPortal() {
     },
   });
 
-  // ==========================================
-  // 7. WRAPPERS EXPORTABLES
-  // ==========================================
   const uploadEvidence = async (operationId: number, file: File): Promise<void> => {
     await uploadEvidenceMutation.mutateAsync({ operationId, file });
   };
@@ -187,39 +168,31 @@ export function useDriverPortal() {
     }
   };
 
-  // ==========================================
-  // RETORNO DEL HOOK
-  // ==========================================
   return {
     driver,
     loading: loadingProfile,
     isAuthenticated,
     
-    // Historial y Trazabilidad
     history,
     loadingHistory,
     refetchHistory,
     
-    // Auth State
     authStep,
     setAuthStep,
     authError,
     logout,
     
-    // Auth Actions
     requestOtp: (cedula: string) => requestOtpMutation.mutateAsync(cedula),
     verifyOtp: (cedula: string, code: string) => verifyOtpMutation.mutateAsync({ cedula, code }),
     isRequestingOtp: requestOtpMutation.isPending,
     isVerifyingOtp: verifyOtpMutation.isPending,
     
-    // Operative Actions
     uploadEvidence,
     updateTravelState,
     scanPlate,
     scanContainer,
     loadData,
     
-    // Loading States operativos
     uploading: uploadEvidenceMutation.isPending,
     processingState: 
       scanPlateMutation.isPending || 

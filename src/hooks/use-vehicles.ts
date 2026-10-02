@@ -16,9 +16,6 @@ interface BackendErrorResponse {
 export const useVehicles = () => {
   const queryClient = useQueryClient();
 
-  // ==========================================
-  // QUERY: CARGAR VEHÍCULOS
-  // ==========================================
   const {
     data: vehicles = [],
     isLoading: isQueryLoading,
@@ -26,17 +23,14 @@ export const useVehicles = () => {
   } = useQuery({
     queryKey: ['vehicles'],
     queryFn: vehiclesService.getAll,
-    staleTime: 1000 * 60 * 5, // 5 minutos en caché para el catálogo principal
+    staleTime: 1000 * 60 * 5, 
   });
 
-  // ==========================================
-  // MUTACIONES: CRUD Y EXCEL
-  // ==========================================
   const createMutation = useMutation({
     mutationFn: (data: CreateVehicleDto) => vehiclesService.create(data),
     onSuccess: () => {
       showToast.success('Vehículo registrado con éxito');
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] }); // 👈 Recarga la tabla
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] }); 
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo crear el vehículo.';
@@ -80,9 +74,6 @@ export const useVehicles = () => {
     }
   });
 
-  // ==========================================
-  // WRAPPERS (Para mantener compatibilidad con tu UI)
-  // ==========================================
   const createVehicle = useCallback(async (data: CreateVehicleDto): Promise<boolean> => {
     try {
       await createMutation.mutateAsync(data);
@@ -127,12 +118,10 @@ export const useVehicles = () => {
     try {
       await uploadMutation.mutateAsync(file);
     } catch (err) {
-      // Mantenemos el throw original por si el componente del input file necesita limpiar su estado en error
       throw err; 
     }
   }, [uploadMutation]);
 
-  // Unificamos el estado de carga para lectura, escritura y subida de archivos
   const isLoading = isQueryLoading || createMutation.isPending || updateMutation.isPending || removeMutation.isPending || uploadMutation.isPending;
 
   return {

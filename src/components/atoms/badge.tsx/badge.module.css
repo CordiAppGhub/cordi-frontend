@@ -10,21 +10,17 @@
   font-size: 0.75rem;
   font-weight: 600;
   
-  /* 🔥 CRÍTICO: Evita que "EN CURSO" se parta en dos líneas 
-     cuando la tabla se comprime en la pantalla de un móvil */
+
   white-space: nowrap; 
   
-  /* Garantiza una altura perfecta y centrada en cualquier navegador */
   line-height: 1; 
   
-  /* Previene saltos de píxeles si en el futuro decides agregarles borde hover */
   border: 1px solid transparent; 
   
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* --- Variantes de Color --- */
 .success { 
   background-color: #dcfce7; 
   color: #166534; 

@@ -33,7 +33,6 @@
   letter-spacing: 0.02em;
 }
 
-/* Selectores y fechas */
 .filterField select,
 .filterField input[type="date"] {
   box-sizing: border-box;
@@ -75,7 +74,6 @@
   cursor: not-allowed;
 }
 
-/* Opciones adicionales */
 .checkboxGroup {
   display: flex;
   flex-direction: column;
@@ -107,7 +105,6 @@
   cursor: pointer;
 }
 
-/* Botón de limpieza */
 .clearButtonWrapper {
   display: flex;
   align-items: flex-end;
@@ -154,7 +151,6 @@
   }
 }
 
-/* Pantallas medianas */
 @media (max-width: 1400px) {
   .filtersGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -170,7 +166,6 @@
   }
 }
 
-/* Tablets */
 @media (max-width: 900px) {
   .filtersPanel {
     padding: 12px;
@@ -187,7 +182,6 @@
   }
 }
 
-/* Móviles */
 @media (max-width: 480px) {
   .filtersGrid {
     grid-template-columns: minmax(0, 1fr);

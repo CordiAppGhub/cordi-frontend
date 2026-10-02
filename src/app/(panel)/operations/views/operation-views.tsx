@@ -15,7 +15,6 @@ import styles from '../operations.module.css';
 import { getOperationsColumns } from '../components/operations-colums';
 import { ApplySurchargeModal } from '../components/ApplySurchargeModal'; 
 import { NovedadForm } from '../../novedades/components/novedades-modal/novedades-modal';
-// 🚀 Importamos el nuevo formulario de novedades (sin el envoltorio del modal)
 
 const tabs = [
   { id: 'TODAS', label: 'Todas las Operaciones' },
@@ -33,11 +32,9 @@ export function OperationsView() {
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('TODAS');
   
-  // 🚀 Estados del SuperModal Integrado (Trazabilidad & Novedades)
   const [traceabilityId, setTraceabilityId] = useState<number | null>(null);
   const [modalTab, setModalTab] = useState<'DETAILS' | 'NOVEDAD'>('DETAILS');
 
-  // Estado para el Modal de Novedades de Facturación / Recargos
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
 
   const handleOpenReassign = (operationId: number) => {
@@ -105,7 +102,6 @@ export function OperationsView() {
         ))}
       </div>
 
-      {/* FILTROS */}
       <div className={styles.filtersBar}>
         <input
           type="text"
@@ -145,11 +141,9 @@ export function OperationsView() {
         />
       </div>
 
-      {/* MODALES GLOBALES */}
       <AssignModal />
       <CreateModal />
 
-      {/* MODAL DE RECARGOS FINANCIEROS */}
       <ApplySurchargeModal 
         isOpen={surchargeModalOpId !== null} 
         operationId={surchargeModalOpId} 
@@ -159,26 +153,23 @@ export function OperationsView() {
         }} 
       />
 
-      {/* 🚀 SUPERMODAL DE TRAZABILIDAD (CON TABS INTERNOS) */}
       <SuperModal
         isOpen={traceabilityId !== null}
         onClose={() => {
           setTraceabilityId(null);
-          setModalTab('DETAILS'); // Reinicia la pestaña al cerrar
+          setModalTab('DETAILS'); 
         }}
-        width="1000px" // Ancho expandido para acomodar las 2 columnas de trazabilidad
+        width="1000px" 
       >
         {traceabilityId && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* CABECERA Y PESTAÑAS DEL MODAL */}
             <div style={{ borderBottom: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
                   Torre de Control — Viaje #{traceabilityId}
                 </h2>
 
-                {/* Botón rápido de emergencia (Solo visible si está pausada y en la vista de detalles) */}
                 {isPausada && modalTab === 'DETAILS' && (
                   <button
                     onClick={() => handleOpenReassign(traceabilityId)}
@@ -218,7 +209,6 @@ export function OperationsView() {
               </div>
             </div>
 
-            {/* CONTENIDO DINÁMICO SEGÚN LA PESTAÑA */}
             {modalTab === 'DETAILS' ? (
               <OperationTraceability operationId={traceabilityId} />
             ) : (
@@ -228,8 +218,8 @@ export function OperationsView() {
                 onCancel={() => setModalTab('DETAILS')}
                 onSuccess={() => {
                   alert('¡Novedad registrada con éxito en la Torre de Control!');
-                  setModalTab('DETAILS'); // Vuelve automáticamente a detalles
-                  fetchOperations(); // Refresca los estados
+                  setModalTab('DETAILS');
+                  fetchOperations();
                 }}
               />
             )}

@@ -1,4 +1,3 @@
-// types/driver-portal.types.ts
 
 export type OperationStatus =
   | 'CREADO'
@@ -39,14 +38,12 @@ export interface Operation {
   placaIA?: string | null;
   containerNumber?: string | null;
   
-  // 🚀 Campos planos enviados por el backend
   clientName?: string;
   clientLocationName?: string;
   origenName?: string;
   destinoName?: string;
   vehiclePlate?: string;
 
-  // Objetos originales por si los necesitas en otro lado
   origen?: Location;
   destino?: Location;
   vehicle?: Pick<Vehicle, 'plate'>;

@@ -50,7 +50,6 @@ export function useSuperTable<T extends { id: number | string }>(
     setData(prev => prev.map(row => 
       row.id === rowId ? { ...row, [columnId]: newValue } : row
     ));
-    // OJO: Aquí podrías disparar un guardado en background a tu API si lo deseas.
   };
 
   const addRow = (newRow: T) => {

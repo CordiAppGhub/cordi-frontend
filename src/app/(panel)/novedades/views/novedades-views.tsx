@@ -41,7 +41,7 @@ export function NovedadesPageView() {
        <LiveClock onRefresh={refresh} isRefetching={isLoading} />
       </div>
 
-      {/* AQUÍ VA TU NUEVO COMPONENTE UNIVERSAL SÚPER POTENTE */}
+   
       <Tabs 
         tabs={NOVEDADES_TABS} 
         activeTab={activeTab} 

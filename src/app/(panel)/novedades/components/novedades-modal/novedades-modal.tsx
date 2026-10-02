@@ -22,7 +22,6 @@ export function NovedadForm({ onSuccess, onCancel, operationId, rawOperation }: 
   const resolvedVehicleId = rawOperation?.vehicleId || rawOperation?.vehicle?.id;
   const resolvedDriverId = rawOperation?.driverId || rawOperation?.driver?.id;
 
- // En src/app/(panel)/novedades/components/novedad-form/novedad-form.tsx
 
 const formFields: FormField[] = [
   {
@@ -49,7 +48,7 @@ const formFields: FormField[] = [
   {
     name: 'description',
     label: 'Descripción detallada del problema',
-    type: 'textarea', // 🚀 SuperForm detectará esto, lo pondrá en la fila de abajo y lo hará gigante
+    type: 'textarea', 
     placeholder: 'Ej. Conductor reporta llanta pinchada, trancón de 3 horas o desvío en ruta...',
   },
 ];

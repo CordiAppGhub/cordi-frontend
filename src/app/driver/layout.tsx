@@ -10,19 +10,16 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
     <QueryProvider>
       <DriverAuthProvider>
         <div className={styles.appWrapper}>
-          {/* HEADER TIPO APP */}
           <header className={styles.appHeader}>
             <button className={styles.iconBtn}>☰</button>
             <h1 className={styles.appTitle}>MI MULA</h1>
             <button className={styles.iconBtn}>🔔</button>
           </header>
 
-          {/* CONTENIDO PRINCIPAL (Desplazable) */}
           <main className={styles.appMain}>
             {children}
           </main>
 
-          {/* BOTTOM NAVIGATION BAR */}
           <nav className={styles.bottomNav}>
             <div className={`${styles.navItem} ${styles.active}`}>
               <span className={styles.navIcon}>🏠</span>

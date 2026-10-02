@@ -144,7 +144,6 @@
   color: #64748b;
 }
 
-/* LA BARRA INFERIOR (GPS y Tiempos) */
 .liveStatsStrip {
   display: flex;
   justify-content: space-between;

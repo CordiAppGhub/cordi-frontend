@@ -10,36 +10,25 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// ==============================================================
-// ⬆️ INTERCEPTOR DE PETICIONES (Cuando arranca el viaje)
-// ==============================================================
 api.interceptors.request.use((config) => {
-  // Encendemos el cargando global de Zustand
   useUIStore.getState().startLoading();
   return config;
 }, (error) => {
-  // Si ocurre un error antes de que la petición salga
   useUIStore.getState().stopLoading();
   return Promise.reject(error);
 });
 
-// ==============================================================
-// ⬇️ INTERCEPTOR DE RESPUESTAS (Cuando termina)
-// ==============================================================
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Apagamos el cargando global porque la petición fue exitosa
     useUIStore.getState().stopLoading();
     return response;
   },
   (error: AxiosError<{ message: string | string[]; error: string; statusCode: number }>) => {
-    // Apagamos el cargando global porque la petición falló
     useUIStore.getState().stopLoading();
 
     const status = error.response?.status;
     const backendMessage = error.response?.data?.message;
 
-    // Manejo especial para errores de autenticación
     if (status === 401) {
       console.error('🔒 Petición no autorizada:', {
         url: error.config?.url,
@@ -49,7 +38,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Manejo de errores controlados desde NestJS (BadRequest, Conflict, etc)
     if (error.response) {
       const message = Array.isArray(backendMessage) 
         ? backendMessage.join(', ') 

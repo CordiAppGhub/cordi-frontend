@@ -11,24 +11,18 @@ interface BackendErrorResponse {
 }
 
 export function useAuthLogin() {
-  // ==========================================
-  // ESTADOS DE UI (Mantenemos useState para inputs y vistas)
-  // ==========================================
   const [step, setStep] = useState<1 | 2>(1); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState(''); 
   const [showPassword, setShowPassword] = useState(false);
 
-  // ==========================================
-  // MUTACIÓN 1: LOGIN Y ENVÍO DE OTP
-  // ==========================================
   const loginMutation = useMutation({
     mutationFn: () => authService.loginStepOne(email, password),
     onSuccess: (data) => {
       if (data?.requires2FA) {
         showToast.success('¡Credenciales correctas! Código enviado a tu correo.');
-        setStep(2); // Pasamos al paso 2
+        setStep(2);
       }
     },
     onError: (err: unknown) => {

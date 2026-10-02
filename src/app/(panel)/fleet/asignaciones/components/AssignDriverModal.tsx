@@ -30,8 +30,6 @@ export default function AssignDriverModal({
     if (isOpen) {
       loadVehicles();
       loadDrivers();
-      setVehicleId(initialVehicleId ? String(initialVehicleId) : '');
-      setDriverId('');
     }
   }, [isOpen, loadVehicles, loadDrivers, initialVehicleId]);
 
@@ -60,7 +58,6 @@ export default function AssignDriverModal({
       width="450px"
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Select de Vehículo */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Seleccionar Vehículo
@@ -89,7 +86,6 @@ export default function AssignDriverModal({
           </select>
         </div>
 
-        {/* Select de Conductor */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Seleccionar Conductor
@@ -118,7 +114,6 @@ export default function AssignDriverModal({
           </select>
         </div>
 
-        {/* Botones de acción */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
           <button
             type="button"

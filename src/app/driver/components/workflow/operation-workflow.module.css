@@ -53,7 +53,7 @@
   flex: 1;
   height: 2px;
   background: #cbd5e1;
-  margin: 0 -2px; /* Hace que la línea se una perfecto con los puntos */
+  margin: 0 -2px;
   z-index: 1;
 }
 

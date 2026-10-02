@@ -14,12 +14,10 @@ export const LiveClock: React.FC<LiveClockProps> = ({ onRefresh, isRefetching = 
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    // 1. Evitamos el setState síncrono para que el linter no moleste
     const mountTimer = setTimeout(() => {
       setMounted(true);
     }, 0);
     
-    // 2. Actualizamos el reloj cada segundo exacto
     const clockTimer = setInterval(() => {
       setTime(new Date());
     }, 1000);
@@ -30,10 +28,8 @@ export const LiveClock: React.FC<LiveClockProps> = ({ onRefresh, isRefetching = 
     };
   }, []);
 
-  // Esqueleto para evitar parpadeos e hidratación fallida
   if (!mounted) return <div className={styles.pill} style={{ height: '36px', width: '210px' }} />;
 
-  // 👇 AQUÍ ESTÁ LA MAGIA: Agregamos `second: '2-digit'`
   const formattedTime = time.toLocaleTimeString('es-CO', {
     hour: 'numeric',
     minute: '2-digit',

@@ -23,19 +23,16 @@ export const AssignModal: React.FC = () => {
   const operationTarget = operations.find(op => op.id === selectedOperationId);
   const isEmergencyReassign = operationTarget?.status === 'PAUSADA' || operationTarget?.status === 'EN_CURSO';
 
-  // 🚀 LÓGICA DE AUTOCOMPLETADO: Cuando seleccionan un conductor, buscamos su vehículo preasignado
   const handleDriverChange = (driverIdStr: string) => {
     setSelectedDriver(driverIdStr);
     setError('');
 
     const driverIdNum = Number(driverIdStr);
-    // Buscamos en la lista de vehículos cuál tiene este driverId amarrado
     const vehicleAssigned = vehicles.find(v => v.driverId === driverIdNum);
 
     if (vehicleAssigned) {
       setSelectedVehicle(String(vehicleAssigned.id));
     } else {
-      // Si el conductor no tiene vehículo fijo, dejamos libre para que el analista elija
       setSelectedVehicle('');
     }
   };

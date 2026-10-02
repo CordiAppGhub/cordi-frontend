@@ -1,15 +1,15 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import styles from './SuperModal.module.css'; // 🚀 Importamos el módulo CSS
+import styles from './SuperModal.module.css';
 
 interface SuperModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  width?: string;       // Ancho dinámico (ej: '500px', '80%')
-  maxHeight?: string;   // Altura máxima antes de hacer scroll interno
+  width?: string;       
+  maxHeight?: string;   
 }
 
 export const SuperModal: React.FC<SuperModalProps> = ({
@@ -22,7 +22,6 @@ export const SuperModal: React.FC<SuperModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Cerramos el modal si el usuario hace clic fuera de la caja blanca
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -33,7 +32,6 @@ export const SuperModal: React.FC<SuperModalProps> = ({
     <div className={styles.overlay} onClick={handleOverlayClick}>
       <div 
         className={styles.modal}
-        // Conservamos los estilos en línea solo para las props dinámicas
         style={{ width, maxHeight }} 
       >
         {title && (
@@ -42,7 +40,6 @@ export const SuperModal: React.FC<SuperModalProps> = ({
           </h2>
         )}
         
-        {/* Aquí se inyectará cualquier contenido que le pasemos (Formularios, Tablas, Textos) */}
         <div className={styles.content}>
           {children}
         </div>

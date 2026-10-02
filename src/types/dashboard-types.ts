@@ -3,7 +3,7 @@
 export interface KpiSummary {
   tasaEficiencia: number;
   totalViajes: number;
-  ingresosEstimados: number; // 🚀 NUEVO: Desde el backend
+  ingresosEstimados: number; 
   toneladas: number;
   kmTotales: number;
 }
@@ -16,13 +16,12 @@ export interface FlotaSummary {
   noDisponibles?: number;
 }
 
-// 🚀 NUEVO: Interfaz específica para las tarjetas superiores (Sincronizada con NestJS)
 export interface TopCardsSummary {
   totalFlota: number;
   operativas: number;
   enMantenimiento: number;
   noDisponibles: number;
-  pendientes: number; // 🚀 NUEVO: Dato de operaciones en estado CREADO/ASIGNADO
+  pendientes: number;
   viajesHoy: number;
 }
 
@@ -34,7 +33,7 @@ export interface ActiveDispatch {
   cliente: string;
   viajeActual: string;
   ultimaUbicacion: string;
-  hasDesvios: boolean; // 🚀 NUEVO: Bandera de desvíos
+  hasDesvios: boolean;
   proximaAccion: string;
 }
 
@@ -46,14 +45,14 @@ export interface Alert {
 
 export interface DashboardSummary {
   kpis: KpiSummary;
-  topCards: TopCardsSummary; // 🚀 Aplicamos la nueva interfaz aquí
+  topCards: TopCardsSummary;
   flota: FlotaSummary;
   activeDispatches: ActiveDispatch[];
   alertasCriticas: {
     mantenimiento: number;
     soatVencido: number;
     novedades: number;
-    desvios: number; // 🚀 NUEVO
+    desvios: number; 
     lista: Alert[];
   };
 }

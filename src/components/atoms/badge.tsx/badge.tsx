@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { StatusConfig } from '@/constants/enum-mapping-types'; // Asegura tu ruta
+import { StatusConfig } from '@/constants/enum-mapping-types'; 
 
 interface StatusBadgeProps {
   status?: string | null;
@@ -17,7 +17,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, textNull = '--
     color: '#475569',
   };
 
-  // 🚀 SI TIENE "DOT", RENDERIZAMOS EL DISEÑO DE SEMÁFORO (Torre de Control)
   if (config.dot) {
     return (
       <div 
@@ -52,7 +51,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, textNull = '--
     );
   }
 
-  // 🏷️ SI NO TIENE "DOT", RENDERIZAMOS EL DISEÑO ESTÁNDAR (Vehículos, Microestados, etc.)
   return (
     <span
       style={{

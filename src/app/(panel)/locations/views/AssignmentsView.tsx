@@ -22,7 +22,6 @@ export const AssignmentsView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
-  // 🚀 ESTADO NUEVO: Captura el cliente seleccionado en el formulario
   const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -31,22 +30,20 @@ export const AssignmentsView: React.FC = () => {
   const handleOpenCreate = () => {
     setIsModalOpen(true);
     setValidationErrors({});
-    setSelectedClientId(''); // Limpiamos al abrir
+    setSelectedClientId(''); 
   };
 
   const columns = useMemo(() => getAssignmentColumns(removeAssignment), [removeAssignment]);
 
-  // 🚀 LÓGICA DE FILTRADO: Solo ubicaciones donde el cliente ya existe en la tabla intermedia
   const availableLocations = useMemo(() => {
-    if (!selectedClientId) return []; // Si no hay cliente seleccionado, devolvemos vacío
+    if (!selectedClientId) return [];
 
     return locations.filter((loc) => 
-      // Verificamos si en la lista de clientes de esta ubicación está el que seleccionamos
+     
       loc.clients?.some((c) => String(c.clientId) === selectedClientId)
     );
   }, [locations, selectedClientId]);
 
-  // Construcción dinámica de los campos del formulario
   const formFields: FormField[] = [
     {
       name: 'analystId',
@@ -70,7 +67,7 @@ export const AssignmentsView: React.FC = () => {
     },
     {
       name: 'locationId',
-      // 🚀 Cambiamos el label y deshabilitamos si no hay cliente seleccionado
+  
       label: selectedClientId 
         ? '3. Seleccionar Ubicación / Instalación' 
         : '3. Selecciona un cliente primero',
@@ -79,7 +76,6 @@ export const AssignmentsView: React.FC = () => {
         { value: '', label: '-- Selecciona una ubicación --' },
         ...availableLocations.map((l) => ({ value: String(l.id), label: l.name })),
       ],
-      // Se deshabilita si no hay ubicaciones disponibles para ese cliente
       disabled: isLoadingLocations || availableLocations.length === 0,
     },
   ];

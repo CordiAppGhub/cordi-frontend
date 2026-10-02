@@ -39,9 +39,7 @@ export default function LoginPage() {
         </div>
 
         {step === 1 ? (
-          // ==========================================
-          // PASO 1: Formulario de Correo y Contraseña
-          // ==========================================
+      
           <form onSubmit={handleLogin} noValidate>
             <div className={styles.formGroup}>
               <label htmlFor="email" className={styles.label}>Correo Electrónico</label>
@@ -105,9 +103,7 @@ export default function LoginPage() {
             </button>
           </form>
         ) : (
-          // ==========================================
-          // PASO 2: Ingreso del Código OTP (6 dígitos)
-          // ==========================================
+   
           <form onSubmit={handleVerify2FA} noValidate>
             <div className={styles.formGroup}>
               <p style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', marginBottom: '16px' }}>

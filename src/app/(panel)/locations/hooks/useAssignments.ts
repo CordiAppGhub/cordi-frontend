@@ -112,9 +112,9 @@ export function useMyAssignments() {
     error: queryError,
     refetch: refreshMyAssignments,
   } = useQuery({
-    queryKey: ['my-assignments'], // 🚀 Clave de caché independiente
+    queryKey: ['my-assignments'], 
     queryFn: assignmentService.getMyAssignments,
-    staleTime: 1000 * 60 * 5, // Cachea por 5 minutos
+    staleTime: 1000 * 60 * 5, 
   });
 
   let errorMessage: string | null = null;

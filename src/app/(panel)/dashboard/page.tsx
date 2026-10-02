@@ -16,10 +16,8 @@ export default function DashboardPage() {
   
   const [filters, setFilters] = useState<DashboardFilters>({});
   
-  // 🚀 Estado local para el texto del buscador controlado en el nivel superior
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 🚀 Aplicamos el Debounce aquí en el padre para que la tabla nunca se desmonte
   useEffect(() => {
     const timer = setTimeout(() => {
       setFilters(prev => ({ ...prev, search: searchTerm || undefined }));
@@ -58,7 +56,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Pasamos el estado de búsqueda y su setter directamente */}
       <ActiveDispatchesTable 
         dispatches={data.activeDispatches} 
         filters={filters}
@@ -67,7 +64,6 @@ export default function DashboardPage() {
         onSearchChange={setSearchTerm}
       />
 
-      {/* ... (resto de widgets y strip inferior se mantienen igual) ... */}
     </div>
   );
 }

@@ -10,14 +10,12 @@ interface UIState {
   openCreateModal: () => void;
   closeCreateModal: () => void;
 
-  // 👇 NUEVO: Loader Global para Axios
   isGlobalLoading: boolean;
   startLoading: () => void;
   stopLoading: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  // Estado inicial modales
   isAssignModalOpen: false,
   isCreateModalOpen: false,
   selectedOperationId: null,
@@ -28,7 +26,6 @@ export const useUIStore = create<UIState>((set) => ({
   openCreateModal: () => set({ isCreateModalOpen: true }),
   closeCreateModal: () => set({ isCreateModalOpen: false }),
 
-  // 👇 NUEVO: Acciones del Loader Global
   isGlobalLoading: false,
   startLoading: () => set({ isGlobalLoading: true }),
   stopLoading: () => set({ isGlobalLoading: false }),

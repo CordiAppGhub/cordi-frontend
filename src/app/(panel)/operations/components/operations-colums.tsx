@@ -127,7 +127,6 @@ export const getOperationsColumns = (
           return <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>--</span>;
         }
 
-        // Función rápida para formatear fechas a formato corto (Ej: 01/10 14:30)
         const formatShortDate = (dateString: string) => {
           return new Date(dateString).toLocaleString('es-CO', {
             month: '2-digit',

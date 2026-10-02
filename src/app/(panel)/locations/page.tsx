@@ -29,10 +29,8 @@ export default function ComercialDirectoryPage() {
   ];
 
   return (
-    // 🚀 Sin maxWidth, ocupará todo el espacio que el Layout le permita
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
       
-      {/* CABECERA GENERAL */}
       <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
           Directorio Comercial y Logístico
@@ -48,7 +46,6 @@ export default function ComercialDirectoryPage() {
         onChange={setActiveTab} 
       />
 
-      {/* 🚀 CONTENEDOR DE LA VISTA ACTIVA (Único fondo blanco para la tabla) */}
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', width: '100%' }}>
         {activeTab === 'clients' && <ClientsView />}
         {activeTab === 'locations' && <LocationsView />}

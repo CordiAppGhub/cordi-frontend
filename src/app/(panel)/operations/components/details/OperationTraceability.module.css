@@ -152,7 +152,6 @@
   font-weight: 900;
 }
 
-/* Evidencias */
 
 .gridEvidences {
   display: grid;
@@ -202,7 +201,6 @@
   font-size: 0.8rem;
 }
 
-/* Lightbox */
 
 .modalOverlay {
   position: fixed;

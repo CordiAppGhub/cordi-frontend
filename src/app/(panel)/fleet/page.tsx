@@ -6,7 +6,6 @@ import styles from './fleet.module.css';
 import { DriversTab } from './conductores/views/DriversTab';
 import { VehiclesTab } from './vehiculos/VehiclesTab';
 
-// 👇 Importamos las vistas desde tus carpetas modulares
 
 
 export default function FleetPage() {
@@ -15,7 +14,6 @@ export default function FleetPage() {
   return (
     <div className={styles.fleetContainer}>
       
-      {/* HEADER PRINCIPAL */}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>
@@ -25,7 +23,6 @@ export default function FleetPage() {
         </div>
       </div>
 
-      {/* TABS NAVEGACIÓN */}
       <div className={styles.tabsContainer}>
         <button 
           className={`${styles.tabBtn} ${activeTab === 'vehiculos' ? styles.tabActive : ''}`}
@@ -41,9 +38,7 @@ export default function FleetPage() {
         </button>
       </div>
 
-      {/* RENDERIZADO DINÁMICO (MODULAR) */}
       <div className={styles.tabContent}>
-        {/* Usamos display none para mantener el estado vivo y no recargar al cambiar de tab */}
         <div style={{ display: activeTab === 'vehiculos' ? 'block' : 'none' }}>
           <VehiclesTab />
         </div>

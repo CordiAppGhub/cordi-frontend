@@ -16,9 +16,7 @@
   background-color: var(--background);
 }
 
-/* ==========================================
-   2. ESTILOS BASE (MÓVILES / PANTALLAS PEQUEÑAS)
-   ========================================== */
+
 .main {
   display: flex;
   flex: 1;
@@ -27,7 +25,7 @@
   align-items: flex-start;
   justify-content: space-between;
   background-color: var(--foreground);
-  /* Padding reducido por defecto para móviles */
+
   padding: 48px 24px;
 }
 
@@ -36,14 +34,13 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  gap: 16px; /* Gap más compacto en móvil */
+  gap: 16px;
   width: 100%;
 }
 
 .intro h1 {
   width: 100%;
   max-width: 100%;
-  /* Tipografía fluida y adaptada para móvil */
   font-size: 32px;
   font-weight: 600;
   line-height: 40px;
@@ -55,7 +52,7 @@
 .intro p {
   width: 100%;
   max-width: 100%;
-  font-size: 16px; /* Ligeramente más pequeño para lectura móvil cómoda */
+  font-size: 16px;
   line-height: 28px;
   text-wrap: balance;
   color: var(--text-secondary);
@@ -68,7 +65,6 @@
 
 .ctas {
   display: flex;
-  /* En móviles los botones se apilan verticalmente para evitar desbordes */
   flex-direction: column; 
   width: 100%;
   gap: 12px;
@@ -80,13 +76,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 44px; /* Un poco más alto para mejorar touch target en móviles */
+  height: 44px;
   padding: 0 16px;
   border-radius: 128px;
   border: 1px solid transparent;
   transition: 0.2s;
   cursor: pointer;
-  width: 100%; /* Ocupan todo el ancho en móvil */
+  width: 100%;
   font-weight: 500;
 }
 
@@ -109,14 +105,12 @@ a.secondary {
 }
 
 
-/* ==========================================
-   3. MEDIA QUERIES (ESCRITORIO / MIN-WIDTH)
-   ========================================== */
+
 @media (min-width: 768px) {
   .main {
     max-width: 800px;
-    padding: 120px 60px; /* Padding generoso recuperado para desktop */
-    border-radius: 16px; /* Opcional: da un aspecto de tarjeta flotante en desktop */
+    padding: 120px 60px;
+    border-radius: 16px;
   }
 
   .intro {
@@ -137,22 +131,18 @@ a.secondary {
   }
 
   .ctas {
-    flex-direction: row; /* Los botones vuelven a estar lado a lado */
+    flex-direction: row;
     max-width: 440px;
     margin-top: 0;
   }
 
   .ctas a {
     height: 40px;
-    width: fit-content; /* Ancho ajustado al texto en desktop */
+    width: fit-content;
   }
 }
 
 
-/* ==========================================
-   4. INTERACCIONES Y PREFERENCIAS
-   ========================================== */
-/* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
   a.primary:hover {
     background: var(--button-primary-hover);

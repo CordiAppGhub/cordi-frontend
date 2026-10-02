@@ -19,12 +19,11 @@
 }
 
 
-/* Si es un módulo CSS de tu SuperForm */
-/* form.module.css */
+
 
 .formGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2 columnas */
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   width: 100%;
 }
@@ -35,22 +34,21 @@
   gap: 6px;
 }
 
-/* 🚀 1. Hace que el campo baje y ocupe todo el ancho (2 columnas) */
+
 .fullWidth {
   grid-column: 1 / -1; 
 }
 
-/* 🚀 2. Hace que el cuadro de texto sea ALTO y cómodo para escribir */
 .textareaInput {
   width: 100%;
-  min-height: 160px; /* Aquí le damos la altura grande (ajústalo a tu gusto) */
+  min-height: 160px; 
   padding: 12px 16px;
   font-size: 0.95rem;
   line-height: 1.5;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   background-color: #f8fafc;
-  resize: vertical; /* Permite al usuario estirarlo aún más hacia abajo con el mouse */
+  resize: vertical;
   font-family: inherit;
   box-sizing: border-box;
 }

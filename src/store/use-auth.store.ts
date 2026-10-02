@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authService.logout();
     } finally {
       set({ user: null, isAuthenticated: false });
-      window.location.href = '/login'; // O usar router.push
+      window.location.href = '/login'; 
     }
   },
 

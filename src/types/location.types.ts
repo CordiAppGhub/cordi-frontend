@@ -25,7 +25,6 @@ export interface Locations {
   isOrigin: boolean;
   isDestination: boolean;
   
-  // 🚀 NUEVO: Control dinámico para la UI en operaciones
   exigeCita: boolean;
   
   clients?: ClientLocation[];
@@ -40,7 +39,7 @@ export type CreateLocationInput = Omit<
   Locations, 
   'id' | 'createdAt' | 'updatedAt' | 'clients' | 'tarifas'
 > & {
-  clientIds?: number[]; // Permitimos enviar el arreglo de IDs de clientes al crear/editar
+  clientIds?: number[]; 
 };
 
 export type UpdateLocationInput = Partial<CreateLocationInput>;

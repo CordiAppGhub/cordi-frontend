@@ -20,7 +20,6 @@ export default function UsersPage() {
     }
   };
 
-  // Configuración de columnas usando el formato estricto de tu PaginationTable { id, header, renderCell }
   const columns = [
     { header: 'Nombre', id: 'name' },
     { header: 'Correo', id: 'email' },
@@ -74,7 +73,7 @@ export default function UsersPage() {
       <PaginationTable
         data={users}
         columns={columns}
-        totalPages={1} // Actualiza esto si implementas paginación desde el backend
+        totalPages={1}
         currentPage={currentPage}
         onPageChange={setPage}
         nameButton="Nuevo Usuario"
@@ -85,7 +84,7 @@ export default function UsersPage() {
         isOpen={isModalOpen} 
         onClose={closeModal} 
         title={mode === 'CREATE' ? 'Crear Nuevo Usuario' : 'Editar Usuario'}
-        width="600px" // Ajusta según prefieras
+        width="600px" 
       >
         <UserForm />
       </SuperModal>

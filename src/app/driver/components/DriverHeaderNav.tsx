@@ -1,4 +1,3 @@
-// src/app/driver/components/DriverHeaderNav.tsx
 'use client';
 
 import { TabOption, Tabs } from '@/components/molecules/tabs/tabs';
@@ -7,7 +6,7 @@ import React from 'react';
 interface DriverHeaderNavProps {
   activeTab: 'current' | 'history';
   setActiveTab: (tab: 'current' | 'history') => void;
-  historyCount?: number; // 🚀 Conteo para el badge de historial
+  historyCount?: number; 
   onLogout: () => void;
 }
 
@@ -22,7 +21,7 @@ export function DriverHeaderNav({ activeTab, setActiveTab, historyCount = 0, onL
       id: 'history', 
       label: 'Historial y Pagos', 
       icon: '📜',
-      badge: historyCount > 0 ? historyCount : undefined // Muestra el número de viajes si hay
+      badge: historyCount > 0 ? historyCount : undefined 
     },
   ];
 

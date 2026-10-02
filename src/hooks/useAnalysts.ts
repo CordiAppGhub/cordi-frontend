@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api.service'; // Asegúrate de que esta es la ruta a tu instancia de Axios
+import { api } from '@/services/api.service'; 
 
 interface Analyst {
   id: number;
@@ -17,10 +17,10 @@ export function useAnalysts() {
   } = useQuery({
     queryKey: ['active-analysts'],
     queryFn: async (): Promise<Analyst[]> => {
-      const response = await api.get('/users/analysts'); // Llamamos al nuevo endpoint
+      const response = await api.get('/users/analysts');
       return response.data;
     },
-    staleTime: 1000 * 60 * 15, // Cache de 15 minutos, los analistas no cambian tan seguido
+    staleTime: 1000 * 60 * 15, 
   });
 
   return {

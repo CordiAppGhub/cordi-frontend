@@ -80,7 +80,7 @@ export const ActiveDispatchesTable: React.FC<Props> = ({
         <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>Flota Activa en Ruta</h3>
         
         <div className={styles.tableControls}>
-          {/* El input ahora controla directamente el estado superior con debounce */}
+    
           <input 
             type="text" 
             placeholder="🔍 Buscar placa o contenedor..." 

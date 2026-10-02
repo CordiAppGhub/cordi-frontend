@@ -12,7 +12,6 @@ import { DriverAuthSection } from './views/DriverAuthSection';
 import { HistoryTab } from './components/HistoryTab';
 import { CurrentTripTab } from './components/CurrentTripTab';
 
-// Componentes Modularizados
 
 
 export default function DriverPortalPage() {
@@ -36,7 +35,6 @@ export default function DriverPortalPage() {
     loadingHistory
   } = useDriverPortal();
 
-  // Estados Locales
   const [cedulaInput, setCedulaInput] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +43,6 @@ export default function DriverPortalPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handlers Login
   const handleCedulaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cedulaInput.trim()) await requestOtp(cedulaInput.trim());
@@ -58,7 +55,6 @@ export default function DriverPortalPage() {
     }
   };
 
-  // Handlers Archivos / OCR
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedOperation) return;
@@ -92,7 +88,6 @@ export default function DriverPortalPage() {
     }
   };
 
-  // Render Vista 1: Login
   if (!isAuthenticated) {
     return (
       <DriverAuthSection
@@ -109,7 +104,6 @@ export default function DriverPortalPage() {
     );
   }
 
-  // Render Vista 2: Cargando
   if (loading || !driver) {
     return (
       <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#64748b' }}>
@@ -159,7 +153,6 @@ export default function DriverPortalPage() {
         <HistoryTab history={history} loadingHistory={loadingHistory} />
       )}
 
-      {/* MODAL UNIVERSAL PARA OCR Y EVIDENCIAS */}
       <SuperModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

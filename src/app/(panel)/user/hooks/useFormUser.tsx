@@ -13,11 +13,9 @@ export default function UserForm() {
   const { mode, selectedUser, closeModal } = useUserStore();
   const { create, update } = useUsers();
 
-  // Estado local para atrapar los errores de Zod y pasarlos a tu SuperForm
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mapeamos los campos según la interfaz de tu SuperForm
   const defaultValues = mode === 'EDIT' && selectedUser ? {
   name: selectedUser.name,
   email: selectedUser.email,
@@ -28,13 +26,12 @@ export default function UserForm() {
 } : {
   name: '',
   email: '',
-  role: 'ANALISTA', // Valor por defecto según tus opciones
+  role: 'ANALISTA', 
   cedula: '',
   telefono: '',
   password: '',
 };
 
-// 2. Tipar explícitamente el arreglo fields según la interfaz que acepte tu SuperForm
 const fields: FormField[] = [
   { name: 'name', label: 'Nombre *', type: 'text' },
   { name: 'email', label: 'Correo Electrónico *', type: 'text' },
@@ -65,7 +62,6 @@ const fields: FormField[] = [
     const validation = userSchema.safeParse(formData);
 
     if (!validation.success) {
-      // Convertimos los errores de Zod al formato Record<string, string> que pide SuperForm[cite: 1]
       const fieldErrors: Record<string, string> = {};
       validation.error.issues.forEach(issue => {
         const fieldName = String(issue.path[0]);
@@ -75,7 +71,6 @@ const fields: FormField[] = [
       return;
     }
 
-    // 2. Si pasa la validación, enviamos al backend
     setIsSubmitting(true);
     try {
       const data = validation.data;
@@ -88,7 +83,6 @@ const fields: FormField[] = [
       closeModal();
     } catch (error) {
       console.error("Error al guardar:", error);
-      // Aquí puedes mostrar un Toast global
     } finally {
       setIsSubmitting(false);
     }

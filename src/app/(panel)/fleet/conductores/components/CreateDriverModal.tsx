@@ -44,7 +44,6 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
-        {/* Campo Cédula */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Cédula *
@@ -65,7 +64,6 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
           />
         </div>
 
-        {/* Campo Nombre */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Nombre Completo
@@ -85,7 +83,6 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
           />
         </div>
 
-        {/* Campo Teléfono */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Teléfono (Para WhatsApp)
@@ -105,7 +102,6 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
           />
         </div>
 
-        {/* Botones de Acción */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
           <button
             type="button"

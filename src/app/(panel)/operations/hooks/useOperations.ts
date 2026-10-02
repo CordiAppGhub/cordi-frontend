@@ -20,19 +20,15 @@ interface BackendErrorResponse {
 export function useOperations(initialParams: GetOperationsParams = {}) {
   const queryClient = useQueryClient();
 
-  // Guardamos los parámetros de filtros/paginación actuales en estado local de React
   const [queryParams, setQueryParams] = useState<GetOperationsParams>({
     page: 1,
     limit: 10,
     ...initialParams,
   });
 
-  // Estado efímero para operación actual (detalle)
   const [currentOperationId, setCurrentOperationId] = useState<number | null>(null);
 
-  // ==========================================
-  // QUERY: CARGAR OPERACIONES (Con Paginación)
-  // ==========================================
+
   const {
     data: operationsResponse,
     isLoading: isLoadingOperations,
@@ -41,7 +37,7 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
   } = useQuery({
     queryKey: ['operations', queryParams],
     queryFn: () => operationService.getActiveOperations(queryParams),
-    staleTime: 1000 * 60 * 1, // 1 minuto de frescura para datos en tiempo real
+    staleTime: 1000 * 60 * 1, 
   });
 
   const operations = operationsResponse?.data || [];
@@ -51,31 +47,26 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     ? (queryError instanceof Error ? queryError.message : 'Error al cargar las operaciones')
     : null;
 
-  // ==========================================
-  // QUERY: DETALLE DE OPERACIÓN (ID Específico)
-  // ==========================================
+
   const {
     data: currentOperation = null,
     isLoading: isLoadingCurrent,
   } = useQuery({
     queryKey: ['operation-detail', currentOperationId],
     queryFn: () => operationService.getOperationById(currentOperationId!),
-    enabled: !!currentOperationId, // Solo se ejecuta si hay un ID seleccionado
+    enabled: !!currentOperationId, 
   });
 
   const fetchOperationById = useCallback((id: number) => {
     setCurrentOperationId(id);
   }, []);
 
-  // Wrapper para mantener compatibilidad con llamadas manuales pasando parámetros
   const fetchOperations = useCallback(async (params: GetOperationsParams = {}) => {
     setQueryParams((prev) => ({ ...prev, ...params }));
     await fetchOperationsQuery();
   }, [fetchOperationsQuery]);
 
-  // ==========================================
-  // MUTACIONES
-  // ==========================================
+
 
   const createMutation = useMutation({
     mutationFn: (data: CreateOperationFormData) => operationService.createOperation(data),
@@ -129,7 +120,6 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
       operationId: number; driverId: number; vehicleId: number; fletePagoManual?: number 
     }) => operationService.reassignOperation(operationId, { driverId, vehicleId, fletePagoManual }),
     onSuccess: async (updatedOp) => {
-      // Actualizamos la caché de forma optimista para el elemento individual
       queryClient.setQueryData(['operation-detail', updatedOp.id], updatedOp);
 
       await Swal.fire({
@@ -151,9 +141,6 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     }
   });
 
-  // ==========================================
-  // WRAPPERS (Para mantener tu UI intacta)
-  // ==========================================
 
   const createOperation = async (data: CreateOperationFormData): Promise<boolean> => {
     try {
@@ -192,9 +179,7 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     }
   };
 
-  // ==========================================
-  // WEBSOCKETS LISTENER (TIEMPO REAL OPTIMIZADO)
-  // ==========================================
+ 
   useEffect(() => {
     const handleGlobalUpdate = (data: Operation) => {
       if (data && data.id) {
@@ -209,7 +194,6 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
           };
         });
 
-        // Si el detalle de esa misma operación está abierto, también lo actualizamos al instante
         queryClient.setQueryData(['operation-detail', data.id], data);
       }
     };
@@ -221,7 +205,6 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     };
   }, [queryClient, queryParams]);
 
-  // Estado de carga unificado para la UI
   const isLoading = isLoadingOperations || createMutation.isPending || assignDriverMutation.isPending || reassignMutation.isPending;
 
   return {

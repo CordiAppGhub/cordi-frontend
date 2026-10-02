@@ -45,7 +45,6 @@ export const SurchargeFormsModal: React.FC<SurchargeFormsModalProps> = ({ onClos
         </button>
       </div>
 
-      {/* Renderizado Dinámico del SuperForm */}
       {activeTab === 'CATALOG' ? (
         <SuperForm
           fields={catalogFormFields}

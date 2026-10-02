@@ -10,12 +10,10 @@ interface DriverCardProps {
 }
 
 export const DriverCard: React.FC<DriverCardProps> = ({ driver, onClickDetail }) => {
-  // Extraer iniciales de forma segura
   const initials = driver.name 
     ? driver.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
     : 'DR';
 
-  // Obtenemos el vehículo asignado si viene en el arreglo drivenVehicles
   const assignedVehicle = driver.drivenVehicles && driver.drivenVehicles.length > 0 
     ? driver.drivenVehicles[0].plate 
     : null;

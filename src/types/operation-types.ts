@@ -68,7 +68,6 @@ export interface Operation {
   type: string;
   status: 'CREADO' | 'ASIGNADO' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA' | 'CANCELADO';
 
-  // 🚀 NUEVO MARCADOR COMERCIAL
   isAnticipada?: boolean;
 
   containerNumber: string | null;

@@ -1,4 +1,3 @@
-// src/types/table.ts
 
 export type ColumnType = 'text' | 'number' | 'select' | 'date';
 

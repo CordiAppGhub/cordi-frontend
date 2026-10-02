@@ -4,11 +4,10 @@ import QueryProvider from '@/providers/query-provider';
 import './globals.css';
 import { GlobalLoader } from '@/components/GlobalLoader';
 
-// 🚀 Agregamos las propiedades PWA a nivel global
 export const metadata: Metadata = {
   title: 'Corditrans Logística',
   description: 'Sistema integral de transporte y logística',
-  manifest: '/manifest.json', // 👈 ¡Esto vuelve toda la app instalable como PWA!
+  manifest: '/manifest.json',
   themeColor: '#2563eb',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {

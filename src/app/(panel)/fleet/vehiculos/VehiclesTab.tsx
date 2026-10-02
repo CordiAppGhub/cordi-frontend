@@ -5,17 +5,16 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/atoms/button/button';
 import UploadExcel from '@/components/organisms/fleet/UploadExcel';
 import { useVehicles } from '@/hooks/use-vehicles';
-import { useAssignments } from '@/hooks/useFleet'; // 👈 1. Importamos el hook de asignaciones
+import { useAssignments } from '@/hooks/useFleet'; 
 
-// Importamos la tarjeta, estilos y modales
 import styles from '../components/fleet-cards.module.css';
 import CreateVehicleModal from './CreateVehicleModal';
-import AssignDriverModal from '@/app/(panel)/fleet/asignaciones/components/AssignDriverModal'; // 👈 2. El modal de asignar
+import AssignDriverModal from '@/app/(panel)/fleet/asignaciones/components/AssignDriverModal'; 
 import { VehicleCard } from '../components/VehicleCard';
 
 export const VehiclesTab = () => {
   const { vehicles, isLoading, loadVehicles, createVehicle, uploadExcel } = useVehicles();
-  const { activeAssignments, loadActive, assignDriver, unassignVehicle } = useAssignments(); // 👈 3. Extraemos las funciones de asignación
+  const { activeAssignments, loadActive, assignDriver, unassignVehicle } = useAssignments(); 
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -26,7 +25,7 @@ export const VehiclesTab = () => {
   useEffect(() => {
     if (!isInitialized.current) {
       loadVehicles();
-      loadActive(); // 👈 4. Cargamos las asignaciones activas al montar
+      loadActive(); 
       isInitialized.current = true;
     }
   }, [loadVehicles, loadActive]);
@@ -38,7 +37,6 @@ export const VehiclesTab = () => {
     }
   };
 
-  // 🚀 Función para abrir el modal de asignación desde cualquier tarjeta
   const handleOpenAssignModal = (vehicleId: number) => {
     setSelectedVehicleId(vehicleId);
     setIsAssignModalOpen(true);
@@ -47,7 +45,6 @@ export const VehiclesTab = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Cabecera del Grid */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
           Directorio de Tractocamiones
@@ -61,7 +58,6 @@ export const VehiclesTab = () => {
         </Button>
       </div>
 
-      {/* Grid de Tarjetas o Estado de Carga */}
       {isLoading && vehicles.length === 0 ? (
         <div style={{ background: 'white', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>
           Sincronizando inventario de vehículos...
@@ -73,7 +69,6 @@ export const VehiclesTab = () => {
       ) : (
         <div className={styles.cardsGrid}>
           {vehicles.map((vehicle) => {
-            // Buscamos si este vehículo tiene un conductor amarrado
             const assignment = activeAssignments.find((a) => a.vehicleId === vehicle.id);
 
             return (
@@ -83,7 +78,6 @@ export const VehiclesTab = () => {
                   onClickEdit={(id) => console.log('Editar vehículo', id)} 
                 />
                 
-                {/* 🚀 Vínculo rápido de Conductor integrado en la tarjeta */}
                 <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {assignment ? (
                     <div style={{ fontSize: '0.85rem' }}>
@@ -118,14 +112,12 @@ export const VehiclesTab = () => {
         </div>
       )}
 
-      {/* Modal de Creación */}
       <CreateVehicleModal 
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateVehicle={handleCreateVehicle}
       />
 
-      {/* Modal de Asignación de Conductor */}
       <AssignDriverModal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}

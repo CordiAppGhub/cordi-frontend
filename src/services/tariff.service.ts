@@ -9,7 +9,6 @@ export interface CreateSurchargeCatalogInput {
   basePrice: number;
 }
 
-// 🚀 NUEVO: Interfaces para Tarifas de Flotas
 export interface CreateAffiliationTariffInput {
   affiliation: string;
   percentage: number;
@@ -18,9 +17,6 @@ export interface CreateAffiliationTariffInput {
 
 
 export const tariffService = {
-  // ==========================================
-  // TARIFA MAESTRA POR CLIENTE
-  // ==========================================
   getAllClientTariffs: async (): Promise<ClientTariff[]> => {
     const { data } = await api.get('/tariffs');
     return data;
@@ -31,9 +27,6 @@ export const tariffService = {
     return data;
   },
 
-  // ==========================================
-  // CATÁLOGO DE NOVEDADES Y EXCEPCIONES
-  // ==========================================
   getAllSurcharges: async (): Promise<SurchargeCatalog[]> => {
     const { data } = await api.get('/tariffs/surcharges');
     return data;
@@ -49,9 +42,6 @@ export const tariffService = {
     return data;
   },
 
-  // ==========================================
-  // 🚀 NUEVO: TARIFAS DE VEHÍCULOS (FLOTAS)
-  // ==========================================
   getAllVehicleTariffs: async (): Promise<AffiliationTariff[]> => {
     const { data } = await api.get('/tariffs/affiliation');
     return data;
@@ -62,9 +52,6 @@ export const tariffService = {
     return data;
   },
 
-  // ==========================================
-  // MOTOR DE COTIZACIÓN AUTOMÁTICA
-  // ==========================================
   getQuote: async (params: { 
     clientId: number; 
     operationType: string; 
@@ -83,9 +70,6 @@ export const tariffService = {
     return data;
   },
 
-  // ==========================================
-  // RECARGOS EN OPERACIONES ACTIVAS
-  // ==========================================
   applySurchargeToOperation: async (payload: { 
     operationId: number; 
     surchargeCode: string; 

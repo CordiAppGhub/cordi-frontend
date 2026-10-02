@@ -1,24 +1,18 @@
-/* ==========================================
-   BADGES CON INDICADOR DE PUNTO (MOBILE-FIRST)
-   ========================================== */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   
-  /* 🔥 CRÍTICO MÓVIL: Padding generoso y altura adaptable */
   padding: 6px 12px;
-  border-radius: 9999px; /* Estilo píldora completo, moderno y limpio */
+  border-radius: 9999px;
   
-  /* 🔥 EL TRUCO DE ORO: Evita que el texto del badge se parta en pantallas estrechas */
   white-space: nowrap;
   
-  font-size: 13px; /* Ligeramente más legible en dispositivos móviles */
+  font-size: 13px;
   font-weight: 600;
   line-height: 1;
 }
 
-/* --- Variantes de Color del Badge --- */
 .verde { 
   background-color: #dcfce7; 
   color: #166534; 
@@ -34,12 +28,11 @@
   color: #991b1b; 
 }
 
-/* --- Indicador de Punto (Dot) --- */
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  flex-shrink: 0; /* Evita que el punto se deforme si el contenedor se comprime */
+  flex-shrink: 0; 
 }
 
 .dotVerde { 
@@ -54,12 +47,8 @@
   background-color: #dc2626; 
 }
 
-/* ==========================================
-   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
 @media (min-width: 768px) {
   .badge {
-    /* Retornamos al tamaño compacto original para pantallas grandes */
     padding: 4px 8px;
     border-radius: 12px;
     font-size: 12px;

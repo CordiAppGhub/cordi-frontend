@@ -13,11 +13,7 @@ export const useSurchargeForm = (onClose: () => void) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ❌ Eliminado el useEffect: TanStack Query ya provee los datos cacheados y sincronizados.
 
-  // ==========================================
-  // CONFIGURACIÓN FORMULARIO: CATÁLOGO BASE
-  // ==========================================
   const catalogFormFields: FormField[] = useMemo(() => [
     { name: 'code', label: 'Código Técnico', type: 'text', placeholder: 'Ej: RECARGO_NOCTURNO' },
     { name: 'name', label: 'Nombre Comercial', type: 'text', placeholder: 'Ej: Recargo Nocturno (Después 8PM)' },
@@ -49,9 +45,7 @@ export const useSurchargeForm = (onClose: () => void) => {
     if (success) onClose();
   };
 
-  // ==========================================
-  // CONFIGURACIÓN FORMULARIO: EXCEPCIÓN CLIENTE
-  // ==========================================
+
   const overrideFormFields: FormField[] = useMemo(() => {
     const clientOptions = clients.map(c => ({ value: c.id, label: c.razonSocial }));
     const surchargeOptions = surcharges.map(s => ({ value: s.code, label: `${s.name} (Base: $${s.basePrice})` }));

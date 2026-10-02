@@ -1,13 +1,12 @@
 .layout {
   padding: 2rem;
-  max-width: 80rem; /* max-w-7xl */
+  max-width: 80rem; 
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* Header */
 .header {
   display: flex;
   align-items: center;
@@ -44,7 +43,6 @@
   margin: 0;
 }
 
-/* Grid Layout */
 .gridContainer {
   display: grid;
   grid-template-columns: 1fr;
@@ -57,7 +55,6 @@
   }
 }
 
-/* Tarjetas (Cards) */
 .card {
   background-color: #ffffff;
   padding: 1.5rem;
@@ -75,7 +72,6 @@
   margin-bottom: 1rem;
 }
 
-/* Perfil del Conductor */
 .profileHeader {
   display: flex;
   flex-direction: column;
@@ -125,7 +121,6 @@
   color: #b91c1c;
 }
 
-/* Información de Contacto */
 .infoList {
   display: flex;
   flex-direction: column;
@@ -151,7 +146,6 @@
   font-weight: 500;
 }
 
-/* Vehículos */
 .vehiclesWrapper {
   display: flex;
   flex-wrap: wrap;
@@ -189,7 +183,6 @@
   margin-top: 0.5rem;
 }
 
-/* Estados Vacíos / Carga */
 .emptyState {
   text-align: center;
   padding: 2rem;
@@ -220,7 +213,6 @@
   margin: 0;
 }
 
-/* Contenido Principal (Columna Derecha) */
 .mainContent {
   display: flex;
   flex-direction: column;

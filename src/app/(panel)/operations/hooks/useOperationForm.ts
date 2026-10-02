@@ -28,9 +28,7 @@ export const useOperationForm = (onClose: () => void) => {
     const [isAnticipated, setIsAnticipated] = useState<boolean>(false);
     const [fleteManual, setFleteManual] = useState<number | null>(null);
 
-    // ==========================================
-    // 🧠 1. INTELIGENCIA DE TIPOS Y UBICACIONES
-    // ==========================================
+
     const isExport = currentType === 'Ingreso de Exportación' || currentType === 'Exportación';
     const isImport = currentType === 'Retiro de Importación' || currentType === 'Importación';
 
@@ -41,9 +39,6 @@ export const useOperationForm = (onClose: () => void) => {
     const exigeCitaOrigen = Boolean(origenLocation?.exigeCita);
     const exigeCitaDestino = Boolean(destinoLocation?.exigeCita || descargueLocation?.exigeCita);
 
-    // ==========================================
-    // EFECTO: COTIZADOR EN VIVO
-    // ==========================================
     useEffect(() => {
         if (!clientId || !currentType) {
             resetQuote();
@@ -114,9 +109,7 @@ export const useOperationForm = (onClose: () => void) => {
         return clients.map(client => ({ value: client.id, label: client.razonSocial }));
     };
 
-    // ==========================================
-    // 📦 2. CONFIGURACIÓN DEL SUPERFORM
-    // ==========================================
+    
     const formFields: FormField[] = [
         { name: 'type', label: 'Tipo de Operación', type: 'select', options: TIPO_OPCIONES },
         { name: 'isAnticipated', label: '¿Es una Exportación Anticipada?', type: 'checkbox', visible: currentType === 'Ingreso de Exportación' },
@@ -130,7 +123,6 @@ export const useOperationForm = (onClose: () => void) => {
         { name: 'containerNumber', label: 'Número de Contenedor', type: 'text', placeholder: 'Ej: MSKU1234567', visible: currentType === 'Ingreso de Exportación' ? isAnticipated : rules.showContainer },
         { name: 'peso', label: 'Peso (Toneladas)', type: 'number', placeholder: 'Ej: 28.5', visible: rules.showContainer },
 
-        // 🚀 NUEVO: Documentación Legal Adicional
         { name: 'numeroPedido', label: 'Número de Pedido', type: 'text', placeholder: 'Ej: PED-2026' },
         { name: 'documentoTransporte', label: 'Manifiesto de Carga', type: 'text', placeholder: 'Opcional si es tercero' },
 
@@ -161,13 +153,11 @@ export const useOperationForm = (onClose: () => void) => {
 
         { name: 'fleteCobroManual', label: 'Flete Cobrado Manual (Opcional)', type: 'number', placeholder: 'Ej: 1500000', visible: true },
 
-        // 🚀 NUEVO: Comentarios Generales
         {
             name: 'observaciones',
             label: 'Comentarios / Observaciones',
             type: 'textarea',
             placeholder: 'Instrucciones especiales para el viaje...',
-            // fullWidth: true
         }
     ];
 
@@ -212,7 +202,6 @@ export const useOperationForm = (onClose: () => void) => {
         const isExportAnticipada = isExport && isAnticipated;
         const showContainerFinal = isExportAnticipada || rules.showContainer;
 
-        // Construcción del Payload
         const dataToSend: Record<string, any> = {
             type: String(formData.type),
             clientId: Number(formData.clientId),

@@ -29,7 +29,6 @@ export function CurrentTripTab({
 }: CurrentTripTabProps) {
   return (
     <div className={styles.gridLayout}>
-      {/* TARJETA IZQUIERDA: INFO DEL VIAJE */}
       <div className={styles.infoCard}>
         <div className={styles.vehicleHeader}>
           <div className={styles.truckIconBox}>🚛</div>
@@ -80,7 +79,6 @@ export function CurrentTripTab({
         )}
       </div>
 
-      {/* TARJETA DERECHA: FLUJO OCR */}
       <div className={styles.sequenceCard}>
         {activeOperation ? (
           <OperationWorkflow

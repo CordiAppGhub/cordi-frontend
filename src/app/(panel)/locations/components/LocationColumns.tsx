@@ -1,4 +1,3 @@
-// src/app/driver/components/location-columns.tsx
 'use client';
 
 import React from 'react';
@@ -15,7 +14,6 @@ export const getLocationColumns = (
       header: 'Ubicación / Instalación',
       type: 'text',
       renderCell: (row) => {
-        // Verificamos si tiene clientes asociados en la tabla intermedia
         const hasClients = row.clients && row.clients.length > 0;
 
         return (

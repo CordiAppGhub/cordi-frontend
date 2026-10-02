@@ -1,29 +1,24 @@
-/* ==========================================
-   BOTONES (MOBILE-FIRST)
-   ========================================== */
+
 .button {
-  /* Flexbox para alinear perfectamente el texto o incluir íconos (gap) */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   
-  /* 🔥 CRÍTICO MÓVIL: Ocupa todo el ancho y es más alto para ser fácil de tocar */
   width: 100%;
-  min-height: 48px; /* Estándar de accesibilidad táctil */
+  min-height: 48px;
   padding: 12px 20px;
   
   border-radius: 6px;
   font-weight: 500;
-  font-size: 16px; /* 16px es ideal en móvil para legibilidad rápida */
+  font-size: 16px; 
   border: 1px solid transparent;
   cursor: pointer;
   
   transition: all 0.2s ease;
-  white-space: nowrap; /* Evita que el texto salte de línea */
+  white-space: nowrap;
 }
 
-/* --- Variantes de Diseño --- */
 .button--primary {
   background-color: #0066cc;
   color: #ffffff;
@@ -40,10 +35,7 @@
   cursor: not-allowed;
 }
 
-/* ==========================================
-   INTERACCIONES (SOLO DISPOSITIVOS CON MOUSE)
-   ========================================== */
-/* 🔥 CRÍTICO: Previene que el color de hover se quede "atascado" al tocar la pantalla táctil */
+
 @media (hover: hover) and (pointer: fine) {
   .button--primary:hover {
     background-color: #0052a3;
@@ -54,12 +46,8 @@
   }
 }
 
-/* ==========================================
-   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
 @media (min-width: 768px) {
   .button {
-    /* Retornamos al tamaño original de tu código para escritorio */
     width: auto;
     min-height: auto;
     padding: 8px 16px;

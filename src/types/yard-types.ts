@@ -10,9 +10,9 @@ export interface YardContainer {
   yard: YardLocation;
   entryDate: string;
   client: string;
-  shippingCompany: string; // Naviera
+  shippingCompany: string; 
   analyst: string;
   status: YardStatus;
-  daysInYard: number; // Calculado por CORDIBOT o el backend
-  slaStatus: SLAStatus; // Calculado basado en los días
+  daysInYard: number; 
+  slaStatus: SLAStatus; 
 }

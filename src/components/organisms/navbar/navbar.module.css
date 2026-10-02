@@ -8,7 +8,6 @@
   z-index: 1000;
 }
 
-/* Barra superior */
 .topBar {
   max-width: 1600px;
   margin: 0 auto;
@@ -109,7 +108,6 @@
   color: #fff;
 }
 
-/* Navegación secundaria */
 .subNav {
   max-width: 1600px;
   margin: 0 auto;
@@ -173,7 +171,6 @@
   background-color: rgba(251, 191, 36, 0.15);
 }
 
-/* Tablet */
 @media (max-width: 900px) {
   .topBar {
     padding: 10px 16px;

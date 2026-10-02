@@ -10,7 +10,7 @@ export const CreateModal: React.FC = () => {
       isOpen={isCreateModalOpen} 
       onClose={closeCreateModal} 
       title="Crear Nueva Operación"
-      width="680px" // 🚀 Ancho ideal para formularios en grid de 2 columnas sin scroll
+      width="680px" 
     >
       <OperationForm onClose={closeCreateModal} />
     </SuperModal>

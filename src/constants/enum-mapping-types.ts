@@ -40,15 +40,12 @@ export type StatusConfigType = {
   label: string;
   bg: string;
   color: string;
-  border?: string;      // Opcional para semáforos
-  dot?: string;         // Opcional para semáforos (Color del LED)
-  description?: string; // Opcional para Tooltips
+  border?: string;      
+  dot?: string;          
+  description?: string; 
 };
 
 export const StatusConfig: Record<string, StatusConfigType> = {
-  // ==========================================
-  // 🚦 OPERACIONES (NUEVA SEMAFORIZACIÓN)
-  // ==========================================
   CREADO: { 
     label: 'PENDIENTE', bg: '#fef2f2', color: '#b91c1c', border: '#fca5a5', dot: '#ef4444',
     description: 'Estado Técnico: CREADO. Expo anticipadas, devoluciones o ingresos a cargue en piso (Contenedor pendiente de retirar o ingresar).'
@@ -74,26 +71,17 @@ export const StatusConfig: Record<string, StatusConfigType> = {
     description: 'Estado Técnico: CANCELADO. Operación anulada por el cliente.'
   },
 
-  // ==========================================
-  // 🏷️ MICROESTADOS DE VIAJE (Estilo Normal)
-  // ==========================================
   RUMBO_AL_PUERTO: { label: 'Rumbo al Puerto', bg: '#e0f2fe', color: '#0369a1' },
   EN_PUERTO: { label: 'En Puerto', bg: '#fef3c7', color: '#b45309' },
   EN_PUERTO_CARGADO: { label: 'En Puerto (Cargado)', bg: '#f3e8ff', color: '#7e22ce' },
   RUMBO_AL_CLIENTE: { label: 'Rumbo al Cliente', bg: '#ccfbf1', color: '#0f766e' },
   EN_CLIENTE: { label: 'En Cliente', bg: '#ffedd5', color: '#c2410c' },
 
-  // ==========================================
-  // 🏷️ VEHÍCULOS (Estilo Normal)
-  // ==========================================
   AVAILABLE: { label: 'Disponible', bg: '#dcfce7', color: '#15803d' },
   IN_TRANSIT: { label: 'En Tránsito', bg: '#e0f2fe', color: '#0369a1' },
   MAINTENANCE: { label: 'En Mantenimiento', bg: '#fef3c7', color: '#b45309' },
   OUT_OF_SERVICE: { label: 'Fuera de Servicio', bg: '#fee2e2', color: '#dc2626' },
 
-  // ==========================================
-  // 🏷️ CONTENEDORES (Estilo Normal)
-  // ==========================================
   IN_YARD: { label: 'En Patio', bg: '#f1f5f9', color: '#475569' },
   DISPATCHED: { label: 'Despachado', bg: '#e0f2fe', color: '#0369a1' },
 };

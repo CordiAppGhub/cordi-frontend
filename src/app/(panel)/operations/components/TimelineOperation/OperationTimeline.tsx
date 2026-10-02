@@ -5,7 +5,6 @@ import { MapPin, ArrowRight, Clock, UserCircle2 } from 'lucide-react';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import styles from './OperationTimeline.module.css';
 
-// 👇 1. Importamos la interfaz directamente desde tu archivo global de tipos
 import { SubOperation } from '@/types/operation-types'; 
 
 interface OperationTimelineProps {
@@ -37,7 +36,6 @@ export const OperationTimeline: React.FC<OperationTimelineProps> = ({ childrenOp
             </div>
 
             <div className={styles.details}>
-              {/* 👇 2. Ahora TypeScript sabe manejar el null correctamente aquí */}
               {(op.origen || op.destino) && (
                 <div className={styles.routeRow}>
                   <MapPin size={16} color="#ef4444" />

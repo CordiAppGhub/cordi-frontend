@@ -16,9 +16,6 @@ interface BackendErrorResponse {
 export const useAssignments = () => {
   const queryClient = useQueryClient();
 
-  // ==========================================
-  // QUERY: CARGAR ASIGNACIONES ACTIVAS
-  // ==========================================
   const {
     data: activeAssignments = [],
     isLoading: isQueryLoading,
@@ -29,9 +26,6 @@ export const useAssignments = () => {
     staleTime: 1000 * 60 * 2,
   });
 
-  // ==========================================
-  // MUTACIONES
-  // ==========================================
   const assignMutation = useMutation({
     mutationFn: (data: CreateAssignmentDto) => assignmentsService.assign(data),
     onSuccess: () => {
@@ -55,9 +49,6 @@ export const useAssignments = () => {
     }
   });
 
-  // ==========================================
-  // WRAPPERS (Para mantener tu UI intacta)
-  // ==========================================
   const assignDriver = useCallback(async (data: CreateAssignmentDto): Promise<boolean> => {
     try {
       await assignMutation.mutateAsync(data);

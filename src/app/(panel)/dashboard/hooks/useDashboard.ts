@@ -10,15 +10,14 @@ export function useDashboard(filters: DashboardFilters = {}) {
   const {
     data,
     isLoading,
-    isFetching, // 🚀 Podemos rastrear si está buscando en segundo plano
+    isFetching, 
     error: queryError,
     refetch
   } = useQuery<DashboardSummary, Error>({
     queryKey: ['dashboard', 'summary', filters],
     queryFn: () => dashboardService.getSummary(filters),
     staleTime: 1000 * 60 * 1, 
-    // 🚀 ESTO ES CLAVE: Mantiene los datos anteriores en pantalla mientras se buscan los nuevos filtros, 
-    // evitando que el componente global de carga detecte un estado "vacío".
+    
     placeholderData: (previousData) => previousData,
   });
 
@@ -34,7 +33,6 @@ export function useDashboard(filters: DashboardFilters = {}) {
   return {
     data: data || null,
     isLoading, 
-    // Si tu componente global de carga global usa isFetching, desactívalo de ahí y úsalo solo localmente si deseas
     isRefetching: isFetching, 
     error: errorMessage,
     refresh: () => refetch(),

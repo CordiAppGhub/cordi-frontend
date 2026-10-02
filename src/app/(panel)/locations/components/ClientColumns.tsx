@@ -70,7 +70,6 @@ export const getClientColumns = (
             zIndex: 10,
             minWidth: '200px'
           }}>
-            {/* 🚀 MAPEAMOS CORRECTAMENTE A TRAVÉS DE .location */}
             {locations.map((item) => (
               <div key={item.locationId} style={{ fontSize: '0.8rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '3px' }}>
                 <strong style={{ color: '#0f172a' }}>{item.location?.name}</strong>

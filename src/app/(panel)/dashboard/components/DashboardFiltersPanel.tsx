@@ -42,7 +42,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
     <div className={styles.filtersPanel}>
       <div className={styles.filtersGrid}>
         
-        {/* Filtro por Cliente */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Cliente</label>
           <Select
@@ -55,7 +54,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Estado Operativo */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Estado Operativo</label>
           <Select
@@ -72,7 +70,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Tipo de Operación */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Tipo</label>
           <Select
@@ -88,7 +85,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Analista */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Analista</label>
           <Select
@@ -101,7 +97,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Fecha Desde */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Desde (Creación)</label>
           <Input
@@ -111,7 +106,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Fecha Hasta */}
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Hasta</label>
           <Input
@@ -121,7 +115,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           />
         </div>
 
-        {/* Checkboxes */}
         <div className={styles.checkboxGroup}>
           <label className={styles.checkboxLabel}>
             <input 
@@ -143,7 +136,6 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
           </label>
         </div>
 
-        {/* Botón Limpiar */}
         <div className={styles.clearButtonWrapper}>
           <Button 
             variant="secondary" 

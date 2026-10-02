@@ -15,15 +15,10 @@ interface BackendErrorResponse {
 export function useTariffs() {
   const queryClient = useQueryClient();
 
-  // ==========================================
-  // ESTADOS EFÍMEROS (Para cotización en vivo)
-  // ==========================================
   const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
 
-  // ==========================================
-  // QUERIES: CACHÉ DE DATOS GLOBALES
-  // ==========================================
+
   
   const {
     data: clientTariffs = [],
@@ -59,9 +54,7 @@ export function useTariffs() {
   const isLoadingTariffs = isLoadingClientTariffs || isLoadingSurcharges;
   const error = clientTariffsError ? 'Error al cargar las tarifas o recargos' : null;
 
-  // ==========================================
-  // MUTACIONES: ESCRITURA Y SINCRONIZACIÓN
-  // ==========================================
+
 
   const createTariffMutation = useMutation({
     mutationFn: (data: CreateClientTariffInput) => tariffService.createClientTariff(data),
@@ -91,7 +84,7 @@ export function useTariffs() {
     mutationFn: (data: CreateSurchargeOverrideInput) => tariffService.createSurchargeOverride(data),
     onSuccess: () => {
       showToast.success('La tarifa especial para este cliente ha sido guardada.');
-      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }); // Invalida tarifas para traer las nuevas excepciones
+      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }); 
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo guardar la excepción.';
@@ -111,9 +104,7 @@ export function useTariffs() {
     }
   });
 
-  // ==========================================
-  // WRAPPERS (Compatibilidad con tus modales)
-  // ==========================================
+  
 
   const createTariff = useCallback(async (data: CreateClientTariffInput): Promise<boolean> => {
     try {
@@ -143,9 +134,7 @@ export function useTariffs() {
     } catch { return false; }
   }, [createVehicleTariffMutation]);
 
-  // ==========================================
-  // LÓGICA DE COTIZACIÓN EN VIVO (Se mantiene igual)
-  // ==========================================
+
   const getLiveQuote = useCallback(async (
     clientId: number | null, 
     operationType: string | null, 
@@ -178,7 +167,6 @@ export function useTariffs() {
   }, []);
 
   return {
-    // Tarifas Generales
     clientTariffs,
     surcharges,
     isLoadingTariffs,
@@ -186,18 +174,15 @@ export function useTariffs() {
     createTariff,
     refreshTariffs,
     
-    // Novedades / Excepciones
     createBaseSurcharge,
     createClientOverride,
     refreshSurcharges,
-    
-    // Vehículos
+
     vehicleTariffs,
     isLoadingVehicles,
     fetchVehicleTariffs,
     createVehicleTariff,
     
-    // Cotizador
     suggestedPrice,
     isCalculatingPrice,
     getLiveQuote,

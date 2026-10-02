@@ -34,13 +34,13 @@ export default function UploadExcel({
     setMessage(null);
 
     try {
-      // Ejecutamos la función que nos pase el componente padre
+     
       await onUpload(file);
       
       setMessage({ text: '¡Importación exitosa!', type: 'success' });
-      setFile(null); // Limpiamos el archivo tras el éxito
+      setFile(null); 
 
-      // Ejecutamos el refresco de la tabla si el padre lo envió
+     
       if (onSuccess) {
         onSuccess();
       }

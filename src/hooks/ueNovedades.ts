@@ -14,9 +14,6 @@ export function useNovedades(initialTab = 'PENDING') {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(initialTab);
 
-  // ==========================================
-  // QUERY: OBTENER NOVEDADES (Con caché por Tab)
-  // ==========================================
   const {
     data: novedades = [],
     isLoading,
@@ -25,21 +22,17 @@ export function useNovedades(initialTab = 'PENDING') {
   } = useQuery({
     queryKey: ['novedades', activeTab],
     queryFn: () => novedadesService.getAll(activeTab),
-    staleTime: 1000 * 60 * 3, // 3 minutos de frescura
+    staleTime: 1000 * 60 * 3, 
   });
 
   const error = queryError 
     ? (queryError instanceof Error ? queryError.message : 'Error al cargar novedades')
     : null;
 
-  // ==========================================
-  // MUTACIÓN: RESOLVER NOVEDAD
-  // ==========================================
   const resolveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: number; notes: string }) => novedadesService.resolve(id, notes),
     onSuccess: () => {
       showToast.success('Novedad resuelta exitosamente.');
-      // Invalidamos cualquier query que empiece con 'novedades' para refrescar todas las pestañas
       queryClient.invalidateQueries({ queryKey: ['novedades'] });
     },
     onError: (err: unknown) => {
@@ -49,9 +42,6 @@ export function useNovedades(initialTab = 'PENDING') {
     },
   });
 
-  // ==========================================
-  // WRAPPER (Mantiene compatibilidad con tu UI)
-  // ==========================================
   const resolve = useCallback(async (id: number, notes: string): Promise<boolean> => {
     try {
       await resolveMutation.mutateAsync({ id, notes });

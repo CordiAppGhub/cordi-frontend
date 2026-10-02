@@ -1,4 +1,3 @@
-// src/app/driver/components/DriverAuthSection.tsx
 'use client';
 
 import React from 'react';

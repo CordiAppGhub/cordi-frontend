@@ -94,7 +94,6 @@ export function DriverDetailView() {
       </div>
 
       <div className={styles.gridContainer}>
-        {/* COLUMNA IZQUIERDA: DATOS PERSONALES */}
         <div className={styles.card}>
           <div className={styles.profileHeader}>
             <div className={styles.avatar}>
@@ -118,7 +117,6 @@ export function DriverDetailView() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: VEHÍCULOS Y OPERACIONES */}
         <div className={styles.mainContent}>
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Vehículo Asignado</h3>

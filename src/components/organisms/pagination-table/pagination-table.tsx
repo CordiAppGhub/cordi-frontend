@@ -51,7 +51,6 @@ export default function PaginationTable<T extends { id: number | string }>({
         </div>
       </div>
 
-      {/* TABLA DE DATOS */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
@@ -91,7 +90,6 @@ export default function PaginationTable<T extends { id: number | string }>({
         </table>
       </div>
 
-      {/* PAGINACIÓN */}
       <div className={styles.pagination}>
         <div className={styles.pageInfo}>
           Página {currentPage} de {totalPages}

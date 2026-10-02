@@ -6,7 +6,7 @@ export const getVehicleTariffColumns = (onEdit: (tariff: AffiliationTariff) => v
   {
     id: 'affiliation',
     header: 'Tipo de Flota',
-    type: 'text' as const, // 👈 Forzamos como literal para evitar choque de tipos
+    type: 'text' as const, 
     renderCell: (row: AffiliationTariff) => <StatusBadge status={row.affiliation} />,
   },
   {

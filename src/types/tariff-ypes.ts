@@ -1,6 +1,3 @@
-// ==========================================
-// ENUMS
-// ==========================================
 export type OperationType = 
   | 'EXPORTACION'
   | 'IMPORTACION'
@@ -13,9 +10,6 @@ export type OperationType =
 
 export type ContainerType = 'DRY_20' | 'DRY_40' | 'HC_40' | 'REEFER_20' | 'REEFER_40' | 'FLAT_RACK' | 'OPEN_TOP';
 
-// ==========================================
-// 1. TARIFA MAESTRA POR CLIENTE
-// ==========================================
 export interface ClientTariff {
   id: number;
   clientId: number;
@@ -35,9 +29,6 @@ export interface CreateClientTariffInput {
   price: number;
 }
 
-// ==========================================
-// 2. CATÁLOGO DE NOVEDADES
-// ==========================================
 export interface SurchargeCatalog {
   id: number;
   code: string;
@@ -54,9 +45,6 @@ export interface CreateSurchargeOverrideInput {
   customPrice: number;
 }
 
-// ==========================================
-// 3. RESPUESTAS DEL COTIZADOR
-// ==========================================
 export interface QuoteResponse {
   type: string;
   price: number;
@@ -64,7 +52,6 @@ export interface QuoteResponse {
 }
 
 
-// Agrega o verifica esto en tu tariff-ypes.ts
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';
 
 export interface AffiliationTariff {

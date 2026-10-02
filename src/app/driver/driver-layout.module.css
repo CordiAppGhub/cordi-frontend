@@ -32,7 +32,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: 80px; /* Espacio para que el nav no tape el contenido */
+  padding-bottom: 80px;
 }
 
 .bottomNav {

@@ -31,12 +31,10 @@ export function useLocations() {
       : queryError.message || 'Error al cargar ubicaciones';
   }
 
-  // 2. Mutación para Crear Ubicación (con sus clientIds)
   const createMutation = useMutation({
     mutationFn: (data: CreateLocationInput) => locationService.create(data), 
     onSuccess: () => {
       showToast.success('La ubicación ha sido registrada exitosamente.');
-      // 🚀 Invalidamos ambas consultas para actualizar tablas e insignias en caliente
       queryClient.invalidateQueries({ queryKey: ['locations'] }); 
       queryClient.invalidateQueries({ queryKey: ['clients'] }); 
     },
@@ -45,7 +43,6 @@ export function useLocations() {
     }
   });
 
-  // 3. Mutación para Actualizar Ubicación
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateLocationInput }) => locationService.update(id, data),
     onSuccess: () => {
@@ -58,7 +55,6 @@ export function useLocations() {
     }
   });
 
-  // 4. Mutación para Eliminar Ubicación
   const deleteMutation = useMutation({
     mutationFn: (id: number) => locationService.delete(id),
     onSuccess: () => {
@@ -71,7 +67,6 @@ export function useLocations() {
     }
   });
 
-  // Callbacks asíncronos limpios para consumir desde los componentes
   const createLocation = useCallback(async (data: CreateLocationInput): Promise<boolean> => {
     try {
       await createMutation.mutateAsync(data);

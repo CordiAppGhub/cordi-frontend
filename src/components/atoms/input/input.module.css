@@ -1,21 +1,15 @@
-/* ==========================================
-   FORM INPUTS (MOBILE-FIRST)
-   ========================================== */
 .inputWrapper {
   display: flex;
   flex-direction: column;
-  /* Más espacio inferior en móvil para evitar tocar el campo equivocado */
   margin-bottom: 16px; 
 }
 
 .input {
   width: 100%;
-  /* 🔥 CRÍTICO MÓVIL: Padding mayor para asegurar un touch-target alto (min 44px) */
   padding: 14px 16px; 
   border: 1px solid #cbd5e1;
-  border-radius: 8px; /* Bordes un poco más modernos/suaves en móvil */
+  border-radius: 8px; 
   
-  /* 🔥 EL TRUCO DE ORO: 16px previene el zoom automático molesto en iOS (iPhone) */
   font-size: 16px; 
   
   color: #334155;
@@ -23,48 +17,38 @@
   outline: none;
   font-family: inherit;
   
-  /* Transición suave no solo para el borde, sino también para la sombra */
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* --- Estado Focus (Mejora de Accesibilidad) --- */
 .input:focus {
-  border-color: #2563eb; /* Azul corporativo (ajustado de tu paleta) */
-  /* Halo exterior translúcido que grita "¡Estás escribiendo aquí!" */
+  border-color: #2563eb; 
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); 
 }
 
-/* --- Estado de Error --- */
 .error {
   border-color: #ef4444;
 }
 
-/* Halo rojo si el input con error está seleccionado */
 .error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
 
 .errorMessage {
   color: #ef4444;
-  font-size: 13px; /* Legible sin forzar la vista en pantallas pequeñas */
+  font-size: 13px; 
   margin-top: 6px;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 4px; /* Por si en el futuro decides ponerle un ícono ⚠️ al texto */
+  gap: 4px; 
 }
 
-/* ==========================================
-   MEDIA QUERIES (TABLETS Y ESCRITORIOS)
-   ========================================== */
 @media (min-width: 768px) {
   .inputWrapper {
-    /* Volvemos al espaciado estándar de escritorio */
     margin-bottom: 12px;
   }
 
   .input {
-    /* Retornamos a la densidad de datos compacta para pantallas grandes */
     padding: 10px 12px;
     font-size: 14px; 
     border-radius: 6px;

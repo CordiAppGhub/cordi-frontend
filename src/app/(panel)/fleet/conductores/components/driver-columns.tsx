@@ -54,7 +54,7 @@ export const getDriverColumns = (
         <Button
           variant="secondary"
           title="Ver Detalles"
-          onClick={() => onNavigateDetails(row.id)} // 👈 Redirige a la nueva página
+          onClick={() => onNavigateDetails(row.id)} 
           style={{ padding: '6px 10px', fontSize: '1rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
         >
           🔍

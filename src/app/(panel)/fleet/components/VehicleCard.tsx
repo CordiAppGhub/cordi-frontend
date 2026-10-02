@@ -37,7 +37,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClickEdit }
         </div>
         <div className={styles.metricItem}>
           <span className={styles.metricLabel}>Conductor</span>
-          {/* 👇 AQUÍ MOSTRAMOS EL CONDUCTOR REAL DEL BACKEND */}
           <span className={styles.metricValue} style={{ color: vehicle.driver ? '#0f172a' : '#94a3b8' }}>
             {vehicle.driver ? vehicle.driver.name : 'Sin asignar'}
           </span>

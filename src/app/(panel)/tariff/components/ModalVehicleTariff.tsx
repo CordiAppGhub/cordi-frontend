@@ -62,7 +62,6 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
     const localErrors: Record<string, string> = {};
 
     if (!formData.affiliation) localErrors.affiliation = 'Seleccione el tipo de flota';
-    // Validamos que exista y no sea negativo
     if (formData.percentage === undefined || formData.percentage === '' || Number(formData.percentage) < 0) {
       localErrors.percentage = 'Ingrese un porcentaje válido';
     }
@@ -84,7 +83,6 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
     }
   };
 
-  // 🚀 Convertimos initialData de forma estricta al tipo que SuperForm espera
   const defaultValues: Record<string, FormFieldValue> = initialData 
     ? {
         affiliation: initialData.affiliation,

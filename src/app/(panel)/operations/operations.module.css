@@ -10,7 +10,6 @@
   box-sizing: border-box;
 }
 
-/* Header */
 
 .pageHeader {
   display: flex;
@@ -61,7 +60,6 @@
   margin: 3px 0 0;
 }
 
-/* Tabs */
 
 .tabsContainer {
   display: flex;
@@ -111,7 +109,6 @@
   background-color: #f8fafc;
 }
 
-/* Filtros */
 
 .filtersBar {
   display: flex;
@@ -151,7 +148,6 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
-/* Tabla */
 
 .tableCard {
   background: #ffffff;
@@ -164,7 +160,6 @@
   overflow-x: auto;
 }
 
-/* Error */
 
 .errorMessage {
   background-color: #fee2e2;
@@ -178,7 +173,6 @@
   box-sizing: border-box;
 }
 
-/* Acciones */
 
 .actionsContainer {
   display: flex;
@@ -187,7 +181,6 @@
   flex-wrap: wrap;
 }
 
-/* Tablet / Desktop */
 
 @media (min-width: 768px) {
   .layout {

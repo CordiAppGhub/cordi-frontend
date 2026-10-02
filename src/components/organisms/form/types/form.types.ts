@@ -3,7 +3,7 @@ export type FormFieldType =
   | 'select' | 'checkbox' | 'radio' | 'textarea'
   | 'multiselect' | 'datetime-local' | 'date';
 
-export type FormFieldValue = string | number | boolean | string[] | number[]; // 🚀 Añadimos arrays para los valores múltiples
+export type FormFieldValue = string | number | boolean | string[] | number[]; 
 export interface FormOption {
   label: string;
   value: string | number;
@@ -29,5 +29,5 @@ export interface SuperFormProps {
   cancelText?: string;
   onSubmit: (formData: Record<string, FormFieldValue>) => void;
   onCancel?: () => void;
-  onChange?: (name: string, value: FormFieldValue) => void; // 👈 NUEVO
+  onChange?: (name: string, value: FormFieldValue) => void;
 }

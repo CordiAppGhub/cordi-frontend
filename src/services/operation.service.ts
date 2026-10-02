@@ -27,7 +27,6 @@ export interface AssignOperationPayload {
   fletePagoManual?: number;
 }
 
-// NUEVO: Interfaz para la reasignación de emergencia
 export interface ReassignOperationPayload {
   driverId: number;
   vehicleId: number;
@@ -51,7 +50,6 @@ export const operationService = {
     await api.put(`/operations/${operationId}/assign`, payload);
   },
 
-  // NUEVO: Método para reasignar conductor y vehículo en ruta
   reassignOperation: async (operationId: number, payload: ReassignOperationPayload): Promise<Operation> => {
     const response = await api.patch<Operation>(`/operations/${operationId}/reassign`, payload);
     return response.data;

@@ -1,7 +1,7 @@
 export interface OperationRules {
   showOrigen: boolean;
   showDestino: boolean;
-  showDescargue: boolean; // Sirve tanto para Cargue (Exportación) como Descargue (Importación)
+  showDescargue: boolean;
   showContainer: boolean;
 }
 

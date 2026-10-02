@@ -2,7 +2,6 @@ import { TripMicroState, OcrResult } from "@/types/driver-portal.types";
 import { api } from "./api.service";
 
 export const driverPortalService = {
-  // 🗑️ Se eliminó getByToken porque ya usamos getDriverProfile en /me
 
   uploadEvidence: async (operationId: number, file: File): Promise<void> => {
     const formData = new FormData();
@@ -56,7 +55,6 @@ export const driverAuthService = {
   },
   
   getDriverProfile: async () => {
-    // 🚀 La cookie driver_access_token hace la magia aquí automáticamente
     const { data } = await api.get('/auth/driver/me'); 
     return data;
   },
