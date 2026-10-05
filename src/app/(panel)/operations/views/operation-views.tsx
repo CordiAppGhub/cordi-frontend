@@ -15,6 +15,7 @@ import styles from '../operations.module.css';
 import { getOperationsColumns } from '../components/operations-colums';
 import { ApplySurchargeModal } from '../components/ApplySurchargeModal'; 
 import { NovedadForm } from '../../novedades/components/novedades-modal/novedades-modal';
+import Swal from 'sweetalert2';
 
 const tabs = [
   { id: 'TODAS', label: 'Todas las Operaciones' },
@@ -217,7 +218,7 @@ export function OperationsView() {
                 rawOperation={traceabilityOperation}
                 onCancel={() => setModalTab('DETAILS')}
                 onSuccess={() => {
-                  alert('¡Novedad registrada con éxito en la Torre de Control!');
+                  Swal.fire('¡Novedad registrada con éxito en la Torre de Control!');
                   setModalTab('DETAILS');
                   fetchOperations();
                 }}

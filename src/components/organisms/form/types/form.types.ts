@@ -1,9 +1,15 @@
+// src/components/organisms/form/types/form.types.ts
+
 export type FormFieldType = 
   | 'text' | 'number' | 'email' | 'password' 
   | 'select' | 'checkbox' | 'radio' | 'textarea'
-  | 'multiselect' | 'datetime-local' | 'date';
+  | 'multiselect' | 'datetime-local' | 'date'
+  | 'time' | 'file' 
+  | 'custom'; 
 
-export type FormFieldValue = string | number | boolean | string[] | number[]; 
+// 🚀 Ampliamos para permitir arreglos de objetos (como clientsData)
+export type FormFieldValue = string | number | boolean | string[] | number[] | any[] | Record<string, any> | null | undefined; 
+
 export interface FormOption {
   label: string;
   value: string | number;
@@ -16,8 +22,11 @@ export interface FormField {
   placeholder?: string;
   options?: FormOption[];
   disabled?: boolean;
-  visible?: boolean;
+  // 🚀 Permitimos que 'visible' sea un booleano o una función reactiva del estado del form
+  visible?: boolean | ((formData: Record<string, FormFieldValue>) => boolean);
   gridSpan?: number;
+  fullWidth?: boolean;
+  render?: (value: any, onChange: (newValue: any) => void) => React.ReactNode; 
 }
 
 export interface SuperFormProps {

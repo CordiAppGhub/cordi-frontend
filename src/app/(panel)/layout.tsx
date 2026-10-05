@@ -10,10 +10,6 @@ export default function PanelLayout({
   return (
     <div className={styles.panelWrapper}>
       <Navbar />
-
-
-
-
       <main className={styles.mainContent}>
         {children}
       </main>

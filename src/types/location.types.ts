@@ -1,45 +1,39 @@
-import { Client } from "./client.-types";
+// src/types/location.types.ts
 
-export interface TarifaLocation {
-  id: number;
-  operacion: string;
-  valor?: number;
-}
-
-export interface ClientLocation {
-  id?: number;
+export interface ClientLocationRelation {
   clientId: number;
-  locationId: number;
-  client?: Client;
+  isClient: boolean;
+  isDepot: boolean;
+  client?: {
+    id: number;
+    razonSocial: string;
+    nit: string;
+  };
 }
 
 export interface Locations {
   id: number;
   name: string;
-  address?: string;
-  
+  address?: string | null;
   isPort: boolean;
   isDepot: boolean;
-  isClient: boolean;
-  
   isOrigin: boolean;
   isDestination: boolean;
-  
   exigeCita: boolean;
-  
-  clients?: ClientLocation[];
-  
-  createdAt: string;
-  updatedAt: string;
-
-  tarifas?: TarifaLocation[];
+  clients?: ClientLocationRelation[];
 }
 
-export type CreateLocationInput = Omit<
-  Locations, 
-  'id' | 'createdAt' | 'updatedAt' | 'clients' | 'tarifas'
-> & {
-  clientIds?: number[]; 
-};
-
-export type UpdateLocationInput = Partial<CreateLocationInput>;
+// 🚀 Tipo actualizado para la creación/edición que coincide con el nuevo payload masivo
+export interface CreateLocationInput {
+  name: string;
+  address?: string;
+  isPort: boolean;
+  isOrigin: boolean;
+  isDestination: boolean;
+  exigeCita: boolean;
+  clientsData?: {
+    clientId: number;
+    isClient: boolean;
+    isDepot: boolean;
+  }[];
+}

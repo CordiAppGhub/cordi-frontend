@@ -34,11 +34,7 @@ export default function DashboardPage() {
   return (
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>
-            Torre de Control <span style={{ color: '#64748b', fontWeight: 400, fontSize: '1.1rem' }}>– {user?.name || 'Vista general'}</span>
-          </h1>
-        </div>
+       
         <div className={styles.headerRight} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
           <LiveClock onRefresh={refresh} isRefetching={isRefetching} />
         </div>
@@ -56,7 +52,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <ActiveDispatchesTable 
+      <ActiveDispatchesTable
         dispatches={data.activeDispatches} 
         filters={filters}
         onFiltersChange={setFilters}

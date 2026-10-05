@@ -1,0 +1,110 @@
+/* LocationModal.module.css */
+
+.clientAssignmentsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+  background-color: #f8fafc;
+}
+
+.clientRow {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.clientRowActive {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.clientToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.mainCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.clientName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.clientNit {
+  font-size: 12px;
+  font-weight: 400;
+  color: #64748b;
+}
+
+/* El bloque que se despliega al seleccionar el cliente */
+.granularRoles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  margin-left: 28px; /* Identado para indicar jerarquía */
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+  animation: slideDown 0.2s ease-out;
+}
+
+.roleLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.05em;
+}
+
+.roleToggles {
+  display: flex;
+  gap: 16px;
+}
+
+.subCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.subCheckboxLabel input {
+  accent-color: #4f46e5;
+  cursor: pointer;
+}
+
+.errorText {
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.loadingText {
+  font-size: 13px;
+  color: #64748b;
+  padding: 16px;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

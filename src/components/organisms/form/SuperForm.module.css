@@ -1,100 +1,89 @@
+/* SuperForm.module.css */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 24px; 
-  width: 100%;
+  gap: 24px;
 }
 
 .fieldsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  column-gap: 16px;
-  row-gap: 16px;
-  align-items: start;
+  grid-template-columns: 1fr 1fr; /* Grilla de 2 columnas */
+  gap: 16px 24px;
+}
+
+/* Ocupa ambas columnas para no romper el diseño */
+.fullWidth {
+  grid-column: 1 / -1;
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 100%;
 }
 
 .label {
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 600;
   color: #334155;
+}
+
+/* 🚀 Estilos del nuevo Multiselect */
+.multiselectContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px; /* Limita la altura y pone scroll */
+  overflow-y: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #f8fafc;
+}
+
+.multiselectOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #0f172a;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.multiselectOption:hover {
+  background-color: #e2e8f0;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
 }
 
 .checkboxLabel {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
-  color: #475569;
+  font-size: 14px;
+  color: #334155;
   cursor: pointer;
-  margin-top: 8px;
+  height: 40px; /* Iguala la altura de los inputs normales para alinear la grilla */
 }
 
-.checkboxInput {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.radioGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+.errorMessage {
+  font-size: 12px;
+  color: #ef4444;
   margin-top: 4px;
-}
-
-.radioLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.875rem;
-  color: #475569;
-  cursor: pointer;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 8px;
   padding-top: 16px;
-  border-top: 1px solid #e2e8f0; 
-}
-
-
-
-.fullWidth {
-  grid-column: 1 / -1; 
-}
-
-.textareaInput {
-  width: 100%;
-  min-height: 160px;
-  padding: 12px 14px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  resize: vertical; 
-  font-family: inherit;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.textareaInput:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.textareaInput:disabled {
-  background-color: #f1f5f9;
-  cursor: not-allowed;
+  border-top: 1px solid #e2e8f0;
 }

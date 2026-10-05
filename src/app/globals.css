@@ -9,3 +9,34 @@ body {
   background-color: #f4f6f9;
   color: #333;
 }
+
+/* src/app/globals.css */
+
+/* Previene el auto-zoom en móviles (iOS/Safari) al tocar inputs o selects */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* Si alguien le había puesto la propiedad 'zoom' a la tabla, la reseteamos */
+.table-container {
+  zoom: normal !important; 
+  /* O quita cualquier transform: scale() que veas en tus estilos actuales */
+}
+
+/* Evita el doble tap para hacer zoom en botones y links */
+button, a, select, input {
+  touch-action: manipulation;
+}
+
+.mainLayout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc; /* Color de fondo general */
+}
+
+.contentWrapper {
+  flex: 1;
+  padding: 1rem;
+  max-width: 100%;
+  overflow-x: auto;
+}

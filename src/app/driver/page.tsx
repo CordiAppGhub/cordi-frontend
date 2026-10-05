@@ -11,6 +11,7 @@ import { DriverHeaderNav } from './components/DriverHeaderNav';
 import { DriverAuthSection } from './views/DriverAuthSection';
 import { HistoryTab } from './components/HistoryTab';
 import { CurrentTripTab } from './components/CurrentTripTab';
+import Swal from 'sweetalert2';
 
 
 
@@ -64,17 +65,17 @@ export default function DriverPortalPage() {
         if (!selectedOperation.placaIA) {
           const result = await scanPlate(selectedOperation.id, file);
           if (result?.legible && result?.codigo) {
-            alert(`✅ Placa detectada: ${result.codigo}\n\nAhora toma la foto del contenedor.`);
+            Swal.fire(`✅ Placa detectada: ${result.codigo}\n\nAhora toma la foto del contenedor.`);
           } else {
-            alert('⚠️ No se pudo leer la placa. Intenta de nuevo.');
+            Swal.fire('⚠️ No se pudo leer la placa. Intenta de nuevo.');
           }
         } else {
           const result = await scanContainer(selectedOperation.id, file);
           if (result?.legible && result?.codigo) {
-            alert(`✅ Contenedor validado: ${result.codigo}`);
+            Swal.fire(`✅ Contenedor validado: ${result.codigo}`);
             setIsModalOpen(false);
           } else {
-            alert('⚠️ No se detectó un código válido. Intenta de nuevo.');
+            Swal.fire('⚠️ No se detectó un código válido. Intenta de nuevo.');
           }
         }
       } else if (modalType === 'CLOSING') {
@@ -82,7 +83,7 @@ export default function DriverPortalPage() {
         setIsModalOpen(false);
       }
     } catch (err: any) {
-      alert(err.message || 'Ocurrió un error procesando la imagen.');
+      Swal.fire(err.message || 'Ocurrió un error procesando la imagen.');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }

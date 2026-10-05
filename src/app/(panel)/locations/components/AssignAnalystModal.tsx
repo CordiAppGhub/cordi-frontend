@@ -48,7 +48,7 @@ export const AssignAnalystModal: React.FC<AssignAnalystModalProps> = ({
   const handleSubmit = async (formData: Record<string, any>) => {
     const analystId = Number(formData.analystId);
     if (!analystId) {
-      alert('Debes seleccionar un analista para continuar.');
+      SweetAlert('Debes seleccionar un analista para continuar.');
       return;
     }
 
@@ -83,3 +83,7 @@ export const AssignAnalystModal: React.FC<AssignAnalystModalProps> = ({
     </SuperModal>
   );
 };
+
+function SweetAlert(arg0: string) {
+  throw new Error('Function not implemented.');
+}

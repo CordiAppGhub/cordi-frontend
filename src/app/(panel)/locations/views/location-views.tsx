@@ -6,14 +6,13 @@ import { Locations } from '@/types/location.types';
 import { useLocations } from '../hooks/useLocation';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { LocationModal } from '../components/locationModal/locationModal';
-import { getLocationColumns } from '../components/LocationColumns';
+import { getLocationColumns, getClientSubColumns } from '../components/LocationColumns';
 
 export const LocationsView: React.FC = () => {
   const { locations, isLoadingLocations, deleteLocation, refreshLocations } = useLocations();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<Locations | null>(null);
-  
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -36,12 +35,13 @@ export const LocationsView: React.FC = () => {
     setIsModalOpen(true);
   };
 
- 
-
   const columns = useMemo(
     () => getLocationColumns(handleOpenEdit, deleteLocation),
     [deleteLocation]
   );
+
+  // 🚀 Definimos las sub-columnas del collapse
+  const subColumns = useMemo(() => getClientSubColumns(), []);
 
   const totalPages = Math.ceil((locations?.length || 0) / itemsPerPage) || 1;
   const paginatedData = useMemo(() => {
@@ -71,6 +71,10 @@ export const LocationsView: React.FC = () => {
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
+            // 🚀 Propiedades nativas de colapso integradas
+            isCollapsible={true}
+            subColumns={subColumns}
+            getSubRows={(row) => row.clients || []}
           />
         </div>
       )}

@@ -37,18 +37,22 @@ export const SuperForm: React.FC<SuperFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-
       <div className={styles.fieldsGrid}>
         {fields.map((field) => {
-          if (field.visible === false) return null;
+          const isVisible = typeof field.visible === 'function'
+            ? field.visible(formData)
+            : field.visible !== false;
+          if (!isVisible) return null;
 
           const value = formData[field.name] !== undefined ? formData[field.name] : '';
           const errorMessage = errors[field.name];
 
+          const isFullWidth = field.type === 'textarea' || field.type === 'multiselect' || field.fullWidth;
+
           return (
             <div
               key={field.name}
-              className={`${styles.formGroup} ${field.type === 'textarea' ? styles.fullWidth : ''}`}
+              className={`${styles.formGroup} ${isFullWidth ? styles.fullWidth : ''}`}
             >
               <label className={styles.label}>
                 {field.label}
@@ -64,7 +68,7 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                         value={String(value)}
                         onChange={(e) => handleChange(field.name, e.target.value)}
                         disabled={field.disabled || isLoading}
-                        className={styles.textareaInput} 
+                        className={styles.textareaInput}
                       />
                     );
 
@@ -79,26 +83,33 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                         error={errorMessage}
                       />
                     );
+
                   case 'multiselect':
+                    // 🚀 Nuevo diseño de multiselect: Lista de checkboxes con scroll
                     return (
-                      <select
-                        multiple
-                        name={field.name}
-                        value={Array.isArray(value) ? value.map(String) : []}
-                        onChange={(e) => {
-                          const selectedValues = Array.from(e.target.selectedOptions).map(opt => opt.value);
-                          handleChange(field.name, selectedValues);
-                        }}
-                        disabled={field.disabled || isLoading}
-                        className={`${styles.textareaInput} ${styles.multiselect}`} 
-                        style={{ height: '120px', padding: '8px' }} 
-                      >
-                        {field.options?.map((opt) => (
-                          <option key={opt.value} value={opt.value} style={{ padding: '6px', cursor: 'pointer' }}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className={styles.multiselectContainer}>
+                        {field.options?.map((opt) => {
+                          const isChecked = Array.isArray(value) && value.includes(String(opt.value));
+                          return (
+                            <label key={opt.value} className={styles.multiselectOption}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const currentValues = Array.isArray(value) ? value.map(String) : [];
+                                  const newValues = e.target.checked
+                                    ? [...currentValues, String(opt.value)]
+                                    : currentValues.filter((v) => v !== String(opt.value));
+                                  handleChange(field.name, newValues);
+                                }}
+                                disabled={field.disabled || isLoading}
+                                className={styles.checkboxInput}
+                              />
+                              <span>{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     );
 
                   case 'checkbox':
@@ -134,6 +145,11 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                         ))}
                       </div>
                     );
+                  case 'custom':
+                    // 🚀 Inyectamos la UI personalizada pasándole el valor actual y la función para mutarlo
+                    return field.render
+                      ? field.render(value, (newVal) => handleChange(field.name, newVal))
+                      : null;
 
                   default:
                     return (
