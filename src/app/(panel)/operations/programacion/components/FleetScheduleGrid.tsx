@@ -10,16 +10,18 @@ import { tariffService } from '@/services/tariff.service';
 
 import { getCreationColumns, getGroupedColumns, getNestedColumns } from './fleet-schedules.columns';
 import { useLocations } from '@/app/(panel)/locations/hooks/useLocation';
-import { useFleetSchedules } from '../hooks/useFleetSchedules';
+import { useProgramacion } from '../hooks/useProgramacion';
 
 // 🚀 1. Importamos el CSS Module
 import styles from './fleet-schedule.module.css';
+import Swal from 'sweetalert2';
 
 interface ScheduleRowState {
   [clientId: number]: {
     locationId: string;
     operationType: string;
     vehicleId: string;
+    trailerId?: string; // 👈 Añadido soporte para remolque opcional
     analystId: string;
     driverId: string;
     manualPrice: string;
@@ -34,7 +36,7 @@ export default function FleetScheduleGrid() {
   const [rowStates, setRowStates] = useState<ScheduleRowState>({});
   const [activeTab, setActiveTab] = useState<string>('asignar');
 
-  const { schedules, createSchedule, isCreating, cancelSchedule, isCancelling } = useFleetSchedules(selectedDate);
+  const { operations, createOperation, isCreating, cancelOperation, isCancelling } = useProgramacion(selectedDate);
   const { clients } = useClients();
   const { vehicles } = useVehicles();
   const { analysts } = useAnalysts();
@@ -43,13 +45,13 @@ export default function FleetScheduleGrid() {
   const handleFieldChange = async (clientId: number, field: string, value: string) => {
     setRowStates((prev) => {
       const currentClientState = prev[clientId] || {
-        locationId: '', operationType: '', vehicleId: '', analystId: '',
+        locationId: '', operationType: '', vehicleId: '', trailerId: '', analystId: '',
         driverId: '', manualPrice: '', suggestedPrice: null, isCalculating: false,
       };
       return { ...prev, [clientId]: { ...currentClientState, [field]: value } };
     });
 
-    if (['manualPrice', 'vehicleId', 'analystId', 'driverId'].includes(field)) {
+    if (['manualPrice', 'vehicleId', 'trailerId', 'analystId', 'driverId'].includes(field)) {
       return;
     }
 
@@ -97,22 +99,24 @@ export default function FleetScheduleGrid() {
 
   const handleSaveRow = async (clientId: number) => {
     const rowData = rowStates[clientId];
-    if (!rowData || !rowData.locationId || !rowData.operationType || !rowData.vehicleId || !rowData.analystId) {
-      alert('Por favor completa la Sede, el Tipo de Operación, el Vehículo y el Analista.');
+    if (!rowData || !rowData.operationType || !rowData.vehicleId || !rowData.analystId) {
+    Swal.fire('Por favor completa el Tipo de Operación, el Vehículo y el Analista.');
       return;
     }
 
     const payload = {
-      date: selectedDate,
+      type: rowData.operationType,
+      scheduledAt: `${selectedDate}T12:00:00Z`, 
       clientId: Number(clientId),
-      locationId: Number(rowData.locationId),
-      operationType: rowData.operationType,
-      vehicleId: Number(rowData.vehicleId),
+      origenId: Number(rowData.locationId),
       analystId: Number(rowData.analystId),
+      vehicleId: Number(rowData.vehicleId),
+      trailerId: rowData.trailerId ? Number(rowData.trailerId) : undefined,
+      driverId: rowData.driverId ? Number(rowData.driverId) : undefined,
       fleteCobroManual: rowData.manualPrice ? parseFloat(rowData.manualPrice) : rowData.suggestedPrice,
     };
 
-    await createSchedule(payload);
+    await createOperation(payload);
     
     setRowStates((prev) => {
       const newState = { ...prev };
@@ -127,38 +131,38 @@ export default function FleetScheduleGrid() {
 
   const groupedSchedules = useMemo(() => {
     const groups: Record<number, any> = {};
-    schedules.forEach((schedule: any) => {
-      const clientId = schedule.client.id;
+    operations.forEach((operation: any) => {
+      const clientId = operation.client?.id;
+      if (!clientId) return;
+      
       if (!groups[clientId]) {
-        groups[clientId] = { id: clientId, razonSocial: schedule.client.razonSocial, operations: [] };
+        groups[clientId] = { id: clientId, razonSocial: operation.client.razonSocial, operations: [] };
       }
-      groups[clientId].operations.push(schedule);
+      groups[clientId].operations.push(operation);
     });
-    return Object.values(groups).map((group) => {
-      const uniqueAnalysts = Array.from(new Set(group.operations.map((op: any) => op.analyst.name)));
+    return Object.values(groups).map((group: any) => {
+      const uniqueAnalysts = Array.from(new Set(group.operations.map((op: any) => op.analyst?.name).filter(Boolean)));
       return { ...group, totalOperations: group.operations.length, analystsStr: uniqueAnalysts.join(', ') };
     });
-  }, [schedules]);
+  }, [operations]);
 
   const creationColumns = getCreationColumns(
     vehicles, 
     analysts, 
-    locations,
     rowStates, 
     handleFieldChange, 
     handleSaveRow, 
     isCreating
   );
   const groupedColumns = getGroupedColumns();
-  const nestedColumns = getNestedColumns(cancelSchedule, isCancelling);
+  const nestedColumns = getNestedColumns(cancelOperation, isCancelling);
 
   const tabOptions: TabOption[] = [
     { id: 'asignar', label: 'Asignar Flota' },
-    { id: 'guardadas', label: 'Programadas', badge: schedules.length > 0 ? schedules.length : undefined },
+    { id: 'guardadas', label: 'Programadas', badge: operations.length > 0 ? operations.length : undefined },
   ];
 
   return (
-    // 🚀 2. Aplicamos las clases desde el objeto styles
     <div className={styles.container}>
       <div className={styles.headerContainer}>
         <div className={styles.titleContainer}>

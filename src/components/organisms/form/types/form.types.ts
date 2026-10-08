@@ -27,6 +27,7 @@ export interface FormField {
   gridSpan?: number;
   fullWidth?: boolean;
   render?: (value: any, onChange: (newValue: any) => void) => React.ReactNode; 
+  defaultValue?: FormFieldValue;
 }
 
 export interface SuperFormProps {

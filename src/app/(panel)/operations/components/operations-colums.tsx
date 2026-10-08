@@ -1,28 +1,28 @@
-'use client';
-
 import React from 'react';
 import { ColumnDef } from '@/types/table';
 import { Operation } from '@/types/operation-types';
-import { Button } from '@/components/atoms/button/button';
 import { useUIStore } from '@/store/use-ui.store';
 import styles from '../operations.module.css';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { formatLocationLabel } from '@/utils/location';
-import { 
-  Building2, 
-  Calendar, 
-  Truck, 
-  User, 
-  MapPin, 
-  AlertTriangle, 
-  Eye, 
-  PlusCircle, 
-  BadgeDollarSign 
+import {
+  Building2,
+  Calendar,
+  Truck,
+  User,
+  MapPin,
+  AlertTriangle,
+  Eye,
+  PlusCircle,
+  BadgeDollarSign,
+  PackagePlus
 } from 'lucide-react';
 
 export const getOperationsColumns = (
-  setTraceabilityId: (id: number) => void,
-  onAddSurcharge: (id: number) => void
+  setTraceabilityId: (id: number) => void, // Puedes eliminar esto de tu vista si ya migraste 100% a setTraceContext
+  onAddSurcharge: (id: number) => void,
+  onEditOperation: (row: Operation) => void,
+  setTraceContext: (context: { type: 'OPERATION' | 'CONTAINER' | 'ANALYST' | 'DRIVER' | 'VEHICLE'; id: string | number }) => void,
 ): ColumnDef<Operation>[] => {
   return [
     {
@@ -54,44 +54,56 @@ export const getOperationsColumns = (
     },
     {
       id: 'vehicle',
-      header: 'Flaca / Conductor',
+      header: 'Placa / Conductor',
       type: 'text',
       renderCell: (row) => {
         const isMaintenance = row.vehicle?.status === 'MAINTENANCE';
-        
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {/* 🚀 Etiqueta estilo Placa de Vehículo */}
-            <span style={{ 
-              fontWeight: 700, 
-              fontSize: '0.75rem',
-              color: isMaintenance ? '#b91c1c' : '#1e293b',
-              backgroundColor: isMaintenance ? '#fee2e2' : '#f1f5f9',
-              border: `1px solid ${isMaintenance ? '#f87171' : '#cbd5e1'}`,
-              padding: '2px 8px',
-              borderRadius: '6px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              width: 'fit-content',
-              letterSpacing: '0.5px'
-            }}>
+            <button
+              onClick={() => row.vehicleId && setTraceContext({ type: 'VEHICLE', id: row.vehicleId })}
+              disabled={!row.vehicleId}
+              style={{
+                fontWeight: 700, fontSize: '0.75rem',
+                color: isMaintenance ? '#b91c1c' : '#2563eb',
+                backgroundColor: isMaintenance ? '#fee2e2' : '#f1f5f9',
+                border: `1px solid ${isMaintenance ? '#f87171' : '#cbd5e1'}`,
+                padding: '2px 8px', borderRadius: '6px',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                cursor: row.vehicleId ? 'pointer' : 'default',
+                textDecoration: row.vehicleId ? 'underline' : 'none'
+              }}
+            >
               <Truck size={12} />
               {row.vehicle?.plate || 'SIN ASIGNAR'}
-            </span>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: row.driver?.name ? '#475569' : '#94a3b8' }}>
+            </button>
+
+            {/* 🚀 CONDUCTOR CLICABLE PARA TRAZABILIDAD DE DRIVER */}
+            <button
+              onClick={() => row.driverId && setTraceContext({ type: 'DRIVER', id: row.driverId })}
+              disabled={!row.driverId}
+              title={row.driverId ? "Ver perfil y trazabilidad del conductor" : ""}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem',
+                background: 'none', border: 'none', padding: 0,
+                color: row.driverId ? '#2563eb' : '#94a3b8',
+                cursor: row.driverId ? 'pointer' : 'default',
+                textDecoration: row.driverId ? 'underline' : 'none',
+                transition: 'color 0.2s'
+              }}
+            >
               <User size={12} />
               <span>{row.driver?.name || 'Pendiente'}</span>
-            </div>
+            </button>
           </div>
         );
       }
     },
-    { 
-      id: 'origen', 
-      header: 'Origen', 
-      type: 'text', 
+    {
+      id: 'origen',
+      header: 'Origen',
+      type: 'text',
       renderCell: (row) => (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.875rem', color: '#334155' }}>
           <MapPin size={14} style={{ color: '#cbd5e1', marginTop: '2px' }} />
@@ -141,28 +153,25 @@ export const getOperationsColumns = (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: '#475569' }}>
             {hasCitaOrigen && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <strong style={{ color: '#0f172a', minWidth: '45px' }}>Origen:</strong> 
+                <strong style={{ color: '#0f172a', minWidth: '45px' }}>Origen:</strong>
                 <span>{formatShortDate(row.fechaCitaOrigen!)}</span>
               </div>
             )}
-            
             {hasCitaDestino && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <strong style={{ color: '#0f172a', minWidth: '45px' }}>Destino:</strong> 
+                <strong style={{ color: '#0f172a', minWidth: '45px' }}>Destino:</strong>
                 <span>{formatShortDate(row.fechaCitaDestino!)}</span>
               </div>
             )}
-            
             {hasRetiro && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <strong style={{ color: '#ea580c', minWidth: '45px' }}>Retiro:</strong> 
+                <strong style={{ color: '#ea580c', minWidth: '45px' }}>Retiro:</strong>
                 <span style={{ color: '#ea580c', fontWeight: 500 }}>{formatShortDate(row.fechaRetiro!)}</span>
               </div>
             )}
-            
             {hasDevolucion && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <strong style={{ color: '#ea580c', minWidth: '45px' }}>Límite:</strong> 
+                <strong style={{ color: '#ea580c', minWidth: '45px' }}>Límite:</strong>
                 <span style={{ color: '#ea580c', fontWeight: 500 }}>{formatShortDate(row.fechaLimiteDevolucion!)}</span>
               </div>
             )}
@@ -175,7 +184,7 @@ export const getOperationsColumns = (
       header: 'Facturación',
       type: 'text',
       renderCell: (row) => {
-        const fleteBase = row.fleteCobro || 0;
+        const fleteBase = row.fleteCobro || row.fleteCobroManual || 0;
         const totalRecargos = row.surcharges?.reduce((sum, surcharge) => sum + Number(surcharge.totalPrice), 0) || 0;
         const granTotalCobro = fleteBase + totalRecargos;
 
@@ -186,7 +195,7 @@ export const getOperationsColumns = (
             </span>
             {totalRecargos > 0 && (
               <span style={{ color: '#d97706', fontSize: '0.7rem', fontWeight: 600, lineHeight: '1.2' }}>
-                Base: ${fleteBase.toLocaleString('es-CO')} <br/>
+                Base: ${fleteBase.toLocaleString('es-CO')} <br />
                 Extras: +${totalRecargos.toLocaleString('es-CO')}
               </span>
             )}
@@ -199,9 +208,9 @@ export const getOperationsColumns = (
       header: 'Pago Flota',
       type: 'text',
       renderCell: (row) => (
-        <span style={{ 
-          color: row.fletePago ? '#0f172a' : '#94a3b8', 
-          fontWeight: 600, 
+        <span style={{
+          color: row.fletePago ? '#0f172a' : '#94a3b8',
+          fontWeight: 600,
           fontSize: '0.875rem',
           fontVariantNumeric: 'tabular-nums'
         }}>
@@ -209,17 +218,15 @@ export const getOperationsColumns = (
         </span>
       ),
     },
-   {
+    {
       id: 'status',
       header: 'Estado',
       type: 'text',
       renderCell: (row) => {
-        // Verificamos si tiene novedades activas
         const tieneNovedades = Boolean(row.novedadesHistorial && row.novedadesHistorial.length > 0);
-        
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
-            
             {tieneNovedades ? (
               <div style={{
                 backgroundColor: '#fef2f2',
@@ -232,7 +239,7 @@ export const getOperationsColumns = (
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: '0 0 0 4px rgba(239,68,68,0.1)', 
+                boxShadow: '0 0 0 4px rgba(239,68,68,0.1)',
               }}>
                 <AlertTriangle size={12} strokeWidth={3} />
                 NOVEDAD
@@ -242,11 +249,11 @@ export const getOperationsColumns = (
             )}
 
             {row.status === 'EN_CURSO' && row.estadoViaje && (
-              <span 
+              <span
                 title="Último reporte del conductor"
-                style={{ 
-                  fontSize: '0.65rem', 
-                  color: '#475569', 
+                style={{
+                  fontSize: '0.65rem',
+                  color: '#475569',
                   backgroundColor: '#f8fafc',
                   border: '1px dashed #cbd5e1',
                   padding: '2px 8px',
@@ -261,7 +268,6 @@ export const getOperationsColumns = (
                 📍 {row.estadoViaje.replace(/_/g, ' ').toLowerCase()}
               </span>
             )}
-
           </div>
         );
       }
@@ -272,10 +278,24 @@ export const getOperationsColumns = (
       type: 'text',
       renderCell: (row: Operation) => {
         const { openAssignModal } = useUIStore.getState();
-        
+
         return (
           <div className={styles.actionsContainer} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            
+
+            <button
+              onClick={() => onEditOperation(row)}
+              title="Completar / Editar Datos de Operación"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                backgroundColor: '#f3e8ff', color: '#9333ea',
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}
+            >
+              <PackagePlus size={16} />
+            </button>
+
             <button
               onClick={() => openAssignModal(row.id)}
               disabled={row.status !== 'CREADO'}
@@ -292,9 +312,10 @@ export const getOperationsColumns = (
               <PlusCircle size={16} strokeWidth={2.5} />
             </button>
 
+            {/* 🚀 BOTÓN DEL OJO CONECTADO A SET_TRACE_CONTEXT */}
             <button
-              onClick={() => setTraceabilityId(row.id)}
-              title="Ver Trazabilidad y Novedades"
+              onClick={() => setTraceContext({ type: 'OPERATION', id: row.id })}
+              title="Ver Trazabilidad de la Operación"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '32px', height: '32px', borderRadius: '8px', border: 'none',
@@ -305,7 +326,7 @@ export const getOperationsColumns = (
             >
               <Eye size={16} />
             </button>
-            
+
             <button
               onClick={() => onAddSurcharge(row.id)}
               title="Añadir Recargo Financiero"

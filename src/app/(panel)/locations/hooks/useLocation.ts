@@ -12,7 +12,6 @@ import { CreateLocationInput, UpdateLocationInput } from '@/types/location.types
 export function useLocations() {
   const queryClient = useQueryClient();
 
-  // 1. Carga de ubicaciones con TanStack Query
   const {
     data: locations = [],
     isLoading: isLoadingLocations,

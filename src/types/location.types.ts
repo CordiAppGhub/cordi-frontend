@@ -4,11 +4,8 @@ export interface ClientLocationRelation {
   clientId: number;
   isClient: boolean;
   isDepot: boolean;
-  client?: {
-    id: number;
-    razonSocial: string;
-    nit: string;
-  };
+  razonSocial?: string;
+  nit?: string;        
 }
 
 export interface Locations {
@@ -23,7 +20,6 @@ export interface Locations {
   clients?: ClientLocationRelation[];
 }
 
-// 🚀 Tipo actualizado para la creación/edición que coincide con el nuevo payload masivo
 export interface CreateLocationInput {
   name: string;
   address?: string;
@@ -31,6 +27,22 @@ export interface CreateLocationInput {
   isOrigin: boolean;
   isDestination: boolean;
   exigeCita: boolean;
+  clientsData?: {
+    clientId: number;
+    isClient: boolean;
+    isDepot: boolean;
+  }[];
+}
+
+export interface UpdateLocationInput {
+  name?: string;
+  address?: string;
+  isPort?: boolean;
+  isOrigin?: boolean;
+  isDestination?: boolean;
+  exigeCita?: boolean;
+  // En la actualización, mandas el arreglo completo para reemplazar las relaciones, 
+  // o lo manejas según la lógica de tu backend
   clientsData?: {
     clientId: number;
     isClient: boolean;

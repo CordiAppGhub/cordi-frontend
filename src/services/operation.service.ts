@@ -1,13 +1,19 @@
 import { api } from './api.service'; 
-import { Operation } from '@/types/operation-types';
-import { CreateOperationFormData } from '@/schemas/operation.schema';
+import { Operation } from '@/types/operation-types'; // Asegúrate de que esta interfaz tenga los nuevos campos (trailerId, status actualizados)
 
+// ==========================================
+// INTERFACES Y PAYLOADS
+// ==========================================
 export interface GetOperationsParams {
   page?: number;
   limit?: number;
-  search?: string;
   status?: string;
   type?: string;
+  date?: string;            // 🚀 Nuevo
+  placa?: string;           // 🚀 Nuevo
+  numeroPedido?: string;    // 🚀 Nuevo
+  containerNumber?: string; // 🚀 Nuevo
+  conductor?: string;       // 🚀 Nuevo
 }
 
 export interface PaginatedOperations {
@@ -20,24 +26,53 @@ export interface PaginatedOperations {
   };
 }
 
-export interface AssignOperationPayload {
-  driverId: number;
-  analystId: number;
-  vehicleId: number;
-  fletePagoManual?: number;
-}
+export type UpdateOperationPayload = Partial<{
+  driverId: number | null;
+  vehicleId: number | null;
+  trailerId: number | null;
+  fleteCobroManual: number | null;
+  containerNumber: string;
+  containerType: string;
+  peso: number;
+  sealNumber: string;
+  pinRetiro: string;
+  documentoTransporte: string;
+}>;
 
-export interface ReassignOperationPayload {
-  driverId: number;
-  vehicleId: number;
-  fletePagoManual?: number;
-}
-
+// ==========================================
+// SERVICIO PRINCIPAL UNIFICADO
+// ==========================================
 export const operationService = {
+  
+  // ----------------------------------------
+  // MÉTODOS PARA PROGRAMACIÓN (useProgramacion)
+  // ----------------------------------------
+  
+  createOperation: async (operationData: any): Promise<Operation> => {
+    const response = await api.post<Operation>('/operations', operationData);
+    return response.data;
+  },
+
+  getOperationsByDate: async (date: string): Promise<Operation[]> => {
+    try {
+      const response = await api.get<Operation[]>(`/operations/by-date?date=${date}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) return [];
+      throw error;
+    }
+  },
+
+  cancelOperation: async (id: number): Promise<void> => {
+    await api.patch(`/operations/${id}/cancel`);
+  },
+
+  // ----------------------------------------
+  // MÉTODOS PARA TRÁFICO (useTrafico)
+  // ----------------------------------------
+
   getActiveOperations: async (params?: GetOperationsParams): Promise<PaginatedOperations> => {
-    const response = await api.get<PaginatedOperations>('/operations/active', {
-      params,
-    });
+    const response = await api.get<PaginatedOperations>('/operations', { params });
     return response.data;
   },
 
@@ -46,16 +81,8 @@ export const operationService = {
     return response.data;
   },
 
-  assignDriver: async (operationId: number, payload: AssignOperationPayload): Promise<void> => {
-    await api.put(`/operations/${operationId}/assign`, payload);
-  },
-
-  reassignOperation: async (operationId: number, payload: ReassignOperationPayload): Promise<Operation> => {
-    const response = await api.patch<Operation>(`/operations/${operationId}/reassign`, payload);
+  updateOperation: async (operationId: number, data: UpdateOperationPayload): Promise<Operation> => {
+    const response = await api.patch<Operation>(`/operations/${operationId}`, data);
     return response.data;
-  },
-
-  createOperation: async (data: CreateOperationFormData): Promise<void> => {
-    await api.post('/operations', data);
-  },
+  }
 };

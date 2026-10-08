@@ -79,7 +79,7 @@ export const getClientSubColumns = (): ColumnDef<ClientLocationRelation>[] => [
     type: 'text',
     renderCell: (item) => (
       <span style={{ fontWeight: 500, color: '#0f172a' }}>
-        🏢 {item.client?.razonSocial || 'Cliente'} <span style={{ color: '#64748b', fontSize: '12px' }}>({item.client?.nit || 'N/A'})</span>
+        🏢 {item.razonSocial || 'Cliente'} <span style={{ color: '#64748b', fontSize: '12px' }}>({item.nit || 'N/A'})</span>
       </span>
     ),
   },

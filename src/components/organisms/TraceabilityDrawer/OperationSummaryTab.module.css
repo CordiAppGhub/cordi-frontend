@@ -1,0 +1,132 @@
+/* OperationSummaryTab.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 30px;
+  padding-top: 16px;
+}
+
+.centerMessage {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.errorMessage {
+  color: #ef4444;
+}
+
+/* --- Alertas --- */
+.alertBox {
+  background-color: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.alertHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c2410c;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.alertList {
+  margin: 0;
+  padding-left: 24px;
+  color: #9a3412;
+  font-size: 0.875rem;
+}
+
+/* --- Títulos de Sección --- */
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: #334155;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+/* --- Grillas y Tarjetas --- */
+.grid2Col {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.gridAuto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.infoCard {
+  flex: 1;
+  min-width: 200px;
+  background-color: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.infoBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Tipografía --- */
+.label {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.value {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.valueLarge {
+  font-size: 1.1rem;
+}
+
+.valueHighlight {
+  color: #ea580c; /* Naranja para límites/fechas críticas */
+}
+
+.dateSub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Elementos Especiales --- */
+.plateBadge {
+  padding: 4px 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.9rem;
+  display: inline-block;
+}
+
+.containerType {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-left: 6px;
+  font-weight: normal;
+}

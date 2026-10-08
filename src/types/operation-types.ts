@@ -20,6 +20,7 @@ export interface Vehicle {
 export interface LogisticNode {
   id: number;
   name: string;
+  address?: string | null;
   client?: ClientNode | null;
 }
 
@@ -32,6 +33,7 @@ export interface UserDriver {
 export interface ClientNode {
   id: number;
   razonSocial: string;
+  nit?: string;
 }
 
 export interface SubOperation {
@@ -66,18 +68,43 @@ export interface OperationSurcharge {
 export interface Operation {
   id: number;
   type: string;
-  status: 'CREADO' | 'ASIGNADO' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA' | 'CANCELADO';
+  // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
+  status: 'CREADO' | 'PROGRAMADO' | 'ASIGNADO' | 'PENDIENTE' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA' | 'CANCELADO';
 
   isAnticipada?: boolean;
 
+  // CONTENEDOR Y CARGA
   containerNumber: string | null;
-  driver?: UserDriver | null;
-  estadoViaje?: string | null;
-  scheduledAt?: string | null;
+  containerType?: string | null;
+  // 🚀 ACTUALIZADO: Alineado con Prisma
+  peso?: number | null; 
+  sealNumber?: string | null; // Sello/Precinto
+  pinRetiro?: string | null;  // PIN del puerto
+  
+  numeroPedido?: string | null; 
+  documentoTransporte?: string | null; // Usado para Manifiesto / DO / BL
+  observaciones?: string | null;
 
+  estadoViaje?: string | null;
+  
+  // FECHAS BASE
+  scheduledAt?: string | null;
+  createdAt?: string | Date;
+
+  // 🚀 IDs DE LOS ACTORES 
+  driverId?: number | null;
+  vehicleId?: number | null;
+  trailerId?: number | null; // NUEVO: Remolque/Chasis
+  analystId?: number | null;
+
+  // OBJETOS RELACIONADOS
+  driver?: UserDriver | null;
   vehicle?: Vehicle | null;
+  trailer?: Vehicle | null; // NUEVO: Objeto Remolque
   evidences?: Evidence[];
   placaIA?: string | null;
+  
+  // NODOS LOGÍSTICOS
   origen?: LogisticNode | null;
   cargue?: LogisticNode | null;
   descargue?: LogisticNode | null;
@@ -85,20 +112,23 @@ export interface Operation {
 
   novedadesHistorial?: NovedadHistorial[];
 
+  // CLIENTE
+  clientId?: number | null; 
   client?: ClientNode | null;
-  basePrice?: number | null;
-  containerType?: string | null;
+  
   parentId?: number | null;
   children?: SubOperation[];
+  
+  // CITAS Y TIEMPOS OPERATIVOS
   fechaCitaOrigen?: string | null;
   fechaCitaDestino?: string | null;
   fechaRetiro?: string | null;
   fechaLimiteDevolucion?: string | null;
 
-
+  // LIQUIDACIÓN Y FINANZAS
+  // 🚀 ACTUALIZADO: Alineado con Prisma
   fleteCobro?: number | null;
+  fleteCobroManual?: number | null; // Flete manual/excepción
   fletePago?: number | null;
-  rentabilidad?: number | null;
   surcharges?: OperationSurcharge[];
-
 }

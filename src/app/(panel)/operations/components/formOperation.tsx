@@ -3,21 +3,24 @@
 import React from 'react';
 import { SuperForm } from '@/components/organisms/form/form';
 import { useOperationForm } from '../hooks/useOperationForm';
+import { Operation } from '@/types/operation-types';
 
 interface OperationFormProps {
   onClose: () => void;
+  scheduleBase?: Operation | null;
 }
 
-export const OperationForm: React.FC<OperationFormProps> = ({ onClose }) => {
+export const OperationForm: React.FC<OperationFormProps> = ({ onClose, scheduleBase }) => {
   const { 
     formFields, 
+    initialValues,
     handleSubmit, 
     handleFormChange, 
     errors, 
     isLoadingOperations,
     suggestedPrice,      
     isCalculatingPrice   
-  } = useOperationForm(onClose);
+  } = useOperationForm(onClose, scheduleBase);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -53,6 +56,7 @@ export const OperationForm: React.FC<OperationFormProps> = ({ onClose }) => {
       <SuperForm
         fields={formFields}
         onSubmit={handleSubmit}
+        defaultValues={initialValues}
         onCancel={onClose}
         onChange={handleFormChange}
         errors={errors}

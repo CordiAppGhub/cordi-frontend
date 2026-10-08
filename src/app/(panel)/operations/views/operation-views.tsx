@@ -2,20 +2,26 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '@/store/use-ui.store';
-import { useOperations } from '../hooks/useOperations';
+import { useTrafico } from '../hooks/useOperations';
 
-import { AssignModal } from '../components/assign-modal/assign-modal';
 import { CreateModal } from '../components/create-modal/create-modal';
-import { OperationTraceability } from '../components/details/OperationTraceability';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { Button } from '@/components/atoms/button/button';
-import { SuperModal } from '@/components/organisms/modal/modal'; // 🚀 Importamos SuperModal
+import { SuperModal } from '@/components/organisms/modal/modal';
 
 import styles from '../operations.module.css';
 import { getOperationsColumns } from '../components/operations-colums';
 import { ApplySurchargeModal } from '../components/ApplySurchargeModal'; 
 import { NovedadForm } from '../../novedades/components/novedades-modal/novedades-modal';
+
 import Swal from 'sweetalert2';
+import { Operation } from '@/types/operation-types';
+import { OperationForm } from '../components/formOperation';
+import { TraceabilityDrawer } from '@/components/organisms/TraceabilityDrawer/TraceabilityDrawer';
+import { getClientColumns } from '../components/client-columns';
+import { useAuthStore } from '@/store/use-auth.store';
+import { OperationFilters } from '../components/OptionFilters';
+import { Loader } from 'lucide-react';
 
 const tabs = [
   { id: 'TODAS', label: 'Todas las Operaciones' },
@@ -26,20 +32,34 @@ const tabs = [
 ];
 
 export function OperationsView() {
-  const { operations, meta, isLoadingOperations, error, fetchOperations } = useOperations();
+  const { operations, meta, isLoadingOperations, error, fetchOperations, setFilters } = useTrafico();
+  const { user } = useAuthStore();
   const { openCreateModal, openAssignModal } = useUIStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('TODAS');
   
-  const [traceabilityId, setTraceabilityId] = useState<number | null>(null);
   const [modalTab, setModalTab] = useState<'DETAILS' | 'NOVEDAD'>('DETAILS');
-
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
 
+  // 🚀 ESTADOS PARA EL MODAL DE EDICIÓN / COMPLETAR DATOS
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [operationToEdit, setOperationToEdit] = useState<Operation | null>(null);
+
+  // 🚀 ESTADO PARA LA TRAZABILIDAD INTELIGENTE MULTIDIMENSIONAL
+  const [traceContext, setTraceContext] = useState<{ 
+    type: 'OPERATION' | 'CONTAINER' | 'ANALYST' | 'DRIVER' | 'VEHICLE'; 
+    id: string | number 
+  } | null>(null);
+
+  const handleEditOperation = (operation: Operation) => {
+    setOperationToEdit(operation);
+    setIsEditModalOpen(true);
+  };
+
   const handleOpenReassign = (operationId: number) => {
-    setTraceabilityId(null);
+    setTraceContext(null);
     openAssignModal(operationId);
   };
 
@@ -51,7 +71,14 @@ export function OperationsView() {
     }
   }, [fetchOperations]);
 
-  const columns = getOperationsColumns(setTraceabilityId, setSurchargeModalOpId);
+  const operationColumns = getOperationsColumns(
+    () => {},
+    setSurchargeModalOpId,
+    handleEditOperation,
+    setTraceContext
+  );
+
+  const clientColumns = getClientColumns(user?.role);
 
   const applyFilters = (overrides?: { tab?: string; page?: number }) => {
     const currentTab = overrides?.tab || activeTab;
@@ -59,7 +86,6 @@ export function OperationsView() {
       page: overrides?.page || 1,
       limit: 10,
       type: currentTab === 'TODAS' ? undefined : currentTab,
-      search: searchTerm || undefined,
       status: statusFilter || undefined,
     });
   };
@@ -69,7 +95,11 @@ export function OperationsView() {
     applyFilters({ tab: tabId, page: 1 });
   };
 
-  const traceabilityOperation = operations.find(op => op.id === traceabilityId);
+  // Variables calculadas para el modal de trazabilidad (si es una operación)
+  const isOperationContext = traceContext?.type === 'OPERATION';
+  const traceabilityOperationId = isOperationContext ? Number(traceContext?.id) : null;
+  const traceabilityOperation = operations.find(op => op.id === traceabilityOperationId);
+  
   const isPausada =
     traceabilityOperation?.status === 'PAUSADA' ||
     traceabilityOperation?.estadoViaje === 'PAUSADA';
@@ -103,6 +133,7 @@ export function OperationsView() {
         ))}
       </div>
 
+      {/* FILTROS */}
       <div className={styles.filtersBar}>
         <input
           type="text"
@@ -130,19 +161,36 @@ export function OperationsView() {
 
       {error && <div className={styles.errorMessage} role="alert">⚠️ {error}</div>}
 
+      <OperationFilters 
+        onFilter={setFilters} 
+        isLoading={isLoadingOperations} 
+      />
+
       <div className={styles.tableCard}>
-        <PaginationTable
+        {isLoadingOperations ? (
+          <div className={styles.loaderContainer}>
+            <Loader />
+          </div>
+        ):<PaginationTable
           data={operations ?? []}
           nameButton="+ Nueva Operación"
-          columns={columns}
+          
+          // --- PADRE (CLIENTE) ---
+          columns={clientColumns} 
+          
+          isCollapsible={true} 
+          subColumns={operationColumns} 
+          getSubRows={(row) => row.operations} 
+          
+          // --- PAGINACIÓN ---
           totalPages={meta?.total ?? 1}
           currentPage={meta?.page ?? 1}
-          onPageChange={(newPage) => applyFilters({ page: newPage })}
-          onOpenModal={openCreateModal}
-        />
+          onPageChange={(newPage) => setFilters({ page: newPage })}
+          onOpenModal={() => openCreateModal()}
+        />}
+       
       </div>
 
-      <AssignModal />
       <CreateModal />
 
       <ApplySurchargeModal 
@@ -154,26 +202,55 @@ export function OperationsView() {
         }} 
       />
 
+      {/* 🚀 MODAL PARA COMPLETAR / EDITAR DATOS DESDE LA FILA */}
       <SuperModal
-        isOpen={traceabilityId !== null}
+        isOpen={isEditModalOpen}
         onClose={() => {
-          setTraceabilityId(null);
+          setIsEditModalOpen(false);
+          setOperationToEdit(null);
+          fetchOperations();
+        }}
+        title={operationToEdit ? `Completar Operación #${operationToEdit.id}` : "Editar Operación"}
+        width="680px"
+      >
+        <OperationForm 
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setOperationToEdit(null);
+            fetchOperations();
+          }} 
+          scheduleBase={operationToEdit} 
+        />
+      </SuperModal>
+
+
+      <TraceabilityDrawer 
+        isOpen={traceContext !== null} 
+        context={traceContext} 
+        onClose={() => setTraceContext(null)} 
+      />
+
+      {/* 🚀 MODAL PARA TRAZABILIDAD INTELIGENTE MULTIDIMENSIONAL */}
+      {/* <SuperModal
+        isOpen={traceContext !== null}
+        onClose={() => {
+          setTraceContext(null);
           setModalTab('DETAILS'); 
         }}
         width="1000px" 
       >
-        {traceabilityId && (
+        {traceContext && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             <div style={{ borderBottom: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                  Torre de Control — Viaje #{traceabilityId}
+                  Torre de Control — Trazabilidad Inteligente
                 </h2>
 
-                {isPausada && modalTab === 'DETAILS' && (
+                {isPausada && modalTab === 'DETAILS' && traceabilityOperationId && (
                   <button
-                    onClick={() => handleOpenReassign(traceabilityId)}
+                    onClick={() => handleOpenReassign(traceabilityOperationId)}
                     style={{
                       backgroundColor: '#fffbeb', color: '#d97706', border: '1px solid #fde68a',
                       padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer'
@@ -184,50 +261,37 @@ export function OperationsView() {
                 )}
               </div>
               
-              <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
-                <button
-                  onClick={() => setModalTab('DETAILS')}
-                  style={{
-                    background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
-                    color: modalTab === 'DETAILS' ? '#2563eb' : '#64748b',
-                    borderBottom: modalTab === 'DETAILS' ? '3px solid #2563eb' : '3px solid transparent',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  Trazabilidad y Liquidación
-                </button>
-                <button
-                  onClick={() => setModalTab('NOVEDAD')}
-                  style={{
-                    background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
-                    color: modalTab === 'NOVEDAD' ? '#dc2626' : '#64748b',
-                    borderBottom: modalTab === 'NOVEDAD' ? '3px solid #dc2626' : '3px solid transparent',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  🚨 Reportar Novedad
-                </button>
-              </div>
+              {isOperationContext && (
+                <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
+                  <button
+                    onClick={() => setModalTab('DETAILS')}
+                    style={{
+                      background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+                      color: modalTab === 'DETAILS' ? '#2563eb' : '#64748b',
+                      borderBottom: modalTab === 'DETAILS' ? '3px solid #2563eb' : '3px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Radiografía y Liquidación
+                  </button>
+                  <button
+                    onClick={() => setModalTab('NOVEDAD')}
+                    style={{
+                      background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+                      color: modalTab === 'NOVEDAD' ? '#dc2626' : '#64748b',
+                      borderBottom: modalTab === 'NOVEDAD' ? '3px solid #dc2626' : '3px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🚨 Reportar Novedad
+                  </button>
+                </div>
+              )}
             </div>
-
-            {modalTab === 'DETAILS' ? (
-              <OperationTraceability operationId={traceabilityId} />
-            ) : (
-              <NovedadForm 
-                operationId={traceabilityId}
-                rawOperation={traceabilityOperation}
-                onCancel={() => setModalTab('DETAILS')}
-                onSuccess={() => {
-                  Swal.fire('¡Novedad registrada con éxito en la Torre de Control!');
-                  setModalTab('DETAILS');
-                  fetchOperations();
-                }}
-              />
-            )}
-
+          
           </div>
         )}
-      </SuperModal>
+      </SuperModal> */}
 
     </div>
   );

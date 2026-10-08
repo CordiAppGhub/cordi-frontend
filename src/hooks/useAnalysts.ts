@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api.service'; 
 
-interface Analyst {
+export interface Analyst {
   id: number;
   name: string;
   email: string;

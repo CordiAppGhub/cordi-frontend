@@ -5,10 +5,7 @@ import Swal from 'sweetalert2';
 import { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { GetOperationsParams, operationService } from '@/services/operation.service';
-import { CreateOperationFormData } from '@/schemas/operation.schema';
-import { useAuthStore } from '@/store/use-auth.store';
-import { useUIStore } from '@/store/use-ui.store';
+import { GetOperationsParams, operationService, UpdateOperationPayload } from '@/services/operation.service';
 import { socket } from '@/lib/socket';
 import { Operation } from '@/types/operation-types';
 import { showToast } from '@/utils/alerts';
@@ -17,7 +14,7 @@ interface BackendErrorResponse {
   message?: string;
 }
 
-export function useOperations(initialParams: GetOperationsParams = {}) {
+export function useTrafico(initialParams: GetOperationsParams = {}) {
   const queryClient = useQueryClient();
 
   const [queryParams, setQueryParams] = useState<GetOperationsParams>({
@@ -28,35 +25,67 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
 
   const [currentOperationId, setCurrentOperationId] = useState<number | null>(null);
 
-
+  // ==========================================
+  // 1. QUERIES (LISTA Y DETALLE)
+  // ==========================================
   const {
     data: operationsResponse,
     isLoading: isLoadingOperations,
     error: queryError,
     refetch: fetchOperationsQuery,
   } = useQuery({
-    queryKey: ['operations', queryParams],
+    queryKey: ['trafico', queryParams],
     queryFn: () => operationService.getActiveOperations(queryParams),
-    staleTime: 1000 * 60 * 1, 
+    staleTime: 1000 * 60 * 1, // 1 min por el websocket
   });
 
-  const operations = operationsResponse?.data || [];
-  const meta = operationsResponse?.meta || { total: 0, page: 1, lastPage: 1 };
+  // Asegura compatibilidad si el backend devuelve un Array directo o un objeto Paginated
+  const operations = Array.isArray(operationsResponse) ? operationsResponse : (operationsResponse?.data || []);
+  const meta = ('meta' in (operationsResponse || {})) ? (operationsResponse as any).meta : { total: 0, page: 1, lastPage: 1 };
 
   const error = queryError 
-    ? (queryError instanceof Error ? queryError.message : 'Error al cargar las operaciones')
+    ? (queryError instanceof Error ? queryError.message : 'Error al cargar el tráfico')
     : null;
-
 
   const {
     data: currentOperation = null,
     isLoading: isLoadingCurrent,
   } = useQuery({
-    queryKey: ['operation-detail', currentOperationId],
+    queryKey: ['trafico-detail', currentOperationId],
     queryFn: () => operationService.getOperationById(currentOperationId!),
     enabled: !!currentOperationId, 
   });
 
+  // ==========================================
+  // 2. MUTACIONES (ACTUALIZAR / ASIGNAR)
+  // ==========================================
+  
+  // 🚀 Mutación Única: Sirve para asignar conductor, reasignar, poner contenedor, etc.
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateOperationPayload }) => 
+      operationService.updateOperation(id, data),
+    onSuccess: async (updatedOp) => {
+      // Actualiza el detalle si está abierto
+      queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
+      queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      
+      showToast.success('Operación actualizada correctamente.');
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'Error actualizando la operación.';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de validación',
+        text: message, // Aquí saldrá si "El vehículo está en mantenimiento"
+      });
+    }
+  });
+
+  // ==========================================
+  // 3. MÉTODOS PÚBLICOS
+  // ==========================================
   const fetchOperationById = useCallback((id: number) => {
     setCurrentOperationId(id);
   }, []);
@@ -66,135 +95,80 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     await fetchOperationsQuery();
   }, [fetchOperationsQuery]);
 
-
-
-  const createMutation = useMutation({
-    mutationFn: (data: CreateOperationFormData) => operationService.createOperation(data),
-    onSuccess: () => {
-      useUIStore.getState().closeCreateModal();
-      showToast.success('La nueva operación ha sido registrada exitosamente.');
-      queryClient.invalidateQueries({ queryKey: ['operations'] });
-    },
-    onError: (err: unknown) => {
-      const message = err instanceof Error ? err.message : 'Error creando la operación';
-      showToast.error(message);
-    }
-  });
-
-  const assignDriverMutation = useMutation({
-    mutationFn: ({ operationId, driverId, vehicleId, fletePagoManual }: { 
-      operationId: number; driverId: number; vehicleId: number; fletePagoManual?: number 
-    }) => {
-      const currentUser = useAuthStore.getState().user;
-      if (!currentUser?.id) throw new Error('No hay una sesión activa.');
-
-      return operationService.assignDriver(operationId, {
-        driverId,
-        vehicleId,
-        analystId: Number(currentUser.id),
-        fletePagoManual,
-      });
-    },
-    onSuccess: async () => {
-      await Swal.fire({
-        icon: 'success',
-        title: 'Asignación exitosa',
-        text: 'El conductor fue asignado, el viaje costeado y notificado.',
-        timer: 2500,
-        showConfirmButton: false,
-      });
-      queryClient.invalidateQueries({ queryKey: ['operations'] });
-    },
-    onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      Swal.fire({
-        icon: 'error',
-        title: 'Fallo al asignar',
-        text: axiosError.response?.data?.message || 'Error calculando tarifas o asignando el viaje.',
-      });
-    }
-  });
-
-  const reassignMutation = useMutation({
-    mutationFn: ({ operationId, driverId, vehicleId, fletePagoManual }: { 
-      operationId: number; driverId: number; vehicleId: number; fletePagoManual?: number 
-    }) => operationService.reassignOperation(operationId, { driverId, vehicleId, fletePagoManual }),
-    onSuccess: async (updatedOp) => {
-      queryClient.setQueryData(['operation-detail', updatedOp.id], updatedOp);
-
-      await Swal.fire({
-        icon: 'success',
-        title: 'Reasignación Completa',
-        text: 'El nuevo conductor fue asignado, notificado, y el viaje regresó a estado ASIGNADO.',
-        timer: 3000,
-        showConfirmButton: false,
-      });
-      queryClient.invalidateQueries({ queryKey: ['operations'] });
-    },
-    onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      Swal.fire({
-        icon: 'error',
-        title: 'Fallo en reasignación',
-        text: axiosError.response?.data?.message || 'Hubo un problema reasignando la operación.',
-      });
-    }
-  });
-
-
-  const createOperation = async (data: CreateOperationFormData): Promise<boolean> => {
+  // Envoltorio limpio para cualquier actualización operativa
+  const updateOperation = async (id: number, data: UpdateOperationPayload): Promise<boolean> => {
     try {
-      await createMutation.mutateAsync(data);
+      await updateMutation.mutateAsync({ id, data });
       return true;
     } catch {
       return false;
     }
   };
 
-  const assignDriver = async (
+  // Envoltorio semántico específico para asignar camión/conductor
+  const assignResources = async (
     operationId: number, 
-    driverId: number, 
     vehicleId: number, 
-    fletePagoManual?: number
+    trailerId?: number, 
+    driverId?: number
   ): Promise<boolean> => {
     try {
-      await assignDriverMutation.mutateAsync({ operationId, driverId, vehicleId, fletePagoManual });
+      await updateMutation.mutateAsync({ 
+        id: operationId, 
+        data: { vehicleId, trailerId, driverId } 
+      });
       return true;
     } catch {
       return false;
     }
   };
 
-  const reassignDriverAndVehicle = async (
-    operationId: number, 
-    driverId: number, 
-    vehicleId: number, 
-    fletePagoManual?: number
-  ): Promise<boolean> => {
-    try {
-      await reassignMutation.mutateAsync({ operationId, driverId, vehicleId, fletePagoManual });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
- 
+  // ==========================================
+  // 4. WEBSOCKETS (TIEMPO REAL)
+  // ==========================================
   useEffect(() => {
-    const handleGlobalUpdate = (data: Operation) => {
-      if (data && data.id) {
-        console.log(`🔄 [WebSocket] Actualización global para operación #${data.id}`);
+   const handleGlobalUpdate = (data: any) => {
+      // Dependiendo de tu EventsGateway, el ID podría venir como data.id o data.operationId
+      const opId = data.id || data.operationId;
+
+      if (opId) {
+        console.log(`🔄 [WebSocket] Tráfico actualizado para operación #${opId}`, data);
         
-        // Actualizamos de forma quirúrgica la lista en caché de React Query sin refetch innecesario
-        queryClient.setQueryData(['operations', queryParams], (oldData: any) => {
-          if (!oldData || !oldData.data) return oldData;
-          return {
-            ...oldData,
-            data: oldData.data.map((op: Operation) => (op.id === data.id ? data : op)),
-          };
+        queryClient.setQueryData(['trafico', queryParams], (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          // Soporta si oldData es Array o Paginated Object
+          const isArray = Array.isArray(oldData);
+          const list = isArray ? oldData : (oldData.data || []);
+          
+          // 🚀 SOLUCIÓN: Recorremos los grupos de clientes, no operaciones planas
+          const updatedList = list.map((group: any) => {
+            // Verificamos si la operación que llegó por el socket pertenece a este grupo
+            const hasChangedOp = group.operations?.some((op: any) => op.id === opId);
+            
+            if (hasChangedOp) {
+              // Si está aquí, mutamos las operaciones de ESTE grupo
+              return {
+                ...group,
+                operations: group.operations.map((op: any) => 
+                  op.id === opId 
+                    ? { ...op, ...data } // 👈 ¡Inyectamos los datos frescos del socket!
+                    : op
+                )
+              };
+            }
+            
+            return group;
+          });
+          
+          return isArray ? updatedList : { ...oldData, data: updatedList };
         });
 
-        queryClient.setQueryData(['operation-detail', data.id], data);
+        // Actualizamos también la vista de detalle si está abierta
+        queryClient.setQueryData(['trafico-detail', opId], (oldDetail: any) => {
+          if (!oldDetail) return oldDetail; // o return data, según prefieras
+          return { ...oldDetail, ...data };
+        });
       }
     };
 
@@ -205,19 +179,17 @@ export function useOperations(initialParams: GetOperationsParams = {}) {
     };
   }, [queryClient, queryParams]);
 
-  const isLoading = isLoadingOperations || createMutation.isPending || assignDriverMutation.isPending || reassignMutation.isPending;
-
   return {
     operations,
     currentOperation,
     meta,
-    isLoadingOperations: isLoading,
+    isLoadingOperations: isLoadingOperations || updateMutation.isPending,
     isLoadingCurrent,
     error,
     fetchOperations,
     fetchOperationById,
-    assignDriver,
-    reassignDriverAndVehicle,
-    createOperation,
+    updateOperation,
+    assignResources,
+    setFilters: setQueryParams,
   };
 }
