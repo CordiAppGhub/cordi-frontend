@@ -3,11 +3,13 @@
 
 import React, { useState, useRef } from 'react';
 import { useDriverPortal } from '@/hooks/use-driverPortal';
+import { TruckLoader } from '@/components/TruckLoader';
 import styles from './driver.module.css';
 import { Button } from '@/components/atoms/button/button';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import { Operation } from '@/types/driver-portal.types';
 import { DriverHeaderNav } from './components/DriverHeaderNav';
+import { DriverProfile } from './components/DriverProfile';
 import { DriverAuthSection } from './views/DriverAuthSection';
 import { HistoryTab } from './components/HistoryTab';
 import { CurrentTripTab } from './components/CurrentTripTab';
@@ -30,6 +32,7 @@ export default function DriverPortalPage() {
     logout,
     uploadEvidence,
     updateTravelState,
+    updateContainerStatus,
     scanPlate,
     scanContainer,
     history = [],
@@ -40,9 +43,16 @@ export default function DriverPortalPage() {
   const [otpInput, setOtpInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
+  const [selectedOperationId, setSelectedOperationId] = useState<number | null>(null);
   const [modalType, setModalType] = useState<'DETAILS' | 'OCR' | 'CLOSING'>('DETAILS');
-  const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
+  const [activeTab, setActiveTab] = useState<'current' | 'history' | 'profile'>('current');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const assignedOperations: Operation[] = driver?.assignedOperations || [];
+  const firstSuggestedOperation =
+    assignedOperations.find((operation) => operation.status === 'EN_CURSO') ||
+    assignedOperations.find((operation) => operation.isActive) ||
+    assignedOperations[0];
 
   const handleCedulaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +92,12 @@ export default function DriverPortalPage() {
         await uploadEvidence(selectedOperation.id, file);
         setIsModalOpen(false);
       }
-    } catch (err: any) {
-      Swal.fire(err.message || 'Ocurrió un error procesando la imagen.');
+    } catch (err: unknown) {
+      Swal.fire(
+        err instanceof Error
+          ? err.message
+          : 'Ocurrió un error procesando la imagen.',
+      );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -106,14 +120,12 @@ export default function DriverPortalPage() {
   }
 
   if (loading || !driver) {
-    return (
-      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#64748b' }}>
-        Cargando tus datos...
-      </div>
-    );
+    return <TruckLoader variant="page" message="Cargando tus datos..." />;
   }
 
-  const activeOperation = driver.assignedOperations?.[0]; 
+  const activeOperation =
+    assignedOperations.find((operation) => operation.id === selectedOperationId) ||
+    firstSuggestedOperation;
   const vehiculo = activeOperation?.vehicle || driver.drivenVehicles?.[0];
 
   return (
@@ -128,10 +140,13 @@ export default function DriverPortalPage() {
       {activeTab === 'current' ? (
         <CurrentTripTab
           driver={driver}
+          assignedOperations={assignedOperations}
           activeOperation={activeOperation}
+          onSelectOperation={setSelectedOperationId}
           vehiculo={vehiculo}
           processingState={processingState}
           onUpdateState={updateTravelState}
+          onUpdateContainerStatus={updateContainerStatus}
           onOpenOcrModal={() => {
             setSelectedOperation(activeOperation || null);
             setModalType('OCR');
@@ -150,8 +165,10 @@ export default function DriverPortalPage() {
             }
           }}
         />
-      ) : (
+      ) : activeTab === 'history' ? (
         <HistoryTab history={history} loadingHistory={loadingHistory} />
+      ) : (
+        <DriverProfile driver={driver} />
       )}
 
       <SuperModal

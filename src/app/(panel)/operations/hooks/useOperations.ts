@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { GetOperationsParams, operationService, UpdateOperationPayload } from '@/services/operation.service';
 import { socket } from '@/lib/socket';
-import { Operation } from '@/types/operation-types';
 import { showToast } from '@/utils/alerts';
 
 interface BackendErrorResponse {
@@ -39,9 +38,8 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     staleTime: 1000 * 60 * 1, // 1 min por el websocket
   });
 
-  // Asegura compatibilidad si el backend devuelve un Array directo o un objeto Paginated
-  const operations = Array.isArray(operationsResponse) ? operationsResponse : (operationsResponse?.data || []);
-  const meta = ('meta' in (operationsResponse || {})) ? (operationsResponse as any).meta : { total: 0, page: 1, lastPage: 1 };
+  const operations = operationsResponse?.data ?? [];
+  const meta = operationsResponse?.meta ?? { total: 0, page: 1, lastPage: 1 };
 
   const error = queryError 
     ? (queryError instanceof Error ? queryError.message : 'Error al cargar el tráfico')
@@ -83,6 +81,25 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     }
   });
 
+  const driverAccessMutation = useMutation({
+    mutationFn: ({ operationId, isActive }: { operationId: number; isActive: boolean }) =>
+      operationService.setDriverAccess(operationId, isActive),
+    onSuccess: (updatedOp) => {
+      queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
+      queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      showToast.success(
+        `Operación ${updatedOp.isActive ? 'habilitada' : 'deshabilitada'} para el conductor.`,
+      );
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      showToast.error(
+        axiosError.response?.data?.message ||
+          'No se pudo cambiar la habilitación de la operación.',
+      );
+    },
+  });
+
   // ==========================================
   // 3. MÉTODOS PÚBLICOS
   // ==========================================
@@ -121,6 +138,10 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     } catch {
       return false;
     }
+  };
+
+  const setDriverAccess = async (operationId: number, isActive: boolean): Promise<void> => {
+    await driverAccessMutation.mutateAsync({ operationId, isActive });
   };
 
   // ==========================================
@@ -190,6 +211,8 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     fetchOperationById,
     updateOperation,
     assignResources,
+    setDriverAccess,
+    isSettingDriverAccess: driverAccessMutation.isPending,
     setFilters: setQueryParams,
   };
 }

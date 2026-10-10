@@ -16,15 +16,21 @@ import { AffiliationTariff } from '@/types/tariff-ypes';
 import { Tabs, TabOption } from '@/components/molecules/tabs/tabs';
 import { VehicleTariffModal } from '../components/ModalVehicleTariff';
 import { getVehicleTariffColumns } from '../components/Vehicle-Tariff-columns';
+import { PatioTariffModal } from '../components/PatioTariffModal';
+import { getPatioTariffColumns } from '../components/patio-tariff-columns';
+import { TruckLoader } from '@/components/TruckLoader';
+import styles from '../tariffs.module.css';
 
-type TabState = 'BASE' | 'NOVEDADES' | 'VEHICULOS';
+type TabState = 'BASE' | 'NOVEDADES' | 'VEHICULOS' | 'PATIOS';
 
 export const TariffsView: React.FC = () => {
   const { 
     clientTariffs, 
     surcharges, 
     vehicleTariffs,
+    patioTariffs,
     isLoadingTariffs, 
+    error,
     refreshTariffs, 
     refreshSurcharges,
     fetchVehicleTariffs
@@ -35,11 +41,13 @@ export const TariffsView: React.FC = () => {
   const [isTariffModalOpen, setIsTariffModalOpen] = useState(false);
   const [isSurchargeModalOpen, setIsSurchargeModalOpen] = useState(false);
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [isPatioModalOpen, setIsPatioModalOpen] = useState(false);
   const [selectedVehicleTariff, setSelectedVehicleTariff] = useState<AffiliationTariff | null>(null);
 
   const [currentPageBase, setCurrentPageBase] = useState(1);
   const [currentPageSurcharge, setCurrentPageSurcharge] = useState(1);
   const [currentPageVehicle, setCurrentPageVehicle] = useState(1);
+  const [currentPagePatio, setCurrentPagePatio] = useState(1);
   const itemsPerPage = 10;
 
   const isInitialized = useRef(false);
@@ -57,6 +65,7 @@ export const TariffsView: React.FC = () => {
     { id: 'BASE', label: 'Tarifas de Viaje' },
     { id: 'NOVEDADES', label: 'Novedades y Recargos' },
     { id: 'VEHICULOS', label: 'Tarifas de Vehículos' },
+    { id: 'PATIOS', label: 'Costos y Cobros de Patios' },
   ], []);
 
  
@@ -84,33 +93,44 @@ export const TariffsView: React.FC = () => {
     return (vehicleTariffs || []).slice(startIndex, startIndex + itemsPerPage);
   }, [vehicleTariffs, currentPageVehicle]);
 
+  const patioColumns = useMemo(() => getPatioTariffColumns(), []);
+  const totalPagesPatio = Math.ceil((patioTariffs?.length || 0) / itemsPerPage) || 1;
+  const paginatedPatios = useMemo(() => {
+    const startIndex = (currentPagePatio - 1) * itemsPerPage;
+    return (patioTariffs || []).slice(startIndex, startIndex + itemsPerPage);
+  }, [patioTariffs, currentPagePatio]);
+
   
   const handleOpenMainModal = () => {
     if (activeTab === 'BASE') setIsTariffModalOpen(true);
     else if (activeTab === 'NOVEDADES') setIsSurchargeModalOpen(true);
-    else {
+    else if (activeTab === 'VEHICULOS') {
       setSelectedVehicleTariff(null);
       setIsVehicleModalOpen(true);
+    } else {
+      setIsPatioModalOpen(true);
     }
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className={styles.page}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>
           {activeTab === 'BASE' && 'Tarifario de Viajes (Base)'}
           {activeTab === 'NOVEDADES' && 'Catálogo de Novedades y Recargos'}
           {activeTab === 'VEHICULOS' && 'Configuración de Rentabilidad (Flotas)'}
+          {activeTab === 'PATIOS' && 'Costos y Cobros por Patio'}
         </h1>
         <Button onClick={handleOpenMainModal} variant="primary">
           {activeTab === 'BASE' && '+ Nueva Tarifa Base'}
           {activeTab === 'NOVEDADES' && '+ Nueva Novedad / Excepción'}
           {activeTab === 'VEHICULOS' && '+ Nueva Tarifa de Flota'}
+          {activeTab === 'PATIOS' && '+ Configurar Tarifa de Patio'}
         </Button>
       </div>
 
-      <div style={{ marginBottom: '24px' }}>
+      <div className={styles.tabs}>
         <Tabs 
           tabs={tabOptions}
           activeTab={activeTab}
@@ -118,8 +138,10 @@ export const TariffsView: React.FC = () => {
         />
       </div>
 
-      {isLoadingTariffs ? (
-        <p style={{ color: '#64748b', textAlign: 'center', padding: '40px' }}>Cargando datos...</p>
+      {error ? (
+        <p className={styles.error}>{error}</p>
+      ) : isLoadingTariffs ? (
+        <TruckLoader variant="compact" message="Cargando tarifas..." />
       ) : (
         <>
           {activeTab === 'BASE' && (
@@ -142,15 +164,26 @@ export const TariffsView: React.FC = () => {
               currentPage={currentPageVehicle} totalPages={totalPagesVehicle} onPageChange={setCurrentPageVehicle}
             />
           )}
+
+          {activeTab === 'PATIOS' && (
+            <PaginationTable
+              data={paginatedPatios}
+              columns={patioColumns}
+              currentPage={currentPagePatio}
+              totalPages={totalPagesPatio}
+              onPageChange={setCurrentPagePatio}
+            />
+          )}
         </>
       )}
 
       <RouteTariffModal isOpen={isTariffModalOpen} onClose={() => setIsTariffModalOpen(false)} />
+      <PatioTariffModal isOpen={isPatioModalOpen} onClose={() => setIsPatioModalOpen(false)} />
 
       {isSurchargeModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>Registrar Novedad</h2>
+        <div className={styles.surchargeOverlay}>
+          <div className={styles.surchargeDialog}>
+            <h2 className={styles.surchargeTitle}>Registrar Novedad</h2>
             <SurchargeFormsModal onClose={() => setIsSurchargeModalOpen(false)} />
           </div>
         </div>

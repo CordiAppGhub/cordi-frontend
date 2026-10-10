@@ -3,6 +3,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/atoms/button/button';
 import { useAuthLogin } from '@/hooks/useAuth';
 import styles from './login.module.css';
 
@@ -94,13 +95,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button 
+            <Button
               type="submit" 
-              className={styles.submitBtn} 
+              className={styles.submitBtn}
+              isLoading={isSubmitting}
               disabled={isSubmitting || !email.trim() || !password.trim()}
             >
-              {isSubmitting ? 'Enviando código 2FA...' : 'Continuar con 2FA'}
-            </button>
+              Continuar con 2FA
+            </Button>
           </form>
         ) : (
    
@@ -151,14 +153,15 @@ export default function LoginPage() {
               >
                 Volver
               </button>
-              <button 
+              <Button
                 type="submit" 
                 className={styles.submitBtn} 
+                isLoading={isSubmitting}
                 style={{ width: '65%', margin: 0 }}
                 disabled={isSubmitting || code.length < 6}
               >
-                {isSubmitting ? 'Validando...' : 'Verificar y Entrar'}
-              </button>
+                Verificar y Entrar
+              </Button>
             </div>
           </form>
         )}

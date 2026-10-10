@@ -9,6 +9,7 @@ import PaginationTable from '@/components/organisms/pagination-table/pagination-
 
 import styles from './driver-details.module.css';
 import { useDriverDetail } from '../../hooks/use-driver-details';
+import { TruckLoader } from '@/components/TruckLoader';
 
 export function DriverDetailView() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export function DriverDetailView() {
   }, [details, currentPage]);
 
   if (isLoading) {
-    return <div className={styles.loadingState}>Cargando perfil del conductor...</div>;
+    return <TruckLoader variant="section" message="Cargando perfil del conductor..." />;
   }
 
   if (error || !details) {

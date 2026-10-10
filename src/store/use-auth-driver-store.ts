@@ -1,21 +1,13 @@
 import { create } from 'zustand';
-
-interface Driver {
-  id: number;
-  name: string;
-  cedula: string;
-  role: string;
-  isActive: boolean;
-  [key: string]: any; 
-}
+import { DriverPortalData } from '@/types/driver-portal.types';
 
 interface DriverAuthStore {
   isAuthenticated: boolean;
   authStep: 'CEDULA' | 'OTP';
-  driver: Driver | null;
+  driver: DriverPortalData | null;
 
   setAuthStep: (step: 'CEDULA' | 'OTP') => void;
-  setLoginSuccess: (driverData: Driver) => void;
+  setLoginSuccess: (driverData: DriverPortalData) => void;
   logout: () => void;
 }
 

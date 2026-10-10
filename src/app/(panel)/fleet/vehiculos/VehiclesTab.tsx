@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/atoms/button/button';
-import UploadExcel from '@/components/organisms/fleet/UploadExcel';
+import { TruckLoader } from '@/components/TruckLoader';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useAssignments } from '@/hooks/useFleet'; 
+import type { CreateVehicleDto, CreateVehicleFormInput } from '@/types/vehicles';
 
 import styles from '../components/fleet-cards.module.css';
 import CreateVehicleModal from './CreateVehicleModal';
@@ -13,28 +14,21 @@ import AssignDriverModal from '@/app/(panel)/fleet/asignaciones/components/Assig
 import { VehicleCard } from '../components/VehicleCard';
 
 export const VehiclesTab = () => {
-  const { vehicles, isLoading, loadVehicles, createVehicle, uploadExcel } = useVehicles();
-  const { activeAssignments, loadActive, assignDriver, unassignVehicle } = useAssignments(); 
+  const { vehicles, isLoading, createVehicle } = useVehicles();
+  const { activeAssignments, assignDriver, unassignVehicle } = useAssignments();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | undefined>(undefined);
   
-  const isInitialized = useRef(false);
-
-  useEffect(() => {
-    if (!isInitialized.current) {
-      loadVehicles();
-      loadActive(); 
-      isInitialized.current = true;
-    }
-  }, [loadVehicles, loadActive]);
-
-  const handleCreateVehicle = async (formData: any) => {
-    const success = await createVehicle(formData);
-    if (success) {
-      loadVehicles();
-    }
+  const handleCreateVehicle = async (formData: CreateVehicleFormInput) => {
+    const payload: CreateVehicleDto = {
+      ...formData,
+      soatExpiration: null,
+      tecnoExpiration: null,
+      adminDiscount: formData.adminDiscount ?? null,
+    };
+    return createVehicle(payload);
   };
 
   const handleOpenAssignModal = (vehicleId: number) => {
@@ -59,9 +53,7 @@ export const VehiclesTab = () => {
       </div>
 
       {isLoading && vehicles.length === 0 ? (
-        <div style={{ background: 'white', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#64748b', border: '1px solid #e2e8f0' }}>
-          Sincronizando inventario de vehículos...
-        </div>
+        <TruckLoader variant="compact" message="Sincronizando inventario de vehículos..." />
       ) : vehicles.length === 0 ? (
         <div style={{ background: 'white', borderRadius: '12px', padding: '60px', textAlign: 'center', color: '#64748b', border: '1px dashed #cbd5e1' }}>
           No hay vehículos registrados en la flota.
@@ -119,6 +111,7 @@ export const VehiclesTab = () => {
       />
 
       <AssignDriverModal
+        key={`${isAssignModalOpen}-${selectedVehicleId ?? ''}`}
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}
         onAssign={assignDriver}

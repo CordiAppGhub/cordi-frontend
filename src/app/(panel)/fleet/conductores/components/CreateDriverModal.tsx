@@ -2,6 +2,7 @@
 
 import { SuperModal } from '@/components/organisms/modal/modal';
 import React, { useState } from 'react';
+import { Button } from '@/components/atoms/button/button';
 
 interface CreateDriverModalProps {
   isOpen: boolean;
@@ -20,18 +21,21 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
     if (!cedula) return;
 
     setIsSubmitting(true);
-    const success = await onCreateDriver({
-      cedula,
-      name: name ? name.toUpperCase() : undefined,
-      telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
-    });
-    setIsSubmitting(false);
+    try {
+      const success = await onCreateDriver({
+        cedula,
+        name: name ? name.toUpperCase() : undefined,
+        telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
+      });
 
-    if (success) {
-      setCedula('');
-      setName('');
-      setTelefono('');
-      onClose();
+      if (success) {
+        setCedula('');
+        setName('');
+        setTelefono('');
+        onClose();
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -103,11 +107,14 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-          <button
+          <Button
+            variant="secondary"
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
             style={{
+              width: 'auto',
+              minHeight: 'auto',
               padding: '10px 16px',
               borderRadius: '6px',
               border: '1px solid #d1d5db',
@@ -117,11 +124,14 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
             }}
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={isSubmitting || !cedula}
+            isLoading={isSubmitting}
+            disabled={!cedula}
             style={{
+              width: 'auto',
+              minHeight: 'auto',
               padding: '10px 16px',
               borderRadius: '6px',
               border: 'none',
@@ -129,11 +139,10 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
               color: '#fff',
               cursor: 'pointer',
               fontWeight: 500,
-              opacity: isSubmitting ? 0.7 : 1,
             }}
           >
-            {isSubmitting ? 'Guardando...' : 'Guardar Conductor'}
-          </button>
+            Guardar Conductor
+          </Button>
         </div>
 
       </form>

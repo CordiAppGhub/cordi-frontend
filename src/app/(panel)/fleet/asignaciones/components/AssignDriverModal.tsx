@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/atoms/button/button';
 import { SuperModal } from '../../../../../components/organisms/modal/modal';
 
 interface AssignDriverModalProps {
@@ -19,34 +19,38 @@ export default function AssignDriverModal({
   onAssign, 
   initialVehicleId 
 }: AssignDriverModalProps) {
-  const { vehicles, loadVehicles, isLoading: loadingVehicles } = useVehicles();
+  const { vehicles, isLoading: loadingVehicles } = useVehicles(isOpen);
   const { drivers, loadDrivers, isLoading: loadingDrivers } = useDrivers();
 
-  const [vehicleId, setVehicleId] = useState('');
+  const [vehicleId, setVehicleId] = useState(
+    initialVehicleId === undefined ? '' : String(initialVehicleId),
+  );
   const [driverId, setDriverId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      loadVehicles();
       loadDrivers();
     }
-  }, [isOpen, loadVehicles, loadDrivers, initialVehicleId]);
+  }, [isOpen, loadDrivers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicleId || !driverId) return;
 
     setIsSubmitting(true);
-    const success = await onAssign({
-      vehicleId: Number(vehicleId),
-      driverId: Number(driverId),
-      reason: 'Reasignación desde panel',
-    });
-    setIsSubmitting(false);
+    try {
+      const success = await onAssign({
+        vehicleId: Number(vehicleId),
+        driverId: Number(driverId),
+        reason: 'Reasignación desde panel',
+      });
 
-    if (success) {
-      onClose();
+      if (success) {
+        onClose();
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,8 +119,9 @@ export default function AssignDriverModal({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={onClose}
             disabled={isSubmitting}
             style={{
@@ -129,10 +134,11 @@ export default function AssignDriverModal({
             }}
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={isSubmitting || !vehicleId || !driverId}
+            isLoading={isSubmitting}
+            disabled={!vehicleId || !driverId}
             style={{
               padding: '10px 16px',
               borderRadius: '6px',
@@ -146,15 +152,8 @@ export default function AssignDriverModal({
               gap: '8px',
             }}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              'Confirmar Vínculo'
-            )}
-          </button>
+            Confirmar Vínculo
+          </Button>
         </div>
       </form>
     </SuperModal>

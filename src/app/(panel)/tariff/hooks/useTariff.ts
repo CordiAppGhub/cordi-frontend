@@ -6,7 +6,7 @@ import{ AxiosError } from 'axios';
 
 import { tariffService, CreateSurchargeCatalogInput, CreateAffiliationTariffInput } from '@/services/tariff.service';
 import { showToast } from '@/utils/alerts';
-import { AffiliationTariff, CreateClientTariffInput, CreateSurchargeOverrideInput } from '@/types/tariff-ypes';
+import { CreateClientTariffInput, CreateSurchargeOverrideInput, UpsertPatioTariffInput } from '@/types/tariff-ypes';
 
 interface BackendErrorResponse {
   message?: string;
@@ -51,8 +51,23 @@ export function useTariffs() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const isLoadingTariffs = isLoadingClientTariffs || isLoadingSurcharges;
-  const error = clientTariffsError ? 'Error al cargar las tarifas o recargos' : null;
+  const {
+    data: patioTariffs = [],
+    isLoading: isLoadingPatioTariffs,
+    error: patioTariffsError,
+    refetch: refreshPatioTariffs,
+  } = useQuery({
+    queryKey: ['patio-tariffs'],
+    queryFn: tariffService.getAllPatioTariffs,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const isLoadingTariffs =
+    isLoadingClientTariffs || isLoadingSurcharges || isLoadingPatioTariffs;
+  const error =
+    clientTariffsError || patioTariffsError
+      ? 'Error al cargar las tarifas o recargos'
+      : null;
 
 
 
@@ -104,6 +119,18 @@ export function useTariffs() {
     }
   });
 
+  const upsertPatioTariffMutation = useMutation({
+    mutationFn: (data: UpsertPatioTariffInput) => tariffService.upsertPatioTariff(data),
+    onSuccess: () => {
+      showToast.success('La tarifa del patio se guardó correctamente.');
+      queryClient.invalidateQueries({ queryKey: ['patio-tariffs'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo guardar la tarifa del patio.';
+      showToast.error(message);
+    },
+  });
+
   
 
   const createTariff = useCallback(async (data: CreateClientTariffInput): Promise<boolean> => {
@@ -134,6 +161,15 @@ export function useTariffs() {
     } catch { return false; }
   }, [createVehicleTariffMutation]);
 
+  const upsertPatioTariff = useCallback(async (data: UpsertPatioTariffInput): Promise<boolean> => {
+    try {
+      await upsertPatioTariffMutation.mutateAsync(data);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [upsertPatioTariffMutation]);
+
 
   const getLiveQuote = useCallback(async (
     clientId: number | null, 
@@ -155,7 +191,7 @@ export function useTariffs() {
         locationId: locationId || undefined,
       });
       setSuggestedPrice(quote.price);
-    } catch (err) {
+    } catch {
       setSuggestedPrice(null);
     } finally {
       setIsCalculatingPrice(false);
@@ -182,6 +218,9 @@ export function useTariffs() {
     isLoadingVehicles,
     fetchVehicleTariffs,
     createVehicleTariff,
+    patioTariffs,
+    refreshPatioTariffs,
+    upsertPatioTariff,
     
     suggestedPrice,
     isCalculatingPrice,

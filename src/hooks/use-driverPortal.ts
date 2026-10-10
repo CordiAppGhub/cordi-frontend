@@ -3,14 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { driverAuthService, driverPortalService } from '@/services/driverPortal.service';
-import { TripMicroState, OcrResult } from '@/types/driver-portal.types';
+import {
+  OperationContainerStatus,
+  TripMicroState,
+  OcrResult,
+} from '@/types/driver-portal.types';
 import { showToast } from '@/utils/alerts';
-import { AxiosError } from 'axios';
 import { useDriverAuthStore } from '@/store/use-auth-driver-store';
-
-interface BackendErrorResponse {
-  message?: string;
-}
+import { socket } from '@/lib/socket';
+import { authService } from '@/services/auth.services';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 export function useDriverPortal() {
   const queryClient = useQueryClient();
@@ -58,6 +60,25 @@ export function useDriverPortal() {
   const driver = storeDriver || queryDriver;
   const isAuthenticated = storeIsAuthenticated || (isProfileSuccess && !!queryDriver);
 
+  useEffect(() => {
+    const assignedOperationIds = new Set(
+      driver?.assignedOperations.map((operation) => operation.id) || [],
+    );
+    const handleOperationUpdate = (data: { operationId?: number; id?: number }) => {
+      const operationId = data.operationId ?? data.id;
+      if (operationId && assignedOperationIds.has(operationId)) {
+        void queryClient.invalidateQueries({
+          queryKey: ['driver-portal-profile'],
+        });
+      }
+    };
+
+    socket.on('global_operations_updated', handleOperationUpdate);
+    return () => {
+      socket.off('global_operations_updated', handleOperationUpdate);
+    };
+  }, [driver?.assignedOperations, queryClient]);
+
   const requestOtpMutation = useMutation({
     mutationFn: (cedula: string) => driverAuthService.requestOtp(cedula),
     onSuccess: () => {
@@ -66,8 +87,12 @@ export function useDriverPortal() {
       setAuthStep('OTP');
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      setAuthError(axiosError.response?.data?.message || 'Error al solicitar código.');
+      setAuthError(
+        getUserFriendlyErrorMessage(
+          err,
+          'No pudimos enviar el código. Revisa tu documento e inténtalo de nuevo.',
+        ),
+      );
     },
   });
 
@@ -81,15 +106,24 @@ export function useDriverPortal() {
       queryClient.invalidateQueries({ queryKey: ['driver-trip-history'] });
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      setAuthError(axiosError.response?.data?.message || 'Código incorrecto o expirado.');
+      setAuthError(
+        getUserFriendlyErrorMessage(
+          err,
+          'El código no es correcto o ya venció. Solicita uno nuevo.',
+        ),
+      );
     },
   });
 
   const logout = async () => {
-    queryClient.removeQueries({ queryKey: ['driver-portal-profile'] });
-    queryClient.removeQueries({ queryKey: ['driver-trip-history'] });
-    logoutStore();
+    try {
+      await authService.logout();
+      queryClient.removeQueries({ queryKey: ['driver-portal-profile'] });
+      queryClient.removeQueries({ queryKey: ['driver-trip-history'] });
+      logoutStore();
+    } catch (err: unknown) {
+      showToast.error(err, 'No pudimos cerrar la sesión. Inténtalo de nuevo.');
+    }
   };
 
   const uploadEvidenceMutation = useMutation({
@@ -101,8 +135,7 @@ export function useDriverPortal() {
       refetchHistory();
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      showToast.error(axiosError.response?.data?.message || 'Error al subir la imagen.');
+      showToast.error(err, 'No pudimos subir la imagen. Inténtalo de nuevo.');
     },
   });
 
@@ -115,8 +148,7 @@ export function useDriverPortal() {
       refetchHistory();
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      showToast.error(axiosError.response?.data?.message || 'Error al actualizar el estado.');
+      showToast.error(err, 'No pudimos actualizar el viaje. Inténtalo de nuevo.');
     },
   });
 
@@ -127,8 +159,7 @@ export function useDriverPortal() {
       loadData();
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      showToast.error(axiosError.response?.data?.message || 'Error al analizar la placa.');
+      showToast.error(err, 'No pudimos leer la placa. Inténtalo de nuevo.');
     },
   });
 
@@ -139,8 +170,7 @@ export function useDriverPortal() {
       loadData();
     },
     onError: (err: unknown) => {
-      const axiosError = err as AxiosError<BackendErrorResponse>;
-      showToast.error(axiosError.response?.data?.message || 'Error al analizar el contenedor.');
+      showToast.error(err, 'No pudimos leer el contenedor. Inténtalo de nuevo.');
     },
   });
 
@@ -150,6 +180,46 @@ export function useDriverPortal() {
 
   const updateTravelState = async (operationId: number, estadoViaje: string): Promise<void> => {
     await updateStateMutation.mutateAsync({ operationId, estadoViaje });
+  };
+
+  const updateContainerStatusMutation = useMutation({
+    mutationFn: ({
+      operationId,
+      containerStatus,
+      issueDescription,
+    }: {
+      operationId: number;
+      containerStatus: OperationContainerStatus;
+      issueDescription?: string;
+    }) =>
+      driverPortalService.updateContainerStatus(
+        operationId,
+        containerStatus,
+        issueDescription,
+      ),
+    onSuccess: () => {
+      showToast.success('Estado del contenedor actualizado correctamente.');
+      loadData();
+      refetchHistory();
+    },
+    onError: (err: unknown) => {
+      showToast.error(
+        err,
+        'No pudimos actualizar el estado del contenedor. Inténtalo de nuevo.',
+      );
+    },
+  });
+
+  const updateContainerStatus = async (
+    operationId: number,
+    containerStatus: OperationContainerStatus,
+    issueDescription?: string,
+  ): Promise<void> => {
+    await updateContainerStatusMutation.mutateAsync({
+      operationId,
+      containerStatus,
+      issueDescription,
+    });
   };
 
   const scanPlate = async (operationId: number, file: File): Promise<OcrResult | null> => {
@@ -189,6 +259,7 @@ export function useDriverPortal() {
     
     uploadEvidence,
     updateTravelState,
+    updateContainerStatus,
     scanPlate,
     scanContainer,
     loadData,
@@ -197,6 +268,7 @@ export function useDriverPortal() {
     processingState: 
       scanPlateMutation.isPending || 
       scanContainerMutation.isPending || 
-      updateStateMutation.isPending,
+      updateStateMutation.isPending ||
+      updateContainerStatusMutation.isPending,
   };
 }

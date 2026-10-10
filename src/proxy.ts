@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login'];
 const PROTECTED_ROUTES = [
   '/dashboard',
+  '/profiles',
   '/operations',
   '/fleet',
   '/locations',
+  '/novedades',
+  '/tariff',
+  '/user',
   '/map',
   '/fuel',
   '/alerts',
@@ -13,7 +16,7 @@ const PROTECTED_ROUTES = [
   '/settings',
 ];
 
-const RESTRICTED_FOR_ANALYST = ['/fleet'];
+const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations'];
 
 function decodeJwtRole(token: string): string | null {
   try {
@@ -27,7 +30,7 @@ function decodeJwtRole(token: string): string | null {
     );
     const payload = JSON.parse(jsonPayload);
     return payload.role || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -35,6 +38,7 @@ function decodeJwtRole(token: string): string | null {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get('corditrans_session')?.value;
+  const userRole = sessionToken ? decodeJwtRole(sessionToken) : null;
 
   if (
     pathname.startsWith('/_next') ||
@@ -46,15 +50,35 @@ export function proxy(request: NextRequest) {
 
   if (pathname === '/') {
     return NextResponse.redirect(
-      new URL(sessionToken ? '/dashboard' : '/login', request.url)
+      new URL(
+        sessionToken
+          ? userRole === 'CONDUCTOR'
+            ? '/driver'
+            : '/dashboard'
+          : '/login',
+        request.url,
+      ),
     );
   }
 
   if (pathname === '/login') {
     if (sessionToken) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(
+        new URL(userRole === 'CONDUCTOR' ? '/driver' : '/dashboard', request.url),
+      );
     }
     return NextResponse.next();
+  }
+
+  const isDriverRoute =
+    pathname === '/driver' || pathname.startsWith('/driver/');
+  const isConductorProfileRoute =
+    pathname === '/profiles' || pathname.startsWith('/profiles/');
+  if (userRole === 'CONDUCTOR' && !isDriverRoute && !isConductorProfileRoute) {
+    return NextResponse.redirect(new URL('/driver', request.url));
+  }
+  if (sessionToken && isDriverRoute && userRole !== 'CONDUCTOR') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   const isProtectedRoute = PROTECTED_ROUTES.some(
@@ -68,8 +92,6 @@ export function proxy(request: NextRequest) {
   }
 
   if (sessionToken) {
-    const userRole = decodeJwtRole(sessionToken);
-    
     const isRestrictedRoute = RESTRICTED_FOR_ANALYST.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
     );
@@ -84,19 +106,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/',
-    '/login',
-    '/dashboard',
-    '/dashboard/:path*',
-    '/operations',
-    '/operations/:path*',
-    '/fleet/:path*',
-    '/locations',
-    '/map',
-    '/fuel',
-    '/alerts',
-    '/reports',
-    '/settings',
-  ],
+  matcher: ['/:path*'],
 };

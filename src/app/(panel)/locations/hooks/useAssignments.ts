@@ -3,11 +3,12 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { showToast } from '@/utils/alerts';
 import { assignmentService } from '@/services/assignmentAnlystClient.service';
 import { CreateAssignmentInput } from '@/types/assignmentAnlist';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 export function useAssignments() {
   const queryClient = useQueryClient();
@@ -25,9 +26,10 @@ export function useAssignments() {
 
   let errorMessage: string | null = null;
   if (queryError) {
-    errorMessage = axios.isAxiosError(queryError)
-      ? queryError.response?.data?.message || 'Error al cargar asignaciones'
-      : queryError.message || 'Error al cargar asignaciones';
+    errorMessage = getUserFriendlyErrorMessage(
+      queryError,
+      'No se pudieron cargar las asignaciones. Inténtalo de nuevo.',
+    );
   }
 
   const createMutation = useMutation({
@@ -119,9 +121,10 @@ export function useMyAssignments() {
 
   let errorMessage: string | null = null;
   if (queryError) {
-    errorMessage = axios.isAxiosError(queryError)
-      ? queryError.response?.data?.message || 'Error al cargar tus asignaciones'
-      : queryError.message || 'Error al cargar tus asignaciones';
+    errorMessage = getUserFriendlyErrorMessage(
+      queryError,
+      'No se pudieron cargar tus asignaciones. Inténtalo de nuevo.',
+    );
   }
 
   return {

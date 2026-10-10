@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { TruckLoader } from '@/components/TruckLoader';
 
 interface HistoryTabProps {
   history: any[];
@@ -14,7 +15,7 @@ export function HistoryTab({ history, loadingHistory }: HistoryTabProps) {
       <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.9rem' }}>Consulta el histórico de tus servicios y el dinero asignado por cada viaje.</p>
 
       {loadingHistory ? (
-        <p style={{ color: '#64748b', textAlign: 'center', padding: '40px' }}>Cargando historial...</p>
+        <TruckLoader variant="compact" message="Cargando historial..." />
       ) : history.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '12px' }}>
           <p style={{ color: '#64748b' }}>No tienes servicios registrados en el historial.</p>

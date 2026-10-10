@@ -2,11 +2,12 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { showToast } from '@/utils/alerts';
 import { CreateClientInput, UpdateClientInput } from '@/types/client.-types';
 import { clientService } from '@/services/client-service';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 
 interface BackendErrorResponse { message?: string; }
@@ -27,9 +28,10 @@ export function useClients() {
 
   let errorMessage: string | null = null;
   if (queryError) {
-    errorMessage = axios.isAxiosError(queryError)
-      ? queryError.response?.data?.message || 'Error al cargar clientes'
-      : queryError.message || 'Error al cargar clientes';
+    errorMessage = getUserFriendlyErrorMessage(
+      queryError,
+      'No se pudieron cargar los clientes. Inténtalo de nuevo.',
+    );
   }
 
   const createMutation = useMutation({
@@ -43,6 +45,7 @@ export function useClients() {
       showToast.error(message);
     }
   });
+  const createClientAsync = createMutation.mutateAsync;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateClientInput }) => clientService.update(id, data),
@@ -55,6 +58,7 @@ export function useClients() {
       showToast.error(message);
     }
   });
+  const updateClientAsync = updateMutation.mutateAsync;
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => clientService.delete(id),
@@ -67,24 +71,25 @@ export function useClients() {
       showToast.error(message);
     }
   });
+  const deleteClientAsync = deleteMutation.mutateAsync;
 
   const createClient = useCallback(async (data: CreateClientInput): Promise<boolean> => {
     try {
-      await createMutation.mutateAsync(data);
+      await createClientAsync(data);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [createMutation]);
+  }, [createClientAsync]);
 
   const updateClient = useCallback(async (id: number, data: UpdateClientInput): Promise<boolean> => {
     try {
-      await updateMutation.mutateAsync({ id, data });
+      await updateClientAsync({ id, data });
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [updateMutation]);
+  }, [updateClientAsync]);
 
   const deleteClient = useCallback(async (id: number): Promise<boolean> => {
     const result = await Swal.fire({
@@ -101,12 +106,12 @@ export function useClients() {
     if (!result.isConfirmed) return false;
 
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteClientAsync(id);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [deleteMutation]);
+  }, [deleteClientAsync]);
 
   return { 
     clients, 

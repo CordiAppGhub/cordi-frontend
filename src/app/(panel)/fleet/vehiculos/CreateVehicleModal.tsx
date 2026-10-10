@@ -5,22 +5,12 @@ import { SuperModal } from '@/components/organisms/modal/modal';
 import { SuperForm } from '@/components/organisms/form/form';
 import { FormField, FormFieldValue } from '@/components/organisms/form/types/form.types';
 import { tariffService } from '@/services/tariff.service';
-
-interface CreateVehicleInput {
-  plate: string;
-  brand: string;
-  modelYear: number;
-  empresa: string;
-  capacityWeight: number;
-  status: string;
-  affiliation: string;
-  adminDiscount?: number;
-}
+import type { CreateVehicleFormInput } from '@/types/vehicles';
 
 interface CreateVehicleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateVehicle: (data: CreateVehicleInput) => Promise<void> | void;
+  onCreateVehicle: (data: CreateVehicleFormInput) => Promise<boolean | void> | boolean | void;
 }
 
 export default function CreateVehicleModal({ isOpen, onClose, onCreateVehicle }: CreateVehicleModalProps) {
@@ -113,7 +103,7 @@ export default function CreateVehicleModal({ isOpen, onClose, onCreateVehicle }:
     }
   ], [affiliationOptions]);
 
-  const handleFormChange = (name: string, value: FormFieldValue) => {
+  const handleFormChange = (name: string) => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -137,19 +127,33 @@ export default function CreateVehicleModal({ isOpen, onClose, onCreateVehicle }:
     try {
       setLoading(true);
 
-      const payload: CreateVehicleInput = {
+      const status = String(formData.status || 'AVAILABLE');
+      const affiliation = String(formData.affiliation || 'TERCEROS');
+      const payload: CreateVehicleFormInput = {
         plate: String(formData.plate || '').trim().toUpperCase(),
         brand: String(formData.brand || '').trim(),
         modelYear: Number(formData.modelYear) || new Date().getFullYear(),
         empresa: String(formData.empresa || '').trim(),
         capacityWeight: Number(formData.capacityWeight) || 0,
-        status: String(formData.status || 'AVAILABLE'),
-        affiliation: String(formData.affiliation || 'TERCEROS'),
+        status: status === 'IN_TRANSIT'
+          ? 'IN_TRANSIT'
+          : status === 'MAINTENANCE'
+            ? 'MAINTENANCE'
+            : status === 'OUT_OF_SERVICE'
+              ? 'OUT_OF_SERVICE'
+              : 'AVAILABLE',
+        affiliation: affiliation === 'CORDIVEHICULOS'
+          ? 'CORDIVEHICULOS'
+          : affiliation === 'CORDIHUB'
+            ? 'CORDIHUB'
+            : 'TERCEROS',
         adminDiscount: formData.adminDiscount ? Number(formData.adminDiscount) : undefined,
       };
 
-      await onCreateVehicle(payload);
-      handleCloseModal();
+      const created = await onCreateVehicle(payload);
+      if (created !== false) {
+        handleCloseModal();
+      }
     } catch (error) {
       console.error('Error al registrar vehículo:', error);
     } finally {

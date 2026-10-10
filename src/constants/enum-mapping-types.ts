@@ -30,9 +30,14 @@ export const TripMicroStateLabels: Record<string, string> = {
 };
 
 export const ContainerStatusLabels: Record<string, string> = {
-  IN_YARD: 'En Patio',
-  DISPATCHED: 'Despachado',
-  MAINTENANCE: 'En Mantenimiento',
+  PENDIENTE: 'Pendiente',
+  EN_PISO: 'En piso',
+  EN_INSPECCION: 'En inspección',
+  FALLA_REPORTADA: 'Falla reportada',
+  EN_CARGUE: 'En cargue',
+  CARGADO: 'Cargado',
+  EN_DESCARGUE: 'En descargue',
+  DESCARGADO: 'Descargado',
 };
 
 // 🚀 Definimos el tipo explícito para permitir el semáforo

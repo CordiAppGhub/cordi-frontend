@@ -14,6 +14,16 @@ export type TripMicroState =
   | 'EN_CLIENTE'
   | 'FINALIZADO'
 
+export type OperationContainerStatus =
+  | 'PENDIENTE'
+  | 'EN_PISO'
+  | 'EN_INSPECCION'
+  | 'FALLA_REPORTADA'
+  | 'EN_CARGUE'
+  | 'CARGADO'
+  | 'EN_DESCARGUE'
+  | 'DESCARGADO';
+
 export type ModalType = 'DETAILS' | 'OCR' | 'CLOSING';
 export type ViewMode = 'table' | 'cards';
 
@@ -24,6 +34,7 @@ export interface Location {
 export interface Vehicle {
   id: number;
   plate: string;
+  type?: string;
   brand?: string;
   status?: string;
   empresa?: string;
@@ -34,9 +45,18 @@ export interface Operation {
   createdAt: string;
   type?: string;
   status?: OperationStatus;
+  isActive: boolean;
+  fletePago?: number | null;
   estadoViaje?: TripMicroState;
   placaIA?: string | null;
   containerNumber?: string | null;
+  containerStatus?: OperationContainerStatus;
+  containerStatusUpdatedAt?: string | null;
+  containerIssueDescription?: string | null;
+  loadingStartedAt?: string | null;
+  loadingCompletedAt?: string | null;
+  unloadingStartedAt?: string | null;
+  unloadingCompletedAt?: string | null;
   
   clientName?: string;
   clientLocationName?: string;
@@ -52,7 +72,9 @@ export interface DriverPortalData {
   id: number;
   name: string;
   cedula: string;
-  telefono: string;
+  telefono: string | null;
+  role: string;
+  isActive: boolean;
   drivenVehicles: Vehicle[];
   assignedOperations: Operation[];
 }

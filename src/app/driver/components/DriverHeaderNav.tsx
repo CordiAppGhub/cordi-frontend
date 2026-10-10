@@ -4,8 +4,8 @@ import { TabOption, Tabs } from '@/components/molecules/tabs/tabs';
 import React from 'react';
 
 interface DriverHeaderNavProps {
-  activeTab: 'current' | 'history';
-  setActiveTab: (tab: 'current' | 'history') => void;
+  activeTab: 'current' | 'history' | 'profile';
+  setActiveTab: (tab: 'current' | 'history' | 'profile') => void;
   historyCount?: number; 
   onLogout: () => void;
 }
@@ -23,6 +23,11 @@ export function DriverHeaderNav({ activeTab, setActiveTab, historyCount = 0, onL
       icon: '📜',
       badge: historyCount > 0 ? historyCount : undefined 
     },
+    {
+      id: 'profile',
+      label: 'Mi perfil',
+      icon: '👤',
+    },
   ];
 
   return (
@@ -31,7 +36,7 @@ export function DriverHeaderNav({ activeTab, setActiveTab, historyCount = 0, onL
         <Tabs 
           tabs={tabOptions} 
           activeTab={activeTab} 
-          onChange={(tabId) => setActiveTab(tabId as 'current' | 'history')} 
+          onChange={(tabId) => setActiveTab(tabId as 'current' | 'history' | 'profile')}
           fullWidth={true}
         />
       </div>

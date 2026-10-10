@@ -71,6 +71,7 @@ export interface Operation {
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
   status: 'CREADO' | 'PROGRAMADO' | 'ASIGNADO' | 'PENDIENTE' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA' | 'CANCELADO';
 
+  isActive: boolean;
   isAnticipada?: boolean;
 
   // CONTENEDOR Y CARGA
@@ -80,12 +81,31 @@ export interface Operation {
   peso?: number | null; 
   sealNumber?: string | null; // Sello/Precinto
   pinRetiro?: string | null;  // PIN del puerto
-  
+
   numeroPedido?: string | null; 
+  arin?: string | null;
   documentoTransporte?: string | null; // Usado para Manifiesto / DO / BL
+  radicado?: string | null;
+  cumplido?: string | null;
+  novedades?: string | null;
   observaciones?: string | null;
 
   estadoViaje?: string | null;
+  containerStatus?:
+    | 'PENDIENTE'
+    | 'EN_PISO'
+    | 'EN_INSPECCION'
+    | 'FALLA_REPORTADA'
+    | 'EN_CARGUE'
+    | 'CARGADO'
+    | 'EN_DESCARGUE'
+    | 'DESCARGADO';
+  containerStatusUpdatedAt?: string | null;
+  containerIssueDescription?: string | null;
+  loadingStartedAt?: string | null;
+  loadingCompletedAt?: string | null;
+  unloadingStartedAt?: string | null;
+  unloadingCompletedAt?: string | null;
   
   // FECHAS BASE
   scheduledAt?: string | null;
@@ -99,6 +119,7 @@ export interface Operation {
 
   // OBJETOS RELACIONADOS
   driver?: UserDriver | null;
+  analyst?: { id: number; name: string | null } | null;
   vehicle?: Vehicle | null;
   trailer?: Vehicle | null; // NUEVO: Objeto Remolque
   evidences?: Evidence[];
@@ -110,7 +131,7 @@ export interface Operation {
   descargue?: LogisticNode | null;
   destino?: LogisticNode | null;
 
-  novedadesHistorial?: NovedadHistorial[];
+  historialNovedades?: NovedadHistorial[];
 
   // CLIENTE
   clientId?: number | null; 
@@ -124,11 +145,39 @@ export interface Operation {
   fechaCitaDestino?: string | null;
   fechaRetiro?: string | null;
   fechaLimiteDevolucion?: string | null;
+  fechaAsignacion?: string | null;
+  fechaCierreFisico?: string | null;
+  fechaCierreDocumental?: string | null;
+  horaInicio?: string | null;
+  horaLlegada?: string | null;
+  horaAtencion?: string | null;
+  horaCargue?: string | null;
+  horaDescargue?: string | null;
+  horaSalida?: string | null;
+  horaFinal?: string | null;
 
   // LIQUIDACIÓN Y FINANZAS
   // 🚀 ACTUALIZADO: Alineado con Prisma
   fleteCobro?: number | null;
   fleteCobroManual?: number | null; // Flete manual/excepción
   fletePago?: number | null;
+  retencionFlotaPorcentaje?: number | null;
+  patioId?: number | null;
+  patioCosto?: number | null;
+  patioCobro?: number | null;
+  patio?: LogisticNode | null;
+  rentabilidadBruta?: number | null;
+  totalRecargos?: number;
+  totalCobrosExtras?: number;
+  totalFacturacion?: number;
   surcharges?: OperationSurcharge[];
+}
+
+export interface OperationsClientGroup {
+  id: string | number;
+  clientName: string;
+  analystName: string;
+  totalOperaciones: number;
+  totalFacturacion: number;
+  operations: Operation[];
 }

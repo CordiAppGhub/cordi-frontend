@@ -4,19 +4,37 @@ import React, { useState } from 'react';
 import styles from './novedades.module.css';
 import { Tabs } from '@/components/molecules/tabs/tabs';
 import { useNovedades } from '@/hooks/ueNovedades';
+import { TruckLoader } from '@/components/TruckLoader';
 import { LiveClock } from '@/components/atoms/liveClock/LiveClock';
+import { SuperModal } from '@/components/organisms/modal/modal';
+import { NovedadResourceForm } from '../components/novedad-resource-form';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Definición de las Tabs con íconos
 const NOVEDADES_TABS = [
   { id: 'PENDING', label: 'Urgencias y Bloqueos', icon: '🚨' },
+  { id: 'IN_REVIEW', label: 'En revisión', icon: '🛠️' },
   { id: 'RESOLVED', label: 'Historial Resueltas', icon: '✅' },
   { id: 'TODAS', label: 'Todas las Incidencias', icon: '🗂️' },
 ];
 
 export function NovedadesPageView() {
-  const { novedades, isLoading, error, activeTab, setActiveTab, refresh, resolve } = useNovedades('PENDING');
+  const queryClient = useQueryClient();
+  const {
+    novedades,
+    isLoading,
+    error,
+    activeTab,
+    setActiveTab,
+    activeTarget,
+    setActiveTarget,
+    refresh,
+    resolve,
+    markInReview,
+  } = useNovedades('PENDING');
   const [selectedForResolve, setSelectedForResolve] = useState<number | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const handleResolveSubmit = async (id: number) => {
     if (!resolutionNotes.trim()) {
@@ -38,20 +56,45 @@ export function NovedadesPageView() {
           <h1 className={styles.title}>Centro de Control de Novedades e Incidentes</h1>
           <p className={styles.subtitle}>Gestión de bloqueos operativos, fallas mecánicas e incapacidades.</p>
         </div>
-       <LiveClock onRefresh={refresh} isRefetching={isLoading} />
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            style={{ padding: '10px 14px', borderRadius: 8, border: 0, background: '#1d4ed8', color: 'white', fontWeight: 700 }}
+          >
+            + Novedad de conductor o vehículo
+          </button>
+          <LiveClock onRefresh={refresh} isRefetching={isLoading} />
+        </div>
       </div>
 
-   
       <Tabs 
         tabs={NOVEDADES_TABS} 
         activeTab={activeTab} 
         onChange={setActiveTab} 
       />
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <label htmlFor="novedad-target" style={{ fontWeight: 600, color: '#475569' }}>
+          Recurso:
+        </label>
+        <select
+          id="novedad-target"
+          value={activeTarget}
+          onChange={(event) => setActiveTarget(event.target.value)}
+          style={{ border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', background: 'white' }}
+        >
+          <option value="TODAS">Todos</option>
+          <option value="OPERATION">Operación</option>
+          <option value="DRIVER">Conductor</option>
+          <option value="VEHICLE">Vehículo</option>
+        </select>
+      </div>
+
       {error && <div className={styles.errorAlert}>⚠️ {error}</div>}
 
       {isLoading ? (
-        <div className={styles.loading}>Sincronizando incidencias...</div>
+        <TruckLoader variant="compact" message="Sincronizando incidencias..." />
       ) : novedades.length === 0 ? (
         <div className={styles.emptyState}>
           <span>🎉</span>
@@ -66,9 +109,9 @@ export function NovedadesPageView() {
                   <span className={`${styles.badge} ${styles[nov.severity.toLowerCase()]}`}>
                     {nov.severity}
                   </span>
-                  {nov.status === 'RESOLVED' && (
-                    <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                      RESUELTO
+                  {nov.status !== 'PENDING' && (
+                    <span style={{ fontSize: '0.65rem', background: nov.status === 'RESOLVED' ? '#dcfce7' : '#dbeafe', color: nov.status === 'RESOLVED' ? '#166534' : '#1e40af', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                      {nov.status === 'RESOLVED' ? 'RESUELTO' : 'EN REVISIÓN'}
                     </span>
                   )}
                 </div>
@@ -89,6 +132,13 @@ export function NovedadesPageView() {
                   <strong style={{ color: '#166534' }}>Solución ({nov.resolvedBy?.name}):</strong>
                   <p style={{ margin: '4px 0 0 0', color: '#15803d' }}>{nov.resolutionNotes}</p>
                 </div>
+              ) : nov.status === 'PENDING' ? (
+                <button
+                  onClick={() => void markInReview(nov.id)}
+                  className={styles.resolveTriggerBtn}
+                >
+                  Tomar para revisión
+                </button>
               ) : selectedForResolve === nov.id ? (
                 <div className={styles.resolveBox}>
                   <textarea
@@ -106,13 +156,29 @@ export function NovedadesPageView() {
                 </div>
               ) : (
                 <button onClick={() => setSelectedForResolve(nov.id)} className={styles.resolveTriggerBtn}>
-                  Resolver e Iniciar Liberación 🔓
+                  Resolver novedad 🔓
                 </button>
               )}
             </div>
           ))}
         </div>
       )}
+      <SuperModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title="Registrar novedad de conductor o vehículo"
+        width="600px"
+      >
+        <NovedadResourceForm
+          onCancel={() => setIsCreateOpen(false)}
+          onSuccess={() => {
+            setIsCreateOpen(false);
+            setActiveTab('PENDING');
+            setActiveTarget('TODAS');
+            void queryClient.invalidateQueries({ queryKey: ['novedades'] });
+          }}
+        />
+      </SuperModal>
     </div>
   );
 }

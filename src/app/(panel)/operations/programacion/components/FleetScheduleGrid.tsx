@@ -8,8 +8,7 @@ import { useAnalysts } from '@/hooks/useAnalysts';
 import { useClients } from '@/hooks/useClient';
 import { tariffService } from '@/services/tariff.service';
 
-import { getCreationColumns, getGroupedColumns, getNestedColumns } from './fleet-schedules.columns';
-import { useLocations } from '@/app/(panel)/locations/hooks/useLocation';
+import { getCreationColumns, getGroupedColumns, getNestedColumns, GroupedSchedule } from './fleet-schedules.columns';
 import { useProgramacion } from '../hooks/useProgramacion';
 
 // 🚀 1. Importamos el CSS Module
@@ -40,7 +39,6 @@ export default function FleetScheduleGrid() {
   const { clients } = useClients();
   const { vehicles } = useVehicles();
   const { analysts } = useAnalysts();
-  const { locations } = useLocations();
 
   const handleFieldChange = async (clientId: number, field: string, value: string) => {
     setRowStates((prev) => {
@@ -83,7 +81,7 @@ export default function FleetScheduleGrid() {
             isCalculating: false 
           },
         }));
-      } catch (error) {
+      } catch {
         setRowStates((prev) => ({
           ...prev,
           [clientId]: { ...prev[clientId], suggestedPrice: null, isCalculating: false },
@@ -113,7 +111,9 @@ export default function FleetScheduleGrid() {
       vehicleId: Number(rowData.vehicleId),
       trailerId: rowData.trailerId ? Number(rowData.trailerId) : undefined,
       driverId: rowData.driverId ? Number(rowData.driverId) : undefined,
-      fleteCobroManual: rowData.manualPrice ? parseFloat(rowData.manualPrice) : rowData.suggestedPrice,
+      ...(rowData.manualPrice
+        ? { fleteCobroManual: parseFloat(rowData.manualPrice) }
+        : {}),
     };
 
     await createOperation(payload);
@@ -130,19 +130,36 @@ export default function FleetScheduleGrid() {
   const paginatedClients = clients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const groupedSchedules = useMemo(() => {
-    const groups: Record<number, any> = {};
-    operations.forEach((operation: any) => {
+    const groups = new Map<number, GroupedSchedule>();
+    operations.forEach((operation) => {
       const clientId = operation.client?.id;
       if (!clientId) return;
-      
-      if (!groups[clientId]) {
-        groups[clientId] = { id: clientId, razonSocial: operation.client.razonSocial, operations: [] };
+
+      let group = groups.get(clientId);
+      if (!group) {
+        group = {
+          id: clientId,
+          razonSocial: operation.client!.razonSocial,
+          totalOperations: 0,
+          analystsStr: '',
+          operations: [],
+        };
+        groups.set(clientId, group);
       }
-      groups[clientId].operations.push(operation);
+      group.operations.push(operation);
     });
-    return Object.values(groups).map((group: any) => {
-      const uniqueAnalysts = Array.from(new Set(group.operations.map((op: any) => op.analyst?.name).filter(Boolean)));
-      return { ...group, totalOperations: group.operations.length, analystsStr: uniqueAnalysts.join(', ') };
+
+    return Array.from(groups.values()).map((group) => {
+      const uniqueAnalysts = new Set(
+        group.operations
+          .map((operation) => operation.analyst?.name)
+          .filter((name): name is string => Boolean(name)),
+      );
+      return {
+        ...group,
+        totalOperations: group.operations.length,
+        analystsStr: Array.from(uniqueAnalysts).join(', '),
+      };
     });
   }, [operations]);
 

@@ -7,12 +7,12 @@
 .input {
   width: 100%;
   padding: 14px 16px; 
-  border: 1px solid #cbd5e1;
-  border-radius: 8px; 
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   
   font-size: 16px; 
   
-  color: #334155;
+  color: var(--color-text);
   background-color: #fff;
   outline: none;
   font-family: inherit;
@@ -21,8 +21,8 @@
 }
 
 .input:focus {
-  border-color: #2563eb; 
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); 
+  border-color: var(--color-brand-700);
+  box-shadow: 0 0 0 2px rgba(47, 100, 127, 0.12);
 }
 
 .error {
@@ -51,7 +51,7 @@
   .input {
     padding: 10px 12px;
     font-size: 14px; 
-    border-radius: 6px;
+    border-radius: var(--radius-control);
   }
 
   .errorMessage {

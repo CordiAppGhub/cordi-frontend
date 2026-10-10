@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import styles from './OperationTraceability.module.css';
 
 import { useTrafico } from '../../hooks/useOperations'; // Ajusta la ruta si es necesario
+import { Evidence, Operation } from '@/types/operation-types';
 import { useOperationTimeline } from '../../hooks/useOperationTimeline';
 import { socket } from '@/lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,8 @@ import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { OperationTimeline } from '../TimelineOperation/OperationTimeline';
 import Image from 'next/image';
 import { FileText, Activity, AlertTriangle, MapPin, Clock, Truck } from 'lucide-react'; 
+import { TruckLoader } from '@/components/TruckLoader';
+import { ContainerStatusLabels } from '@/constants/enum-mapping-types';
 
 interface Props {
   operationId: number;
@@ -25,7 +28,6 @@ export function OperationTraceability({ operationId }: Props) {
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Efecto de Websockets (Mantengo tu lógica exacta)
   useEffect(() => {
     if (!operationId) return;
     fetchOperationById(operationId);
@@ -33,13 +35,17 @@ export function OperationTraceability({ operationId }: Props) {
     const updateEvent = `operation_${operationId}_updated`;
     const evidenceEvent = `operation_${operationId}_evidence`;
 
-    const handleUpdate = (newData: any) => {
-      queryClient.setQueryData(['operation-detail', operationId], newData);
+    const handleUpdate = (newData: Partial<Operation>) => {
+      queryClient.setQueryData<Operation | undefined>(
+        ['trafico-detail', operationId],
+        (currentOperation) =>
+          currentOperation ? { ...currentOperation, ...newData } : currentOperation,
+      );
       queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] });
     };
 
-    const handleNewEvidence = (newEvidence: any) => {
-      queryClient.setQueryData(['operation-detail', operationId], (oldData: any) => {
+    const handleNewEvidence = (newEvidence: Evidence) => {
+      queryClient.setQueryData<Operation | undefined>(['operation-detail', operationId], (oldData) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
@@ -58,14 +64,19 @@ export function OperationTraceability({ operationId }: Props) {
     };
   }, [operationId, fetchOperationById, queryClient]);
 
-  if (isLoadingCurrent) return <div className={styles.loadingState}>Cargando detalles de la operación...</div>;
+  if (isLoadingCurrent) return <TruckLoader variant="compact" message="Cargando detalles de la operación..." />;
   if (!currentOperation) return <div className={styles.emptyState}>No se encontró la operación.</div>;
 
   // Lógica Financiera (Mantenida de tu código)
-  const fleteBase = Number(currentOperation.fleteCobro || 0);
+  const fleteBase = Number(
+    currentOperation.fleteCobroManual ?? currentOperation.fleteCobro ?? 0,
+  );
   const recargos = currentOperation.surcharges || [];
-  const totalRecargos = recargos.reduce((sum: number, s: any) => sum + Number(s.totalPrice), 0);
-  const granTotalCobro = fleteBase + totalRecargos;
+  const totalRecargos = Number(currentOperation.totalRecargos ?? 0);
+  const totalCobrosExtras = Number(currentOperation.totalCobrosExtras ?? 0);
+  const patioCobro = Number(currentOperation.patioCobro || 0);
+  const patioCosto = Number(currentOperation.patioCosto || 0);
+  const granTotalCobro = currentOperation.totalFacturacion;
   const fletePago = Number(currentOperation.fletePago || 0);
 
   // Lógica Gerencial: Alertas de Datos Faltantes
@@ -78,13 +89,29 @@ export function OperationTraceability({ operationId }: Props) {
     return missing;
   };
   const missingData = getMissingData();
+  const containerStatus = currentOperation.containerStatus || 'PENDIENTE';
+  const isContainerStatusAlert = containerStatus === 'FALLA_REPORTADA';
+  const isContainerStatusComplete =
+    containerStatus === 'CARGADO' || containerStatus === 'DESCARGADO';
 
   // Función para Fechas
-  const formatDate = (dateString?: string | null) => {
+  const formatDate = (dateString?: string | Date | null) => {
     if (!dateString) return '---';
     return new Date(dateString).toLocaleString('es-CO', {
       month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
     });
+  };
+
+  const formatDuration = (start?: string | null, end?: string | null) => {
+    if (!start) return 'Sin iniciar';
+    if (!end) return 'En curso';
+    const totalMinutes = Math.max(
+      0,
+      Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000),
+    );
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
   };
 
   return (
@@ -131,6 +158,7 @@ export function OperationTraceability({ operationId }: Props) {
               </h2>
               <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                 Operación #{currentOperation.id} · {currentOperation.type}
+                {currentOperation.client?.nit ? ` · NIT ${currentOperation.client.nit}` : ''}
               </p>
             </div>
             <StatusBadge status={currentOperation.status} />
@@ -156,7 +184,7 @@ export function OperationTraceability({ operationId }: Props) {
             <div className={styles.infoCard}>
               <span className={styles.label}>Analista a Cargo</span>
               <strong className={`${styles.value} ${styles.valueLarge}`}>
-                {currentOperation.analystId|| 'No asignado'}
+                {currentOperation.analyst?.name || 'No asignado'}
               </strong>
             </div>
             <div className={styles.infoCard}>
@@ -188,6 +216,54 @@ export function OperationTraceability({ operationId }: Props) {
                 </p>
               </div>
             </div>
+            <div className={styles.gridAuto}>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Lugar de cargue</span>
+                <p className={styles.value}>{currentOperation.cargue?.name || '---'}</p>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Lugar de descargue</span>
+                <p className={styles.value}>{currentOperation.descargue?.name || '---'}</p>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Fecha de retiro</span>
+                <p className={styles.value}>{formatDate(currentOperation.fechaRetiro)}</p>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Asignación</span>
+                <p className={styles.value}>{formatDate(currentOperation.fechaAsignacion)}</p>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Programada</span>
+                <p className={styles.value}>{formatDate(currentOperation.scheduledAt)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className={styles.sectionTitle}>
+              <Clock size={18} color="#64748b" /> Marcas de tiempo
+            </h3>
+            <div className={styles.gridAuto}>
+              {[
+                ['Inicio', currentOperation.horaInicio],
+                ['Llegada', currentOperation.horaLlegada],
+                ['Atención', currentOperation.horaAtencion],
+                ['Cargue', currentOperation.horaCargue],
+                ['Descargue', currentOperation.horaDescargue],
+                ['Salida', currentOperation.horaSalida],
+                ['Finalización', currentOperation.horaFinal],
+              ].map(([label, timestamp]) => (
+                <div className={styles.infoBlock} key={label}>
+                  <span className={styles.label}>{label}</span>
+                  <strong className={styles.value}>{formatDate(timestamp)}</strong>
+                </div>
+              ))}
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Creada</span>
+                <strong className={styles.value}>{formatDate(currentOperation.createdAt)}</strong>
+              </div>
+            </div>
           </div>
 
           {/* EQUIPO Y CARGA */}
@@ -206,6 +282,10 @@ export function OperationTraceability({ operationId }: Props) {
                 </div>
               </div>
               <div className={styles.infoBlock}>
+                <span className={styles.label}>Remolque / Chasis</span>
+                <strong className={styles.value}>{currentOperation.trailer?.plate || '---'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
                 <span className={styles.label}>Conductor Asignado</span>
                 <strong className={styles.value}>{currentOperation.driver?.name || '---'}</strong>
               </div>
@@ -217,9 +297,149 @@ export function OperationTraceability({ operationId }: Props) {
                 </div>
               </div>
               <div className={styles.infoBlock}>
+                <span className={styles.label}>Peso</span>
+                <strong className={styles.value}>
+                  {currentOperation.peso == null ? '---' : `${Number(currentOperation.peso).toLocaleString('es-CO')} kg`}
+                </strong>
+              </div>
+              <div className={styles.infoBlock}>
                 <span className={styles.label}>Flete a Facturar / Pagar</span>
-                <strong style={{ color: '#15803d', display: 'block' }}>Facturar: $ {granTotalCobro.toLocaleString('es-CO')}</strong>
-                <strong style={{ color: '#d97706', display: 'block' }}>Pagar: {fletePago ? `$ ${fletePago.toLocaleString('es-CO')}` : 'Pendiente'}</strong>
+                <div className={styles.financialList}>
+                  <div className={styles.financialRow}>
+                    <span>Flete cliente{currentOperation.fleteCobroManual != null ? ' (manual)' : ''}</span>
+                    <strong>{currentOperation.fleteCobroManual != null || currentOperation.fleteCobro != null
+                      ? `$ ${fleteBase.toLocaleString('es-CO')}`
+                      : 'Pendiente'}</strong>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span>Patio · cobro cliente{currentOperation.patio?.name ? ` (${currentOperation.patio.name})` : ''}</span>
+                    <strong>{currentOperation.patioCobro == null ? '—' : `$ ${patioCobro.toLocaleString('es-CO')}`}</strong>
+                  </div>
+                  {recargos.length > 0 ? recargos.map((surcharge) => (
+                    <div className={styles.financialRow} key={surcharge.id}>
+                      <span>
+                        {surcharge.surcharge?.name || surcharge.surchargeCode}
+                        {surcharge.quantity > 1
+                          ? ` · ${surcharge.quantity} × $ ${Number(surcharge.appliedPrice).toLocaleString('es-CO')}`
+                          : ''}
+                        {surcharge.observations ? ` · ${surcharge.observations}` : ''}
+                      </span>
+                      <strong>$ {Number(surcharge.totalPrice).toLocaleString('es-CO')}</strong>
+                    </div>
+                  )) : (
+                    <div className={styles.financialRow}>
+                      <span>Recargos adicionales</span>
+                      <strong>—</strong>
+                    </div>
+                  )}
+                  {recargos.length > 0 && (
+                    <div className={styles.financialRow}>
+                      <span>Subtotal recargos</span>
+                      <strong>$ {totalRecargos.toLocaleString('es-CO')}</strong>
+                    </div>
+                  )}
+                  <div className={styles.financialRow}>
+                    <span>Total cobros extra</span>
+                    <strong>$ {totalCobrosExtras.toLocaleString('es-CO')}</strong>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span>Flete · pago conductor / flota</span>
+                    <strong>{currentOperation.fletePago == null ? 'Pendiente' : `$ ${fletePago.toLocaleString('es-CO')}`}</strong>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span>Patio · costo empresa</span>
+                    <strong>{currentOperation.patioCosto == null ? '—' : `$ ${patioCosto.toLocaleString('es-CO')}`}</strong>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span>Retención de flota</span>
+                    <strong>{currentOperation.retencionFlotaPorcentaje == null
+                      ? '—'
+                      : `${Number(currentOperation.retencionFlotaPorcentaje).toLocaleString('es-CO')} %`}</strong>
+                  </div>
+                  <div className={styles.totalRow}>
+                    <span>Total cobro cliente</span>
+                    <strong>{granTotalCobro == null
+                      ? 'Pendiente'
+                      : `$ ${Number(granTotalCobro).toLocaleString('es-CO')}`}</strong>
+                  </div>
+                </div>
+                {currentOperation.patioId &&
+                  (currentOperation.patioCobro === null ||
+                    currentOperation.patioCobro === undefined ||
+                    currentOperation.patioCosto === null ||
+                    currentOperation.patioCosto === undefined) && (
+                    <span style={{ color: '#dc2626', display: 'block', fontSize: '0.8rem' }}>
+                      Falta configurar la tarifa de este patio para el cliente.
+                    </span>
+                  )}
+                <strong
+                  style={{
+                    color:
+                      currentOperation.rentabilidadBruta === null ||
+                      currentOperation.rentabilidadBruta === undefined
+                        ? '#94a3b8'
+                        : currentOperation.rentabilidadBruta >= 0
+                          ? '#15803d'
+                          : '#dc2626',
+                    display: 'block',
+                  }}
+                >
+                  Rentabilidad bruta:{' '}
+                  {currentOperation.rentabilidadBruta === null ||
+                  currentOperation.rentabilidadBruta === undefined
+                    ? 'Pendiente de pago de flota'
+                    : `$ ${currentOperation.rentabilidadBruta.toLocaleString('es-CO')}`}
+                </strong>
+              </div>
+            </div>
+            <div className={styles.gridAuto}>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Estado del contenedor</span>
+                <strong
+                  className={styles.containerStatusBadge}
+                  style={{
+                    backgroundColor: isContainerStatusAlert
+                      ? '#fee2e2'
+                      : isContainerStatusComplete
+                        ? '#dcfce7'
+                        : '#e0f2fe',
+                    color: isContainerStatusAlert
+                      ? '#b91c1c'
+                      : isContainerStatusComplete
+                        ? '#15803d'
+                        : '#0369a1',
+                  }}
+                >
+                  {ContainerStatusLabels[containerStatus] || containerStatus.replace(/_/g, ' ')}
+                </strong>
+                {currentOperation.containerIssueDescription && (
+                  <p className={styles.dateSub}>
+                    Falla reportada: {currentOperation.containerIssueDescription}
+                  </p>
+                )}
+                {currentOperation.containerStatusUpdatedAt && (
+                  <p className={styles.dateSub}>
+                    Último reporte: {formatDate(currentOperation.containerStatusUpdatedAt)}
+                  </p>
+                )}
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Cargue</span>
+                <strong className={styles.value}>
+                  {formatDuration(currentOperation.loadingStartedAt, currentOperation.loadingCompletedAt)}
+                </strong>
+                <p className={styles.dateSub}>
+                  {formatDate(currentOperation.loadingStartedAt)} — {formatDate(currentOperation.loadingCompletedAt)}
+                </p>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Descargue</span>
+                <strong className={styles.value}>
+                  {formatDuration(currentOperation.unloadingStartedAt, currentOperation.unloadingCompletedAt)}
+                </strong>
+                <p className={styles.dateSub}>
+                  {formatDate(currentOperation.unloadingStartedAt)} — {formatDate(currentOperation.unloadingCompletedAt)}
+                </p>
               </div>
             </div>
           </div>
@@ -232,8 +452,12 @@ export function OperationTraceability({ operationId }: Props) {
             
             <div className={styles.gridAuto}>
               <div className={styles.infoBlock}>
-                <span className={styles.label}>N° Pedido / Manifiesto</span>
-                <strong className={styles.value}>{currentOperation.numeroPedido || currentOperation.documentoTransporte || '--'}</strong>
+                <span className={styles.label}>Número de Pedido / Booking</span>
+                <strong className={styles.value}>{currentOperation.numeroPedido || '--'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Manifiesto / DO / BL</span>
+                <strong className={styles.value}>{currentOperation.documentoTransporte || '--'}</strong>
               </div>
               <div className={styles.infoBlock}>
                 <span className={styles.label}>PIN Retiro</span>
@@ -243,7 +467,39 @@ export function OperationTraceability({ operationId }: Props) {
                 <span className={styles.label}>Precinto (Seal)</span>
                 <strong className={styles.value}>{currentOperation.sealNumber || '---'}</strong>
               </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>ARIN</span>
+                <strong className={styles.value}>{currentOperation.arin || '---'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Radicado</span>
+                <strong className={styles.value}>{currentOperation.radicado || '---'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Cumplido</span>
+                <strong className={styles.value}>{currentOperation.cumplido || '---'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Cierre físico</span>
+                <strong className={styles.value}>{formatDate(currentOperation.fechaCierreFisico)}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Cierre documental</span>
+                <strong className={styles.value}>{formatDate(currentOperation.fechaCierreDocumental)}</strong>
+              </div>
             </div>
+            {currentOperation.observaciones && (
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Observaciones</span>
+                <p className={styles.value}>{currentOperation.observaciones}</p>
+              </div>
+            )}
+            {currentOperation.novedades && (
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Novedades</span>
+                <p className={styles.value}>{currentOperation.novedades}</p>
+              </div>
+            )}
           </div>
 
         </div>
@@ -257,7 +513,7 @@ export function OperationTraceability({ operationId }: Props) {
           </h3>
           
           {isLoadingTimeline ? (
-            <div className={styles.loadingState}>Cargando historial forense...</div>
+            <TruckLoader variant="compact" message="Cargando historial de la operación..." />
           ) : (
             <OperationTimeline 
               events={timelineEvents} 

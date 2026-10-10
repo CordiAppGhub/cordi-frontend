@@ -5,14 +5,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { novedadesService } from '@/services/novedades.servies';
 import { showToast } from '@/utils/alerts';
 import { AxiosError } from 'axios';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 interface BackendErrorResponse {
   message?: string;
 }
 
-export function useNovedades(initialTab = 'PENDING') {
+export function useNovedades(initialTab = 'PENDING', initialTarget = 'TODAS') {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTarget, setActiveTarget] = useState(initialTarget);
 
   const {
     data: novedades = [],
@@ -20,13 +22,16 @@ export function useNovedades(initialTab = 'PENDING') {
     error: queryError,
     refetch: refresh,
   } = useQuery({
-    queryKey: ['novedades', activeTab],
-    queryFn: () => novedadesService.getAll(activeTab),
+    queryKey: ['novedades', activeTab, activeTarget],
+    queryFn: () => novedadesService.getAll(activeTab, activeTarget),
     staleTime: 1000 * 60 * 3, 
   });
 
-  const error = queryError 
-    ? (queryError instanceof Error ? queryError.message : 'Error al cargar novedades')
+  const error = queryError
+    ? getUserFriendlyErrorMessage(
+        queryError,
+        'No se pudieron cargar las novedades. Inténtalo de nuevo.',
+      )
     : null;
 
   const resolveMutation = useMutation({
@@ -42,6 +47,18 @@ export function useNovedades(initialTab = 'PENDING') {
     },
   });
 
+  const reviewMutation = useMutation({
+    mutationFn: novedadesService.markInReview,
+    onSuccess: () => {
+      showToast.success('Novedad tomada para revisión.');
+      queryClient.invalidateQueries({ queryKey: ['novedades'] });
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      showToast.error(axiosError.response?.data?.message || 'Error al iniciar la revisión.');
+    },
+  });
+
   const resolve = useCallback(async (id: number, notes: string): Promise<boolean> => {
     try {
       await resolveMutation.mutateAsync({ id, notes });
@@ -51,13 +68,25 @@ export function useNovedades(initialTab = 'PENDING') {
     }
   }, [resolveMutation]);
 
+  const markInReview = useCallback(async (id: number): Promise<boolean> => {
+    try {
+      await reviewMutation.mutateAsync(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [reviewMutation]);
+
   return {
     novedades,
     isLoading,
     error,
     activeTab,
     setActiveTab,
+    activeTarget,
+    setActiveTarget,
     refresh,
     resolve,
+    markInReview,
   };
 }

@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Button } from '@/components/atoms/button/button';
 import { Locations } from '@/types/location.types';
 import { useLocations } from '../hooks/useLocation';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { LocationModal } from '../components/locationModal/locationModal';
 import { getLocationColumns, getClientSubColumns } from '../components/LocationColumns';
+import { TruckLoader } from '@/components/TruckLoader';
+import styles from '../locations.module.css';
 
 export const LocationsView: React.FC = () => {
-  const { locations, isLoadingLocations, deleteLocation, refreshLocations } = useLocations();
+  const { locations, isLoadingLocations, deleteLocation } = useLocations();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<Locations | null>(null);
@@ -17,27 +19,19 @@ export const LocationsView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const isInitialized = useRef(false);
-  useEffect(() => {
-    if (!isInitialized.current) {
-      refreshLocations();
-      isInitialized.current = true;
-    }
-  }, [refreshLocations]);
-
   const handleOpenCreate = () => {
     setLocationToEdit(null);
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (location: Locations) => {
+  const handleOpenEdit = useCallback((location: Locations) => {
     setLocationToEdit(location);
     setIsModalOpen(true);
-  };
+  }, []);
 
   const columns = useMemo(
     () => getLocationColumns(handleOpenEdit, deleteLocation),
-    [deleteLocation]
+    [deleteLocation, handleOpenEdit]
   );
 
   // 🚀 Definimos las sub-columnas del collapse
@@ -50,11 +44,11 @@ export const LocationsView: React.FC = () => {
   }, [locations, currentPage]);
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className={styles.page}>
+      <div className={styles.header}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Directorio de Empresas (Nodos)</h2>
-          <p style={{ color: '#64748b', fontSize: '14px', margin: '4px 0 0 0' }}>Gestión de ubicaciones físicas, puertos y plantas asociadas.</p>
+          <h2 className={styles.title}>Directorio de Empresas (Nodos)</h2>
+          <p className={styles.subtitle}>Gestión de ubicaciones físicas, puertos y plantas asociadas.</p>
         </div>
         <Button onClick={handleOpenCreate} variant="primary">
           + Nueva Empresa
@@ -62,9 +56,9 @@ export const LocationsView: React.FC = () => {
       </div>
 
       {isLoadingLocations ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Cargando información...</div>
+        <TruckLoader variant="compact" message="Cargando ubicaciones..." />
       ) : (
-        <div style={{ width: '100%' }}>
+        <div className={styles.table}>
           <PaginationTable
             data={paginatedData}
             columns={columns}

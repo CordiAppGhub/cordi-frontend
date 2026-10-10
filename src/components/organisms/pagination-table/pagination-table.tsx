@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ColumnDef } from '@/types/table';
 import styles from './pagination-table.module.css';
 
-interface SuperTableProps<T> {
+interface SuperTableProps<T, S extends object> {
   data: T[];
   columns: ColumnDef<T>[];
   totalPages: number;
@@ -12,12 +12,16 @@ interface SuperTableProps<T> {
   onPageChange: (page: number) => void;
   onOpenModal?: () => void;
   nameButton?: string;
+  hideSearch?: boolean;
   isCollapsible?: boolean;
-  subColumns?: ColumnDef<any>[];
-  getSubRows?: (row: T) => any[];
+  subColumns?: ColumnDef<S>[];
+  getSubRows?: (row: T) => S[];
 }
 
-export default function PaginationTable<T extends { id: number | string }>({
+export default function PaginationTable<
+  T extends { id: number | string },
+  S extends object = T,
+>({
   data,
   columns,
   totalPages,
@@ -25,10 +29,11 @@ export default function PaginationTable<T extends { id: number | string }>({
   onPageChange,
   onOpenModal,
   nameButton,
+  hideSearch = false,
   isCollapsible = false,
   subColumns,
   getSubRows,
-}: SuperTableProps<T>) {
+}: SuperTableProps<T, S>) {
   const safeData = Array.isArray(data) ? data : [];
   const [expandedRows, setExpandedRows] = useState<Set<number | string>>(new Set());
 
@@ -48,10 +53,12 @@ export default function PaginationTable<T extends { id: number | string }>({
     <div className={styles.tableContainer}>
       {/* TOOLBAR */}
       <div className={styles.toolbar}>
-        <div className={styles.searchContainer}>
-          <input type="text" placeholder="Buscar en la tabla..." className={styles.searchInput} />
-          <span className={styles.searchIcon}>🔍</span>
-        </div>
+        {!hideSearch && (
+          <div className={styles.searchContainer}>
+            <input type="text" placeholder="Buscar en la tabla..." className={styles.searchInput} />
+            <span className={styles.searchIcon}>🔍</span>
+          </div>
+        )}
         <div className={styles.actionButtons}>
           {nameButton && (
             <button type="button" onClick={onOpenModal ? onOpenModal : () => alert('Falta la función onOpenModal')} className={styles.btnPrimary}>
@@ -119,16 +126,25 @@ export default function PaginationTable<T extends { id: number | string }>({
                               <thead>
                                 <tr>
                                   {subColumns.map((subCol, i) => (
-                                    <th key={`subTh-${i}`} className={styles.nestedTh}>{subCol.header}</th>
+                                    <th
+                                      key={`subTh-${i}`}
+                                      className={styles.nestedTh}
+                                    >
+                                      {subCol.header}
+                                    </th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {subRows.map((subRow: any, j: number) => (
-                                  <tr key={`subTr-${subRow.id || j}`} className={styles.nestedTr}>
+                                {subRows.map((subRow, j) => (
+                                  <tr key={`subTr-${row.id}-${j}`} className={styles.nestedTr}>
                                     {subColumns.map((subCol, k) => (
                                       <td key={`subTd-${k}`} className={styles.nestedTd}>
-                                        {subCol.renderCell ? subCol.renderCell(subRow) : String(subRow[subCol.id] ?? '-')}
+                                        {subCol.renderCell
+                                          ? subCol.renderCell(subRow)
+                                          : String(
+                                              (subRow as Record<string, unknown>)[subCol.id] ?? '-',
+                                            )}
                                       </td>
                                     ))}
                                   </tr>

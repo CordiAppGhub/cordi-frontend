@@ -1,4 +1,4 @@
-import { ClientTariff, CreateClientTariffInput, SurchargeCatalog, CreateSurchargeOverrideInput, QuoteResponse, AffiliationTariff } from "@/types/tariff-ypes";
+import { ClientTariff, CreateClientTariffInput, PatioTariff, SurchargeCatalog, CreateSurchargeOverrideInput, QuoteResponse, AffiliationTariff, UpsertPatioTariffInput } from "@/types/tariff-ypes";
 import { api } from "./api.service";
 
 export interface CreateSurchargeCatalogInput {
@@ -24,6 +24,16 @@ export const tariffService = {
 
   createClientTariff: async (payload: CreateClientTariffInput): Promise<ClientTariff> => {
     const { data } = await api.post('/tariffs', payload);
+    return data;
+  },
+
+  getAllPatioTariffs: async (): Promise<PatioTariff[]> => {
+    const { data } = await api.get('/tariffs/yards');
+    return data;
+  },
+
+  upsertPatioTariff: async (payload: UpsertPatioTariffInput): Promise<PatioTariff> => {
+    const { data } = await api.post('/tariffs/yards', payload);
     return data;
   },
 

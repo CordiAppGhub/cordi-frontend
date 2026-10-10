@@ -1,4 +1,9 @@
-import { TripMicroState, OcrResult } from "@/types/driver-portal.types";
+import {
+  DriverPortalData,
+  OperationContainerStatus,
+  TripMicroState,
+  OcrResult,
+} from "@/types/driver-portal.types";
 import { api } from "./api.service";
 
 export const driverPortalService = {
@@ -15,6 +20,17 @@ export const driverPortalService = {
   updateTravelState: async (operationId: number, estadoViaje: TripMicroState | 'FINALIZADO'): Promise<void> => {
     await api.patch(`/portal/operations/${operationId}/status`, {
       estadoViaje,
+    });
+  },
+
+  updateContainerStatus: async (
+    operationId: number,
+    containerStatus: OperationContainerStatus,
+    issueDescription?: string,
+  ): Promise<void> => {
+    await api.patch(`/portal/operations/${operationId}/container-status`, {
+      containerStatus,
+      ...(issueDescription ? { issueDescription } : {}),
     });
   },
 
@@ -54,8 +70,8 @@ export const driverAuthService = {
     return data;
   },
   
-  getDriverProfile: async () => {
-    const { data } = await api.get('/auth/driver/me'); 
+  getDriverProfile: async (): Promise<DriverPortalData> => {
+    const { data } = await api.get<DriverPortalData>('/auth/driver/me');
     return data;
   },
  

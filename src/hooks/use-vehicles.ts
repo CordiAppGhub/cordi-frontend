@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import axios, { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { vehiclesService } from '@/services/vehicles.service';
@@ -13,7 +13,7 @@ interface BackendErrorResponse {
   message?: string;
 }
 
-export const useVehicles = () => {
+export const useVehicles = (enabled = true) => {
   const queryClient = useQueryClient();
 
   const {
@@ -23,6 +23,7 @@ export const useVehicles = () => {
   } = useQuery({
     queryKey: ['vehicles'],
     queryFn: vehiclesService.getAll,
+    enabled,
     staleTime: 1000 * 60 * 5, 
   });
 
@@ -37,6 +38,7 @@ export const useVehicles = () => {
       showToast.error(message);
     }
   });
+  const createVehicleAsync = createMutation.mutateAsync;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateVehicleDto }) => vehiclesService.update(id, data),
@@ -49,6 +51,7 @@ export const useVehicles = () => {
       showToast.error(message);
     }
   });
+  const updateVehicleAsync = updateMutation.mutateAsync;
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => vehiclesService.remove(id),
@@ -61,10 +64,11 @@ export const useVehicles = () => {
       showToast.error(message);
     }
   });
+  const removeVehicleAsync = removeMutation.mutateAsync;
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => vehiclesService.importExcel(file),
-    onSuccess: (response: any) => {
+    onSuccess: (response) => {
       showToast.success(response.message || 'Carga masiva completada con éxito');
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
@@ -73,24 +77,25 @@ export const useVehicles = () => {
       showToast.error(message);
     }
   });
+  const uploadVehiclesAsync = uploadMutation.mutateAsync;
 
   const createVehicle = useCallback(async (data: CreateVehicleDto): Promise<boolean> => {
     try {
-      await createMutation.mutateAsync(data);
+      await createVehicleAsync(data);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [createMutation]);
+  }, [createVehicleAsync]);
 
   const editVehicle = useCallback(async (id: number, data: UpdateVehicleDto): Promise<boolean> => {
     try {
-      await updateMutation.mutateAsync({ id, data });
+      await updateVehicleAsync({ id, data });
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [updateMutation]);
+  }, [updateVehicleAsync]);
 
   const removeVehicle = useCallback(async (id: number): Promise<boolean> => {
     const confirm = await Swal.fire({
@@ -107,20 +112,16 @@ export const useVehicles = () => {
     if (!confirm.isConfirmed) return false;
 
     try {
-      await removeMutation.mutateAsync(id);
+      await removeVehicleAsync(id);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [removeMutation]);
+  }, [removeVehicleAsync]);
 
   const uploadExcel = useCallback(async (file: File): Promise<void> => {
-    try {
-      await uploadMutation.mutateAsync(file);
-    } catch (err) {
-      throw err; 
-    }
-  }, [uploadMutation]);
+    await uploadVehiclesAsync(file);
+  }, [uploadVehiclesAsync]);
 
   const isLoading = isQueryLoading || createMutation.isPending || updateMutation.isPending || removeMutation.isPending || uploadMutation.isPending;
 

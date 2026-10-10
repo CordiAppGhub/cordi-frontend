@@ -3,11 +3,12 @@
 
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { locationService } from '@/services/location.service'; 
 import { showToast } from '@/utils/alerts';
 import { CreateLocationInput, UpdateLocationInput } from '@/types/location.types';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 export function useLocations() {
   const queryClient = useQueryClient();
@@ -25,9 +26,10 @@ export function useLocations() {
 
   let errorMessage: string | null = null;
   if (queryError) {
-    errorMessage = axios.isAxiosError(queryError) 
-      ? queryError.response?.data?.message || 'Error al cargar ubicaciones'
-      : queryError.message || 'Error al cargar ubicaciones';
+    errorMessage = getUserFriendlyErrorMessage(
+      queryError,
+      'No se pudieron cargar las ubicaciones. Inténtalo de nuevo.',
+    );
   }
 
   const createMutation = useMutation({
@@ -41,6 +43,7 @@ export function useLocations() {
       showToast.error(err.response?.data?.message || 'No se pudo registrar la ubicación.');
     }
   });
+  const createLocationAsync = createMutation.mutateAsync;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateLocationInput }) => locationService.update(id, data),
@@ -53,6 +56,7 @@ export function useLocations() {
       showToast.error(err.response?.data?.message || 'No se pudo actualizar la ubicación.');
     }
   });
+  const updateLocationAsync = updateMutation.mutateAsync;
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => locationService.delete(id),
@@ -65,24 +69,25 @@ export function useLocations() {
       showToast.error(err.response?.data?.message || 'No se pudo eliminar la ubicación.');
     }
   });
+  const deleteLocationAsync = deleteMutation.mutateAsync;
 
   const createLocation = useCallback(async (data: CreateLocationInput): Promise<boolean> => {
     try {
-      await createMutation.mutateAsync(data);
+      await createLocationAsync(data);
       return true;
     } catch {
       return false;
     }
-  }, [createMutation]);
+  }, [createLocationAsync]);
 
   const updateLocation = useCallback(async (id: number, data: UpdateLocationInput): Promise<boolean> => {
     try {
-      await updateMutation.mutateAsync({ id, data });
+      await updateLocationAsync({ id, data });
       return true;
     } catch {
       return false;
     }
-  }, [updateMutation]);
+  }, [updateLocationAsync]);
 
   const deleteLocation = useCallback(async (id: number): Promise<boolean> => {
     const result = await Swal.fire({
@@ -99,12 +104,12 @@ export function useLocations() {
     if (!result.isConfirmed) return false;
 
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteLocationAsync(id);
       return true;
     } catch {
       return false;
     }
-  }, [deleteMutation]);
+  }, [deleteLocationAsync]);
 
   return {
     locations,

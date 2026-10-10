@@ -68,7 +68,7 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
             documentoTransporte: operationBase.documentoTransporte || '', 
             
             observaciones: operationBase.observaciones || '',
-            fleteCobroManual: operationBase.fleteCobroManual || operationBase.fleteCobro || '', 
+            fleteCobroManual: operationBase.fleteCobroManual ?? '',
             
             // Fechas operativas
             scheduledAt: formatDate(operationBase.scheduledAt),
@@ -87,11 +87,13 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
         }
 
         // Definimos la locación comercial según el tipo de operación
-        const commercialLocationId = (isImport || isExport) ? (selectedDescargueId || undefined) : undefined;
+        const commercialLocationId = (isImport || isExport)
+            ? selectedDescargueId || undefined
+            : destinoId || undefined;
         
         // ¡Aquí se lanza la petición al backend en tiempo real!
         getLiveQuote(clientId, currentType, isAnticipada, commercialLocationId);
-    }, [clientId, currentType, isAnticipada, selectedDescargueId, isImport, isExport, getLiveQuote, resetQuote]);
+    }, [clientId, currentType, isAnticipada, selectedDescargueId, destinoId, isImport, isExport, getLiveQuote, resetQuote]);
 
     const typeOptions = [
         { value: 'IMPORTACION', label: 'Importación' },
@@ -139,6 +141,13 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
     // 🚀 FORM FIELDS (Integrando exigeCitaOrigen y exigeCitaDestino en las etiquetas)
     const formFields: FormField[] = useMemo(() => {
         const fields: FormField[] = [
+            {
+                name: 'numeroPedido',
+                label: 'Número de Pedido / Booking (prioritario)',
+                type: 'text',
+                placeholder: 'Ingrese el número de pedido o booking',
+                fullWidth: true,
+            },
             { name: 'type', label: 'Tipo de Operación *', type: 'select', options: typeOptions, disabled: isEdit },
             { name: 'clientId', label: 'Cliente *', type: 'select', options: getClientOptions(), disabled: isEdit },
         ];
@@ -163,7 +172,6 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
                 { name: 'sealNumber', label: 'Sello / Precinto', type: 'text', placeholder: 'Ej: 123456' },
                 { name: 'pinRetiro', label: 'PIN de Retiro', type: 'text', placeholder: 'Opcional' },
                 
-                { name: 'numeroPedido', label: 'Número de Pedido / Booking', type: 'text' },
                 { name: 'documentoTransporte', label: 'Manifiesto / DO / BL', type: 'text', placeholder: 'Ej: BL-987654' },
                 
                 // Etiquetas dinámicas según si el puerto/cliente exige cita

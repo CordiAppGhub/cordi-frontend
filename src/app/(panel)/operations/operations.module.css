@@ -18,10 +18,10 @@
   justify-content: space-between;
   align-items: center;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 8px 14px; /* Más plano */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: 8px 12px;
+  box-shadow: none;
   width: 100%;
   box-sizing: border-box;
 }
@@ -29,24 +29,24 @@
 .titleText {
   font-size: 0.98rem; /* Ligeramente más compacto */
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-brand-900);
   margin: 0;
   line-height: 1.2;
 }
 
 .subtitleText {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 1px 0 0;
 }
 
 .tabsContainer {
   display: flex;
   gap: 2px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
   background: #ffffff;
   padding: 0 8px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   width: 100%;
   box-sizing: border-box;
 }
@@ -68,8 +68,8 @@
   gap: 8px;
   background: #ffffff;
   padding: 8px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
   align-items: center;
   width: 100%;
   box-sizing: border-box;
@@ -79,21 +79,21 @@
 .selectInput {
   height: 32px; /* Altura estándar plana */
   padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
   font-size: 0.78rem;
   outline: none;
   background-color: #fff;
-  color: #334155;
+  color: var(--color-text);
   box-sizing: border-box;
 }
 
 .tableCard {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
   padding: 8px 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   width: 100%;
   box-sizing: border-box;
   overflow-x: auto;

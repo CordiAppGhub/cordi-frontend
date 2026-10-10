@@ -5,6 +5,7 @@ import { Operation } from '@/types/operation-types'; // Ajusta la ruta a tus tip
 import { AlertTriangle, MapPin, Clock, Truck, FileText } from 'lucide-react';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge'; // Ajusta la ruta a tu badge
 import styles from './OperationSummaryTab.module.css'; // 👈 Importamos el CSS Module
+import { TruckLoader } from '@/components/TruckLoader';
 
 interface OperationSummaryTabProps {
   operation: Operation | null;
@@ -14,7 +15,7 @@ interface OperationSummaryTabProps {
 export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operation, isLoading }) => {
   
   if (isLoading) {
-    return <div className={styles.centerMessage}>Cargando ficha técnica...</div>;
+    return <TruckLoader variant="compact" message="Cargando ficha técnica..." />;
   }
 
   if (!operation) {

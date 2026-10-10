@@ -4,11 +4,6 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@/services/auth.services';
 import { showToast } from '@/utils/alerts';
-import axios, { AxiosError } from 'axios';
-
-interface BackendErrorResponse {
-  message?: string;
-}
 
 export function useAuthLogin() {
   const [step, setStep] = useState<1 | 2>(1); 
@@ -26,14 +21,10 @@ export function useAuthLogin() {
       }
     },
     onError: (err: unknown) => {
-      let message = 'Error al conectar con el servidor.';
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<BackendErrorResponse>;
-        message = axiosError.response?.data?.message || message;
-      } else if (err instanceof Error) {
-        message = err.message;
-      }
-      showToast.error(message);
+      showToast.error(
+        err,
+        'No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.',
+      );
     }
   });
 
@@ -48,14 +39,7 @@ export function useAuthLogin() {
       window.location.assign('/dashboard');
     },
     onError: (err: unknown) => {
-      let message = 'Código de verificación inválido o expirado.';
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<BackendErrorResponse>;
-        message = axiosError.response?.data?.message || message;
-      } else if (err instanceof Error) {
-        message = err.message;
-      }
-      showToast.error(message);
+      showToast.error(err, 'El código no es válido o ya venció. Solicita uno nuevo.');
     }
   });
 

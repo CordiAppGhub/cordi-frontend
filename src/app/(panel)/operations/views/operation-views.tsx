@@ -14,7 +14,6 @@ import { getOperationsColumns } from '../components/operations-colums';
 import { ApplySurchargeModal } from '../components/ApplySurchargeModal'; 
 import { NovedadForm } from '../../novedades/components/novedades-modal/novedades-modal';
 
-import Swal from 'sweetalert2';
 import { Operation } from '@/types/operation-types';
 import { OperationForm } from '../components/formOperation';
 import { TraceabilityDrawer } from '@/components/organisms/TraceabilityDrawer/TraceabilityDrawer';
@@ -22,6 +21,8 @@ import { getClientColumns } from '../components/client-columns';
 import { useAuthStore } from '@/store/use-auth.store';
 import { OperationFilters } from '../components/OptionFilters';
 import { Loader } from 'lucide-react';
+import { OperationAmparosPanel } from '../components/OperationAmparosPanel';
+import { OperationResourceModal } from '../components/OperationResourceModal';
 
 const tabs = [
   { id: 'TODAS', label: 'Todas las Operaciones' },
@@ -32,20 +33,31 @@ const tabs = [
 ];
 
 export function OperationsView() {
-  const { operations, meta, isLoadingOperations, error, fetchOperations, setFilters } = useTrafico();
+  const {
+    operations,
+    meta,
+    isLoadingOperations,
+    error,
+    fetchOperations,
+    setFilters,
+    setDriverAccess,
+    isSettingDriverAccess,
+    updateOperation,
+  } = useTrafico();
   const { user } = useAuthStore();
-  const { openCreateModal, openAssignModal } = useUIStore();
+  const { openCreateModal } = useUIStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('TODAS');
   
-  const [modalTab, setModalTab] = useState<'DETAILS' | 'NOVEDAD'>('DETAILS');
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
+  const [novedadOperation, setNovedadOperation] = useState<Operation | null>(null);
 
   // 🚀 ESTADOS PARA EL MODAL DE EDICIÓN / COMPLETAR DATOS
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [operationToEdit, setOperationToEdit] = useState<Operation | null>(null);
+  const [operationToReassign, setOperationToReassign] = useState<Operation | null>(null);
 
   // 🚀 ESTADO PARA LA TRAZABILIDAD INTELIGENTE MULTIDIMENSIONAL
   const [traceContext, setTraceContext] = useState<{ 
@@ -58,10 +70,8 @@ export function OperationsView() {
     setIsEditModalOpen(true);
   };
 
-  const handleOpenReassign = (operationId: number) => {
-    setTraceContext(null);
-    openAssignModal(operationId);
-  };
+  const handleOpenReassign = (operation: Operation) => setOperationToReassign(operation);
+  const handleReportNovedad = (operation: Operation) => setNovedadOperation(operation);
 
   const isInitialized = useRef(false);
   useEffect(() => {
@@ -75,10 +85,39 @@ export function OperationsView() {
     () => {},
     setSurchargeModalOpId,
     handleEditOperation,
-    setTraceContext
+    setTraceContext,
+    (operationId, isActive) => {
+      void setDriverAccess(operationId, isActive);
+    },
+    user?.role === 'ADMIN' || user?.role === 'ANALISTA',
+    isSettingDriverAccess,
+    handleOpenReassign,
+    user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA' || user?.role === 'ANALISTA',
+    handleReportNovedad,
+  ).filter((column) =>
+    [
+      'numeroPedido',
+      'type',
+      'scheduledAt',
+      'vehicle',
+      'origen',
+      'lugarDescargue',
+      'fleteCobro',
+      'fletePago',
+      'patioCosto',
+      'patioCobro',
+      'recargos',
+      'totalCobrosExtras',
+      'totalFacturacion',
+      'rentabilidad',
+      'status',
+      'acciones',
+    ].includes(
+      String(column.id),
+    ),
   );
 
-  const clientColumns = getClientColumns(user?.role);
+  const clientColumns = getClientColumns();
 
   const applyFilters = (overrides?: { tab?: string; page?: number }) => {
     const currentTab = overrides?.tab || activeTab;
@@ -95,15 +134,6 @@ export function OperationsView() {
     applyFilters({ tab: tabId, page: 1 });
   };
 
-  // Variables calculadas para el modal de trazabilidad (si es una operación)
-  const isOperationContext = traceContext?.type === 'OPERATION';
-  const traceabilityOperationId = isOperationContext ? Number(traceContext?.id) : null;
-  const traceabilityOperation = operations.find(op => op.id === traceabilityOperationId);
-  
-  const isPausada =
-    traceabilityOperation?.status === 'PAUSADA' ||
-    traceabilityOperation?.estadoViaje === 'PAUSADA';
-
   return (
     <div className={styles.layout}>
       {/* HEADER */}
@@ -119,6 +149,8 @@ export function OperationsView() {
           + Nueva Operación
         </Button>
       </div>
+
+      <OperationAmparosPanel enabled={user?.role === 'ADMIN' || user?.role === 'ANALISTA'} />
 
       {/* TABS */}
       <div className={styles.tabsContainer}>
@@ -178,9 +210,9 @@ export function OperationsView() {
           // --- PADRE (CLIENTE) ---
           columns={clientColumns} 
           
-          isCollapsible={true} 
-          subColumns={operationColumns} 
-          getSubRows={(row) => row.operations} 
+          isCollapsible={true}
+          subColumns={operationColumns}
+          getSubRows={(row) => row.operations}
           
           // --- PAGINACIÓN ---
           totalPages={meta?.total ?? 1}
@@ -201,6 +233,25 @@ export function OperationsView() {
           fetchOperations(); 
         }} 
       />
+
+      <SuperModal
+        isOpen={Boolean(novedadOperation)}
+        onClose={() => setNovedadOperation(null)}
+        title={novedadOperation ? `Reportar novedad · Operación #${novedadOperation.id}` : 'Reportar novedad'}
+        width="680px"
+      >
+        {novedadOperation && (
+          <NovedadForm
+            operationId={novedadOperation.id}
+            rawOperation={novedadOperation}
+            onCancel={() => setNovedadOperation(null)}
+            onSuccess={() => {
+              setNovedadOperation(null);
+              void fetchOperations();
+            }}
+          />
+        )}
+      </SuperModal>
 
       {/* 🚀 MODAL PARA COMPLETAR / EDITAR DATOS DESDE LA FILA */}
       <SuperModal
@@ -223,6 +274,16 @@ export function OperationsView() {
         />
       </SuperModal>
 
+      <OperationResourceModal
+        key={operationToReassign?.id ?? 'closed'}
+        operation={operationToReassign}
+        onClose={() => setOperationToReassign(null)}
+        onSave={async (operationId, resources) => {
+          const saved = await updateOperation(operationId, resources);
+          if (saved) await fetchOperations();
+          return saved;
+        }}
+      />
 
       <TraceabilityDrawer 
         isOpen={traceContext !== null} 

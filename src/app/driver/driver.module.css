@@ -24,6 +24,107 @@
   }
 }
 
+.operationsListCard {
+  grid-column: 1 / -1;
+}
+
+.operationsListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.operationsListHeader h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.operationsListHeader p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.operationCount {
+  display: inline-flex;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.operationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.operationListItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.operationListItemSelected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.operationListMain {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.operationListMain strong {
+  color: #0f172a;
+  font-size: 0.85rem;
+}
+
+.operationListMain span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operationAccessBadge {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.operationAccessEnabled {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.operationAccessDisabled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .infoCard,
 .sequenceCard {
   background: white;
@@ -68,6 +169,17 @@
   font-size: 0.8rem;
   font-weight: bold;
   border: 1px solid #bbf7d0;
+}
+
+.statusBadgeRed {
+  margin-left: auto;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border: 1px solid #fecaca;
 }
 
 .divider {

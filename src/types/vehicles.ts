@@ -8,6 +8,17 @@ export interface DriverInfo {
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';
 export type VehicleStatus = 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
 
+export interface CreateVehicleFormInput {
+  plate: string;
+  brand: string;
+  modelYear: number;
+  empresa: string;
+  capacityWeight: number;
+  status: VehicleStatus;
+  affiliation: VehicleAffiliation;
+  adminDiscount?: number;
+}
+
 export interface Vehicle {
   id: number;
   plate: string;

@@ -1,5 +1,6 @@
 import { api } from './api.service'; 
-import { Operation } from '@/types/operation-types'; // Asegúrate de que esta interfaz tenga los nuevos campos (trailerId, status actualizados)
+import { Operation, OperationsClientGroup } from '@/types/operation-types';
+import { AxiosError } from 'axios';
 
 // ==========================================
 // INTERFACES Y PAYLOADS
@@ -17,13 +18,39 @@ export interface GetOperationsParams {
 }
 
 export interface PaginatedOperations {
-  data: Operation[];
+  data: OperationsClientGroup[];
   meta: {
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   };
+}
+
+export interface AmparoSuggestionOperation {
+  id: number;
+  type: 'EXPORTACION' | 'IMPORTACION';
+  status: string;
+  numeroPedido?: string | null;
+  containerNumber: string | null;
+  appointmentAt: string;
+  analystId: number | null;
+  analyst: { id: number; name: string | null } | null;
+  driver: { id: number; name: string | null } | null;
+  vehicle: { id: number; plate: string } | null;
+  port: { id: number; name: string; isPort: boolean } | null;
+}
+
+export interface AmparoSuggestion {
+  exportOperation: AmparoSuggestionOperation;
+  importOperation: AmparoSuggestionOperation;
+}
+
+export interface ConfirmAmparoPayload {
+  exportOperationId: number;
+  importOperationId: number;
+  driverId: number;
+  vehicleId: number;
 }
 
 export type UpdateOperationPayload = Partial<{
@@ -43,12 +70,21 @@ export type UpdateOperationPayload = Partial<{
 // SERVICIO PRINCIPAL UNIFICADO
 // ==========================================
 export const operationService = {
+  getAmparoSuggestions: async (): Promise<AmparoSuggestion[]> => {
+    const response = await api.get<AmparoSuggestion[]>('/operations/amparos/suggestions');
+    return response.data;
+  },
+
+  confirmAmparo: async (payload: ConfirmAmparoPayload) => {
+    const response = await api.post('/operations/amparos/confirm', payload);
+    return response.data;
+  },
   
   // ----------------------------------------
   // MÉTODOS PARA PROGRAMACIÓN (useProgramacion)
   // ----------------------------------------
   
-  createOperation: async (operationData: any): Promise<Operation> => {
+  createOperation: async (operationData: Record<string, unknown>): Promise<Operation> => {
     const response = await api.post<Operation>('/operations', operationData);
     return response.data;
   },
@@ -57,8 +93,8 @@ export const operationService = {
     try {
       const response = await api.get<Operation[]>(`/operations/by-date?date=${date}`);
       return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) return [];
+    } catch (error: unknown) {
+      if (error instanceof AxiosError && error.response?.status === 404) return [];
       throw error;
     }
   },
@@ -84,5 +120,13 @@ export const operationService = {
   updateOperation: async (operationId: number, data: UpdateOperationPayload): Promise<Operation> => {
     const response = await api.patch<Operation>(`/operations/${operationId}`, data);
     return response.data;
-  }
+  },
+
+  setDriverAccess: async (operationId: number, isActive: boolean): Promise<Operation> => {
+    const response = await api.patch<Operation>(
+      `/operations/${operationId}/driver-access`,
+      { isActive },
+    );
+    return response.data;
+  },
 };

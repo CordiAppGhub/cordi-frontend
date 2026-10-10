@@ -89,7 +89,8 @@ export const SuperForm: React.FC<SuperFormProps> = ({
                     return (
                       <div className={styles.multiselectContainer}>
                         {field.options?.map((opt) => {
-                          const isChecked = Array.isArray(value) && value.includes(String(opt.value));
+                          const isChecked = Array.isArray(value) &&
+                            value.some((selectedValue) => String(selectedValue) === String(opt.value));
                           return (
                             <label key={opt.value} className={styles.multiselectOption}>
                               <input
@@ -178,8 +179,8 @@ export const SuperForm: React.FC<SuperFormProps> = ({
             {cancelText}
           </Button>
         )}
-        <Button type="submit" variant="primary" disabled={isLoading}>
-          {isLoading ? 'Cargando...' : submitText}
+        <Button type="submit" variant="primary" isLoading={isLoading}>
+          {submitText}
         </Button>
       </div>
     </form>

@@ -7,6 +7,8 @@ import { useUsers } from '@/hooks/useUser';
 import { useUserStore } from '@/store/userStore';
 import { userSchema } from '@/types/user-types';
 import React, { useState } from 'react';
+import { showToast } from '@/utils/alerts';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 
 export default function UserForm() {
@@ -55,7 +57,7 @@ const fields: FormField[] = [
   { name: 'telefono', label: 'Teléfono', type: 'text' },
 ];
 
-  const handleSubmit = async (formData: Record<string, any>) => {
+  const handleSubmit = async (formData: Record<string, unknown>) => {
     setFormErrors({});
 
     // 1. Validamos los datos con Zod
@@ -70,19 +72,27 @@ const fields: FormField[] = [
       setFormErrors(fieldErrors);
       return;
     }
+    if (mode === 'CREATE' && !validation.data.password) {
+      setFormErrors({ password: 'La contraseña es obligatoria' });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const data = validation.data;
       if (mode === 'CREATE') {
-        await create(data);
+        if (!data.password) {
+          setFormErrors({ password: 'La contraseña es obligatoria' });
+          return;
+        }
+        await create({ ...data, password: data.password });
       } else if (mode === 'EDIT' && selectedUser) {
         const payload = data.password ? data : { ...data, password: undefined };
         await update({ id: selectedUser.id, data: payload });
       }
       closeModal();
     } catch (error) {
-      console.error("Error al guardar:", error);
+      showToast.error(getUserFriendlyErrorMessage(error, 'No se pudieron guardar los cambios del usuario.'));
     } finally {
       setIsSubmitting(false);
     }

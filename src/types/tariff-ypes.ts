@@ -29,6 +29,23 @@ export interface CreateClientTariffInput {
   price: number;
 }
 
+export interface PatioTariff {
+  id: number;
+  clientId: number;
+  locationId: number;
+  paymentPrice: number;
+  billingPrice: number;
+  client?: { id: number; razonSocial: string };
+  location?: { id: number; name: string };
+}
+
+export interface UpsertPatioTariffInput {
+  clientId: number;
+  locationId: number;
+  paymentPrice: number;
+  billingPrice: number;
+}
+
 export interface SurchargeCatalog {
   id: number;
   code: string;

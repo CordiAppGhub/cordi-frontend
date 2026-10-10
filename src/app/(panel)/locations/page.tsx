@@ -6,6 +6,7 @@ import { TabOption, Tabs } from '@/components/molecules/tabs/tabs';
 import { ClientsView } from './views/clienViews';
 import { LocationsView } from './views/location-views';
 import { AssignmentsView } from './views/AssignmentsView';
+import styles from './locations.module.css';
 
 export default function ComercialDirectoryPage() {
   const [activeTab, setActiveTab] = useState('clients');
@@ -29,13 +30,13 @@ export default function ComercialDirectoryPage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+    <div className={styles.directoryPage}>
       
-      <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+      <div className={styles.directoryHeader}>
+        <h1 className={styles.directoryTitle}>
           Directorio Comercial y Logístico
         </h1>
-        <p style={{ color: '#64748b', fontSize: '14px', margin: '4px 0 0 0' }}>
+        <p className={styles.directorySubtitle}>
           Gestión unificada de clientes de facturación y nodos operativos (puertos, plantas y bodegas).
         </p>
       </div>
@@ -46,7 +47,7 @@ export default function ComercialDirectoryPage() {
         onChange={setActiveTab} 
       />
 
-      <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', width: '100%' }}>
+      <div className={styles.directoryPanel}>
         {activeTab === 'clients' && <ClientsView />}
         {activeTab === 'locations' && <LocationsView />}
         {activeTab === 'assignments' && <AssignmentsView />}

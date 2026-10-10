@@ -40,7 +40,7 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
     },
     {
       name: 'percentage',
-      label: 'Porcentaje de Retención (%)',
+      label: 'Retención sobre el flete de viaje (%)',
       type: 'number',
       placeholder: 'Ej: 10',
     },
@@ -52,7 +52,7 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
     }
   ], [initialData]);
 
-  const handleFormChange = (name: string, value: FormFieldValue) => {
+  const handleFormChange = (name: string) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -62,8 +62,13 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
     const localErrors: Record<string, string> = {};
 
     if (!formData.affiliation) localErrors.affiliation = 'Seleccione el tipo de flota';
-    if (formData.percentage === undefined || formData.percentage === '' || Number(formData.percentage) < 0) {
-      localErrors.percentage = 'Ingrese un porcentaje válido';
+    if (
+      formData.percentage === undefined ||
+      formData.percentage === '' ||
+      Number(formData.percentage) < 0 ||
+      Number(formData.percentage) > 100
+    ) {
+      localErrors.percentage = 'Ingrese una retención entre 0 % y 100 %';
     }
 
     if (Object.keys(localErrors).length > 0) {

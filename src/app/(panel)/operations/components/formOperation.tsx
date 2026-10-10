@@ -61,7 +61,7 @@ export const OperationForm: React.FC<OperationFormProps> = ({ onClose, scheduleB
         onChange={handleFormChange}
         errors={errors}
         isLoading={isLoadingOperations}
-        submitText="Crear Operación"
+        submitText={scheduleBase ? 'Guardar cambios' : 'Crear Operación'}
         cancelText="Cancelar"
       />
     </div>

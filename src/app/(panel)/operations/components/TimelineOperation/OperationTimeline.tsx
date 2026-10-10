@@ -58,6 +58,29 @@ const getEventIcon = (eventType: string) => {
                 {event.description}
               </p>
 
+              {event.eventType === 'ACTUALIZACION_OPERACION' &&
+                event.metadata?.changes?.numeroPedido && (
+                  <p
+                    style={{
+                      margin: '8px 0',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: '#eff6ff',
+                      color: '#1e40af',
+                      fontSize: '13px',
+                    }}
+                  >
+                    Número de pedido:{' '}
+                    <strong>
+                      {event.metadata.changes.numeroPedido.before || 'Sin registrar'}
+                    </strong>
+                    {' → '}
+                    <strong>
+                      {event.metadata.changes.numeroPedido.after || 'Sin registrar'}
+                    </strong>
+                  </p>
+                )}
+
               {/* Módulo de Evidencias Integrado */}
               {event.eventType === 'EVIDENCIA_SUBIDA' && event.metadata?.url && (
                 <button 

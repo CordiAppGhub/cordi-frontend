@@ -1,258 +1,254 @@
 .headerContainer {
-  width: 100%;
-  background-color: #0d1527;
-  color: #fff;
-  box-shadow: none;
   position: sticky;
   top: 0;
   z-index: 1000;
+  width: 100%;
+  color: #fff;
+  background: var(--color-brand-900);
+  border-bottom: 1px solid #d6e0e6;
+}
+
+.topBar,
+.subNav {
+  width: 100%;
+  padding-right: 24px;
+  padding-left: 24px;
 }
 
 .topBar {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 10px 20px;
   display: flex;
+  min-height: 54px;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.topLeft,
+.topRight {
+  display: flex;
+  min-width: 0;
+  align-items: center;
 }
 
 .topLeft {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  min-width: 0;
 }
 
 .logoBadge {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  background: #d97706;
-  color: #fff;
-  font-weight: 700;
-  border-radius: 6px;
   display: flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 5px;
+  background: var(--color-brand-700);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .appTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
   margin: 0;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
+  color: #fff;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
 .appSubtitle {
-  font-size: 0.72rem;
-  color: #94a3b8;
   margin: 2px 0 0;
-  line-height: 1.3;
+  color: #bdcbd5;
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
 .topRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  gap: 12px;
 }
 
 .syncStatus {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 0.75rem;
-  color: #34d399;
-  background-color: rgba(52, 211, 153, 0.08);
-  padding: 5px 9px;
-  border-radius: 5px;
-  font-weight: 500;
+  gap: 6px;
+  padding: 4px 7px;
+  border: 1px solid rgba(134, 211, 181, 0.25);
+  border-radius: 4px;
+  background: rgba(134, 211, 181, 0.08);
+  color: #a4dfc4;
+  font-size: 0.68rem;
+  font-weight: 550;
 }
 
 .syncDot {
   width: 6px;
   height: 6px;
-  background-color: #34d399;
   border-radius: 50%;
+  background: #71c49d;
 }
 
 .userBadge {
-  background-color: #b96b08;
+  max-width: 190px;
+  overflow: hidden;
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   font-weight: 600;
-  padding: 5px 9px;
-  border-radius: 5px;
-  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.logoutBtn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #cbd5e1;
-  font-size: 0.78rem;
-  padding: 5px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+.userRoleText {
+  color: #bdcbd5;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
-.logoutBtn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+.logoutButton {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.06);
   color: #fff;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.logoutButton:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.logoutButton:focus-visible {
+  outline: 2px solid #9ed7dd;
+  outline-offset: 2px;
 }
 
 .subNav {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 20px;
   display: flex;
-  align-items: center;
+  min-height: 39px;
+  align-items: stretch;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
+  background: #fff;
 }
 
 .tabsContainer {
   display: flex;
-  gap: 4px;
-  height: 40px;
   min-width: 0;
+  height: 39px;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .tabItem {
-  display: flex;
+  display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
+  gap: 7px;
   padding: 0 12px;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #94a3b8;
+  border-bottom: 2px solid transparent;
+  color: #596d7a;
+  font-size: 0.75rem;
+  font-weight: 550;
   text-decoration: none;
   white-space: nowrap;
-  height: 100%;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .tabItem:hover {
-  color: #fff;
+  color: var(--color-brand-900);
+  background: #f5f8f9;
 }
 
 .tabActive {
-  color: #fff;
-  font-weight: 600;
-  border-bottom-color: #3b82f6;
-  background-color: rgba(255, 255, 255, 0.03);
+  border-bottom-color: var(--color-accent);
+  color: var(--color-brand-900);
+  font-weight: 650;
 }
 
 .masterPanelLink {
-  display: flex;
+  display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  color: #fbbf24;
+  padding: 4px 8px;
+  border: 1px solid #d5e2e7;
+  border-radius: 4px;
+  color: var(--color-brand-800);
+  font-size: 0.72rem;
+  font-weight: 600;
   text-decoration: none;
-  font-weight: 500;
-  background-color: rgba(251, 191, 36, 0.08);
-  padding: 5px 9px;
-  border-radius: 5px;
-  border: 1px solid rgba(251, 191, 36, 0.18);
-  transition: background-color 0.15s ease;
 }
 
 .masterPanelLink:hover {
-  background-color: rgba(251, 191, 36, 0.15);
+  background: var(--color-accent-soft);
 }
 
-@media (max-width: 900px) {
-  .topBar {
-    padding: 10px 16px;
-  }
-
+@media (max-width: 767px) {
+  .topBar,
   .subNav {
-    padding: 0 16px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
-  .tabsContainer {
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-  }
-
-  .tabItem {
-    padding: 0 10px;
-    font-size: 0.78rem;
-  }
-}
-
-/* Móvil */
-@media (max-width: 600px) {
   .topBar {
-    padding: 10px 12px;
+    min-height: 50px;
     gap: 8px;
   }
 
-  .topLeft {
-    gap: 8px;
-  }
-
-  .logoBadge {
-    width: 30px;
-    height: 30px;
-    font-size: 0.78rem;
-  }
-
-  .appTitle {
-    font-size: 0.9rem;
-  }
-
-  .appSubtitle {
-    font-size: 0.68rem;
+  .appSubtitle,
+  .userRoleText {
+    display: none;
   }
 
   .topRight {
-    gap: 6px;
-  }
-
-  .syncStatus {
-    padding: 5px 7px;
-    font-size: 0.7rem;
-  }
-
-  .userBadge {
-    font-size: 0.68rem;
-    padding: 5px 7px;
-  }
-
-  .logoutBtn {
-    font-size: 0.72rem;
-    padding: 5px 7px;
-  }
-
-  .subNav {
-    padding: 0 12px;
     gap: 8px;
   }
 
-  .masterPanelLink {
+  .logoutButton {
+    min-height: 28px;
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 0.66rem;
+  }
+
+  .tabItem {
+    padding: 0 9px;
     font-size: 0.72rem;
-    padding: 5px 7px;
   }
 }
 
 @media (max-width: 420px) {
-  .appSubtitle {
-    display: none;
+  .syncStatus {
+    padding: 4px 5px;
+    font-size: 0.63rem;
   }
 
-  .syncStatus {
-    gap: 5px;
+  .userBadge {
+    max-width: 92px;
+    font-size: 0.66rem;
+  }
+
+  .logoutButton {
+    width: 30px;
+    padding: 0;
+  }
+
+  .logoutButton span {
+    display: none;
   }
 }

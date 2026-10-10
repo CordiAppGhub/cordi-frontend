@@ -37,6 +37,7 @@ export const useAssignments = () => {
       showToast.error(message);
     }
   });
+  const assignAsync = assignMutation.mutateAsync;
 
   const unassignMutation = useMutation({
     mutationFn: (vehicleId: number) => assignmentsService.unassign(vehicleId),
@@ -48,15 +49,16 @@ export const useAssignments = () => {
       showToast.error(message);
     }
   });
+  const unassignAsync = unassignMutation.mutateAsync;
 
   const assignDriver = useCallback(async (data: CreateAssignmentDto): Promise<boolean> => {
     try {
-      await assignMutation.mutateAsync(data);
+      await assignAsync(data);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [assignMutation]);
+  }, [assignAsync]);
 
   const unassignVehicle = useCallback(async (vehicleId: number, plate: string): Promise<boolean> => {
     const confirm = await Swal.fire({
@@ -73,13 +75,13 @@ export const useAssignments = () => {
     if (!confirm.isConfirmed) return false;
 
     try {
-      await unassignMutation.mutateAsync(vehicleId);
+      await unassignAsync(vehicleId);
       showToast.success(`El vehículo ${plate} ahora está sin conductor`);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
-  }, [unassignMutation]);
+  }, [unassignAsync]);
 
   const isLoading = isQueryLoading || assignMutation.isPending || unassignMutation.isPending;
 

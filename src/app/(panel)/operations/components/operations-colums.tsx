@@ -1,7 +1,6 @@
 import React from 'react';
 import { ColumnDef } from '@/types/table';
 import { Operation } from '@/types/operation-types';
-import { useUIStore } from '@/store/use-ui.store';
 import styles from '../operations.module.css';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { formatLocationLabel } from '@/utils/location';
@@ -13,9 +12,10 @@ import {
   MapPin,
   AlertTriangle,
   Eye,
-  PlusCircle,
+  RefreshCw,
   BadgeDollarSign,
-  PackagePlus
+  PackagePlus,
+  Power,
 } from 'lucide-react';
 
 export const getOperationsColumns = (
@@ -23,8 +23,46 @@ export const getOperationsColumns = (
   onAddSurcharge: (id: number) => void,
   onEditOperation: (row: Operation) => void,
   setTraceContext: (context: { type: 'OPERATION' | 'CONTAINER' | 'ANALYST' | 'DRIVER' | 'VEHICLE'; id: string | number }) => void,
+  onSetDriverAccess: (id: number, isActive: boolean) => void,
+  canManageDriverAccess: boolean,
+  isSettingDriverAccess: boolean,
+  onReassign: (operation: Operation) => void,
+  canReassign: boolean,
+  onReportNovedad: (operation: Operation) => void,
 ): ColumnDef<Operation>[] => {
   return [
+    {
+      id: 'numeroPedido',
+      header: 'N.º Pedido / Booking',
+      type: 'text',
+      renderCell: (row) => {
+        const orderNumber = row.numeroPedido?.trim();
+        return (
+          <button
+            type="button"
+            onClick={() => setTraceContext({ type: 'OPERATION', id: row.id })}
+            title={`Ver detalles y trazabilidad de la operación ${row.id}`}
+            aria-label={`Ver trazabilidad del pedido ${orderNumber || 'sin registrar'}, operación ${row.id}`}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '3px',
+              padding: '6px 10px',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              backgroundColor: '#eff6ff',
+              color: '#1d4ed8',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <strong style={{ fontSize: '0.875rem' }}>{orderNumber || 'Sin registrar'}</strong>
+
+          </button>
+        );
+      },
+    },
     {
       id: 'type',
       header: 'Operación / Cliente',
@@ -180,50 +218,164 @@ export const getOperationsColumns = (
       }
     },
     {
-      id: 'cobro',
-      header: 'Facturación',
+      id: 'fleteCobro',
+      header: 'Flete del viaje · Cobro',
       type: 'text',
       renderCell: (row) => {
-        const fleteBase = row.fleteCobro || row.fleteCobroManual || 0;
-        const totalRecargos = row.surcharges?.reduce((sum, surcharge) => sum + Number(surcharge.totalPrice), 0) || 0;
-        const granTotalCobro = fleteBase + totalRecargos;
-
+        const fare = row.fleteCobroManual ?? row.fleteCobro;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ fontWeight: 700, color: '#15803d', fontSize: '0.9rem' }}>
-              ${granTotalCobro.toLocaleString('es-CO')}
-            </span>
-            {totalRecargos > 0 && (
-              <span style={{ color: '#d97706', fontSize: '0.7rem', fontWeight: 600, lineHeight: '1.2' }}>
-                Base: ${fleteBase.toLocaleString('es-CO')} <br />
-                Extras: +${totalRecargos.toLocaleString('es-CO')}
-              </span>
-            )}
-          </div>
+          <span style={{ color: fare == null ? '#94a3b8' : '#15803d', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {fare == null ? 'Pendiente' : `$${Number(fare).toLocaleString('es-CO')}`}
+            {row.fleteCobroManual != null && <small style={{ display: 'block', color: '#64748b', fontWeight: 500 }}>Manual</small>}
+          </span>
         );
       },
     },
     {
-      id: 'pago',
-      header: 'Pago Flota',
+      id: 'fletePago',
+      header: 'Pago conductor / flota',
       type: 'text',
       renderCell: (row) => (
-        <span style={{
-          color: row.fletePago ? '#0f172a' : '#94a3b8',
-          fontWeight: 600,
-          fontSize: '0.875rem',
-          fontVariantNumeric: 'tabular-nums'
-        }}>
-          {row.fletePago ? `$${row.fletePago.toLocaleString('es-CO')}` : 'Pendiente'}
+        <span style={{ color: row.fletePago == null ? '#94a3b8' : '#b45309', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {row.fletePago == null ? 'Pendiente' : `$${Number(row.fletePago).toLocaleString('es-CO')}`}
         </span>
       ),
+    },
+    {
+      id: 'patioCosto',
+      header: 'Patio · Costo empresa',
+      type: 'text',
+      renderCell: (row) => (
+        <span style={{ color: row.patioCosto == null ? '#94a3b8' : '#b91c1c', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {row.patioCosto == null
+            ? row.patioId
+              ? 'Pendiente tarifa'
+              : '—'
+            : `$${Number(row.patioCosto).toLocaleString('es-CO')}`}
+        </span>
+      ),
+    },
+    {
+      id: 'patioCobro',
+      header: 'Patio · Cobro cliente',
+      type: 'text',
+      renderCell: (row) => (
+        <span style={{ color: row.patioCobro == null ? '#94a3b8' : '#15803d', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {row.patioCobro == null
+            ? row.patioId
+              ? 'Pendiente tarifa'
+              : '—'
+            : `$${Number(row.patioCobro).toLocaleString('es-CO')}`}
+        </span>
+      ),
+    },
+    {
+      id: 'recargos',
+      header: 'Recargos aplicados',
+      type: 'text',
+      renderCell: (row) => {
+        const surcharges = row.surcharges ?? [];
+        return surcharges.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '140px' }}>
+            {surcharges.map((surcharge) => (
+              <div
+                key={surcharge.id}
+                title={surcharge.observations || surcharge.surcharge?.description}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column', /* Esto apila el nombre y el precio */
+                  color: '#b45309',
+                  fontSize: '0.75rem',
+                  fontVariantNumeric: 'tabular-nums'
+                }}
+              >
+                <strong>{surcharge.surcharge?.name || surcharge.surchargeCode}</strong>
+                <span>${Number(surcharge.totalPrice).toLocaleString('es-CO')}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <span style={{ color: '#94a3b8' }}>—</span>
+        );
+      },
+    },
+    {
+      id: 'totalCobrosExtras',
+      header: 'Total cobros extra',
+      type: 'text',
+      renderCell: (row) => (
+        <strong style={{ color: Number(row.totalCobrosExtras ?? 0) > 0 ? '#b45309' : '#94a3b8', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {row.totalCobrosExtras == null
+            ? 'Pendiente'
+            : `$${Number(row.totalCobrosExtras).toLocaleString('es-CO')}`}
+        </strong>
+      ),
+    },
+    {
+      id: 'totalFacturacion',
+      header: 'Total cobro cliente',
+      type: 'text',
+      renderCell: (row) => {
+        const hasFreight = row.fleteCobroManual != null || row.fleteCobro != null;
+        const hasPartialBilling = Number(row.totalCobrosExtras ?? 0) > 0;
+        return (
+          <strong style={{ color: '#047857', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {row.totalFacturacion == null
+              ? 'Pendiente'
+              : hasFreight
+                ? `${row.patioId && row.patioCobro == null ? 'Parcial · ' : ''}$${Number(row.totalFacturacion).toLocaleString('es-CO')}`
+                : hasPartialBilling
+                  ? `Parcial · $${Number(row.totalFacturacion).toLocaleString('es-CO')}`
+                  : 'Pendiente'}
+          </strong>
+        );
+      },
+    },
+    {
+      id: 'rentabilidad',
+      header: 'Rentabilidad Bruta',
+      type: 'text',
+      renderCell: (row) => (
+        <span
+          style={{
+            color:
+              row.rentabilidadBruta === null || row.rentabilidadBruta === undefined
+                ? '#94a3b8'
+                : row.rentabilidadBruta >= 0
+                  ? '#15803d'
+                  : '#dc2626',
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {row.rentabilidadBruta === null || row.rentabilidadBruta === undefined
+            ? 'Pendiente'
+            : `$${row.rentabilidadBruta.toLocaleString('es-CO')}`}
+        </span>
+      ),
+    },
+    {
+      id: 'novedades',
+      header: 'Novedad operativa',
+      type: 'text',
+      renderCell: (row) => {
+        const issues = row.historialNovedades ?? [];
+        return issues.length > 0 ? (
+          <span style={{ color: '#b91c1c', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <AlertTriangle size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+            {issues.length} reportada(s)
+          </span>
+        ) : (
+          <span style={{ color: '#94a3b8' }}>Sin novedades</span>
+        );
+      },
     },
     {
       id: 'status',
       header: 'Estado',
       type: 'text',
       renderCell: (row) => {
-        const tieneNovedades = Boolean(row.novedadesHistorial && row.novedadesHistorial.length > 0);
+        const tieneNovedades = Boolean(row.historialNovedades && row.historialNovedades.length > 0);
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
@@ -277,10 +429,47 @@ export const getOperationsColumns = (
       header: 'Acciones',
       type: 'text',
       renderCell: (row: Operation) => {
-        const { openAssignModal } = useUIStore.getState();
-
         return (
           <div className={styles.actionsContainer} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+            {canManageDriverAccess && row.driverId &&
+              (row.status === 'ASIGNADO' || row.status === 'EN_CURSO') && (
+                <button
+                  type="button"
+                  onClick={() => onSetDriverAccess(row.id, !row.isActive)}
+                  disabled={isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)}
+                  title={
+                    row.status === 'EN_CURSO' && row.isActive
+                      ? 'No se puede deshabilitar una operación en curso'
+                      : row.isActive
+                        ? 'Deshabilitar operación para el conductor'
+                        : 'Habilitar operación para el conductor'
+                  }
+                  aria-label={
+                    row.isActive
+                      ? `Deshabilitar operación ${row.id} para el conductor`
+                      : `Habilitar operación ${row.id} para el conductor`
+                  }
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '6px', minWidth: '92px', height: '32px', padding: '0 8px',
+                    borderRadius: '8px', border: 'none',
+                    backgroundColor: row.isActive ? '#dcfce7' : '#fee2e2',
+                    color: row.isActive ? '#15803d' : '#b91c1c',
+                    cursor: isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)
+                      ? 'not-allowed'
+                      : 'pointer',
+                    opacity: isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)
+                      ? 0.6
+                      : 1,
+                  }}
+                >
+                  <Power size={16} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                    {row.isActive ? 'Desactivar' : 'Activar'}
+                  </span>
+                </button>
+              )}
 
             <button
               onClick={() => onEditOperation(row)}
@@ -296,20 +485,38 @@ export const getOperationsColumns = (
               <PackagePlus size={16} />
             </button>
 
+            {canReassign &&
+              row.status !== 'FINALIZADO' &&
+              row.status !== 'CANCELADO' && (
+                <button
+                  type="button"
+                  onClick={() => onReassign(row)}
+                  title={row.driverId || row.vehicleId ? 'Reasignar conductor o vehículo' : 'Asignar conductor y vehículo'}
+                  aria-label={`Reasignar recursos de la operación ${row.id}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                    backgroundColor: '#eff6ff', color: '#2563eb',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <RefreshCw size={16} strokeWidth={2.5} />
+                </button>
+              )}
+
             <button
-              onClick={() => openAssignModal(row.id)}
-              disabled={row.status !== 'CREADO'}
-              title={row.status === 'CREADO' ? 'Asignar Flota' : 'Ya asignado'}
+              type="button"
+              onClick={() => onReportNovedad(row)}
+              title="Reportar novedad de esta operación, conductor o vehículo"
+              aria-label={`Reportar novedad para operación ${row.id}`}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                backgroundColor: row.status === 'CREADO' ? '#eff6ff' : '#f1f5f9',
-                color: row.status === 'CREADO' ? '#2563eb' : '#cbd5e1',
-                cursor: row.status === 'CREADO' ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s'
+                backgroundColor: '#fff7ed', color: '#c2410c',
+                cursor: 'pointer', transition: 'all 0.2s'
               }}
             >
-              <PlusCircle size={16} strokeWidth={2.5} />
+              <AlertTriangle size={16} />
             </button>
 
             {/* 🚀 BOTÓN DEL OJO CONECTADO A SET_TRACE_CONTEXT */}

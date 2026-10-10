@@ -1,0 +1,102 @@
+.page {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.header,
+.tablePanel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: #fff;
+}
+
+.header {
+  padding: 14px 16px;
+}
+
+.title {
+  color: var(--color-brand-900);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.tablePanel {
+  overflow: hidden;
+}
+
+.plate {
+  color: var(--color-brand-900);
+  font-size: 0.95rem;
+}
+
+.vehicleName,
+.driverDetails {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.driverCell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.driverAvatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #d5e2e7;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-brand-800);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.driverName {
+  display: block;
+  color: var(--color-brand-900);
+  font-size: 0.8rem;
+}
+
+.assignmentDate {
+  display: inline-flex;
+  padding: 3px 7px;
+  border: 1px solid #d5e2e7;
+  border-radius: 4px;
+  background: #f4f7f8;
+  color: var(--color-brand-800);
+  font-size: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.actions button {
+  width: auto;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--color-brand-800);
+  font-size: 0.74rem;
+}
+
+.actions button:hover {
+  background: var(--color-accent-soft);
+}

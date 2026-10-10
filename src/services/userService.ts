@@ -1,4 +1,4 @@
-import { User, UserFormData } from "@/types/user-types";
+import { NewUserFormData, User, UserFormData } from "@/types/user-types";
 import { api } from "./api.service";
 
 
@@ -7,7 +7,7 @@ export const userService = {
     const response = await api.get('/users');
     return response.data;
   },
-  create: async (data: UserFormData): Promise<User> => {
+  create: async (data: NewUserFormData): Promise<User> => {
     const response = await api.post('/users', data);
     return response.data;
   },
@@ -17,5 +17,8 @@ export const userService = {
   },
   disable: async (id: number): Promise<void> => {
     await api.patch(`/users/${id}/disable`);
+  },
+  enable: async (id: number): Promise<void> => {
+    await api.patch(`/users/${id}/enable`);
   }
 };

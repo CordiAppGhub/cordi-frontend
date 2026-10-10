@@ -1,20 +1,23 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/providers/authProvider';
 import QueryProvider from '@/providers/query-provider';
 import './globals.css';
-import { GlobalLoader } from '@/components/GlobalLoader';
 
 export const metadata: Metadata = {
   title: 'Corditrans Logística',
   description: 'Sistema integral de transporte y logística',
   manifest: '/manifest.json',
-  themeColor: '#2563eb',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Corditrans',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#17324d',
 };
 
 export default function RootLayout({
@@ -28,7 +31,6 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             {children}
-            <GlobalLoader />
           </AuthProvider>
         </QueryProvider>
       </body>

@@ -10,8 +10,12 @@ import {
   Truck, 
   MapPin,
   ClipboardList,
-  BarChart3
+  BarChart3,
+  ContactRound,
+  LogOut,
+  UsersRound,
 } from 'lucide-react';
+import { showToast } from '@/utils/alerts';
 import styles from './navbar.module.css';
 
 type NavItem = {
@@ -22,24 +26,40 @@ type NavItem = {
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const userRole = user?.role;
 
   const rawTabs: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={16} /> },
+    { path: '/profiles', label: 'Perfiles', icon: <ContactRound size={16} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={16} /> },
     { path: '/fleet', label: 'Flota', icon: <Truck size={16} /> },
     { path: '/locations', label: 'Ubicaciones', icon: <MapPin size={16} /> },
     { path: '/tariff', label: 'Tarifas', icon: <BarChart3 size={16} /> },
     { path: '/novedades', label: 'Novedades', icon: <BarChart3 size={16} /> },
+    { path: '/user', label: 'Usuarios', icon: <UsersRound size={16} /> },
   ];
 
   const tabs = rawTabs.filter((item) => {
-    if (userRole === 'ANALISTA' && item.label === 'Flota') {
-      return false;
+    if (item.path === '/user') {
+      return userRole === 'ADMIN';
+    }
+    if (userRole === 'ANALISTA') {
+      return !['/fleet', '/locations'].includes(item.path);
+    }
+    if (userRole === 'CONDUCTOR') {
+      return item.path === '/profiles';
     }
     return true;
   });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      showToast.error('No se pudo notificar el cierre de sesión al servidor.');
+    }
+  };
 
   return (
     <header className={styles.headerContainer}>
@@ -65,6 +85,16 @@ export const Navbar: React.FC = () => {
             <span>{user?.name || 'Usuario'}</span>
           </div>
           <span className={styles.userRoleText}>{userRole || 'OPERADOR'}</span>
+          <button
+            type="button"
+            className={styles.logoutButton}
+            onClick={() => void handleLogout()}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <LogOut size={15} aria-hidden="true" />
+            <span>Cerrar sesión</span>
+          </button>
         </div>
       </div>
 

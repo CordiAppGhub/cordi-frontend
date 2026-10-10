@@ -4,6 +4,59 @@
   width: 100%;
 }
 
+.containerStatusSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.containerStatusCurrent,
+.containerTimes p,
+.issueMessage {
+  margin: 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.containerStatusLabel {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.containerStatusSelect,
+.issueDescription {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: #0f172a;
+  font: inherit;
+}
+
+.issueDescription {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.issueMessage {
+  color: #b91c1c;
+}
+
+.containerTimes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
 .header {
   display: flex;
   justify-content: space-between;

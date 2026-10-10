@@ -13,6 +13,8 @@ import { assignmentSchema } from '@/schemas/assignment.schema'; // 🚀 Importam
 import { useAssignments } from '../hooks/useAssignments';
 import { useLocations } from '../hooks/useLocation';
 import { getAssignmentColumns } from '../components/AssignmentColumn';
+import { TruckLoader } from '@/components/TruckLoader';
+import styles from '../locations.module.css';
 export const AssignmentsView: React.FC = () => {
   const { assignments, isLoadingAssignments, createAssignment, removeAssignment, isAssigning } = useAssignments();
   const { clients, isLoadingClients } = useClients();
@@ -113,14 +115,14 @@ export const AssignmentsView: React.FC = () => {
   }, [assignments, currentPage]);
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+    <div className={styles.page}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className={styles.header}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+          <h2 className={styles.title}>
             Matriz de Permisos Directos
           </h2>
-          <p style={{ color: '#64748b', fontSize: '14px', margin: '4px 0 0 0' }}>
+          <p className={styles.subtitle}>
             Asigna qué analistas pueden auditar y gestionar clientes específicos en cada puerto o bodega.
           </p>
         </div>
@@ -130,11 +132,9 @@ export const AssignmentsView: React.FC = () => {
       </div>
 
       {isLoadingAssignments ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-          Cargando matriz de permisos...
-        </div>
+        <TruckLoader variant="compact" message="Cargando matriz de permisos..." />
       ) : (
-        <div style={{ width: '100%' }}>
+        <div className={styles.table}>
           <PaginationTable
             data={paginatedData}
             columns={columns}
@@ -152,7 +152,7 @@ export const AssignmentsView: React.FC = () => {
           title="Crear Nueva Asignación de Permiso"
           width="500px"
         >
-          <div style={{ marginBottom: '16px', fontSize: '0.85rem', color: '#64748b', lineHeight: '1.4' }}>
+          <div className={styles.modalDescription}>
             Selecciona el analista y el cliente. Solo podrás asignar al analista a las ubicaciones donde el cliente ya tiene operación activa.
           </div>
           <SuperForm

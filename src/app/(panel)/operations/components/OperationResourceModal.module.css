@@ -1,0 +1,317 @@
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.operationSummary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #dce8ec;
+  border-radius: var(--radius-panel);
+  background: #f5f9fa;
+}
+
+.operationIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--color-accent-soft);
+  color: var(--color-brand-700);
+}
+
+.operationDetails {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.operationDetails strong {
+  overflow: hidden;
+  color: var(--color-brand-900);
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.operationDetails > span:last-child {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.summaryEyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.statusBadge {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid #d7e3e8;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-brand-800);
+  font-size: 0.64rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.description {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid #dce8ec;
+  border-radius: var(--radius-control);
+  background: #f7fafb;
+  color: var(--color-brand-800);
+  font-size: 0.76rem;
+}
+
+.spinner {
+  flex: 0 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #efd0cb;
+  border-radius: var(--radius-control);
+  background: #fbf1ef;
+  color: #87443d;
+  font-size: 0.74rem;
+}
+
+.errorState > svg {
+  flex: 0 0 auto;
+}
+
+.errorState > span {
+  flex: 1;
+}
+
+.retryButton {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #87443d;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.retryButton:hover {
+  background: rgba(135, 68, 61, 0.08);
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-brand-900);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.fieldLabel svg {
+  color: var(--color-brand-700);
+}
+
+.selectWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.selectWrap > svg {
+  position: absolute;
+  right: 10px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  appearance: none;
+  padding: 0 34px 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  outline: none;
+  background: #fff;
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.select:focus {
+  border-color: var(--color-brand-700);
+  box-shadow: 0 0 0 3px rgba(47, 100, 127, 0.11);
+}
+
+.select:disabled {
+  background: #f3f6f7;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.fieldHint {
+  min-height: 30px;
+  color: var(--color-text-muted);
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cancelButton,
+.saveButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 650;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cancelButton {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: #f3f6f7;
+}
+
+.saveButton {
+  border: 1px solid var(--color-brand-800);
+  background: var(--color-brand-800);
+  color: #fff;
+}
+
+.saveButton:hover:not(:disabled) {
+  border-color: var(--color-brand-900);
+  background: var(--color-brand-900);
+}
+
+.cancelButton:disabled,
+.saveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cancelButton:focus-visible,
+.saveButton:focus-visible,
+.retryButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .operationSummary {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .operationIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .statusBadge {
+    display: none;
+  }
+
+  .fieldsGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .fieldHint {
+    min-height: 0;
+  }
+
+  .errorState {
+    flex-wrap: wrap;
+  }
+
+  .errorState > span {
+    min-width: calc(100% - 30px);
+  }
+
+  .retryButton {
+    margin-left: 24px;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+  }
+
+  .cancelButton,
+  .saveButton {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.8s;
+  }
+}

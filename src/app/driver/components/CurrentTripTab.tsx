@@ -4,14 +4,26 @@
 import React from 'react';
 import styles from '../driver.module.css';
 import { OperationWorkflow } from './workflow/operation-workflow';
-import { Operation } from '@/types/driver-portal.types';
+import {
+  DriverPortalData,
+  Operation,
+  OperationContainerStatus,
+  Vehicle,
+} from '@/types/driver-portal.types';
 
 interface CurrentTripTabProps {
-  driver: any;
+  driver: DriverPortalData;
+  assignedOperations: Operation[];
   activeOperation: Operation | undefined;
-  vehiculo: any;
+  onSelectOperation: (operationId: number) => void;
+  vehiculo: Pick<Vehicle, 'plate'> | undefined;
   processingState: boolean;
   onUpdateState: (operationId: number, estadoViaje: string) => Promise<void>;
+  onUpdateContainerStatus: (
+    operationId: number,
+    containerStatus: OperationContainerStatus,
+    issueDescription?: string,
+  ) => Promise<void>;
   onOpenOcrModal: () => void;
   onOpenClosingModal: () => void;
   onOpenDetailsModal: () => void;
@@ -19,16 +31,66 @@ interface CurrentTripTabProps {
 
 export function CurrentTripTab({
   driver,
+  assignedOperations,
   activeOperation,
+  onSelectOperation,
   vehiculo,
   processingState,
   onUpdateState,
+  onUpdateContainerStatus,
   onOpenOcrModal,
   onOpenClosingModal,
   onOpenDetailsModal,
 }: CurrentTripTabProps) {
   return (
     <div className={styles.gridLayout}>
+      <section className={`${styles.infoCard} ${styles.operationsListCard}`}>
+        <div className={styles.operationsListHeader}>
+          <div>
+            <h2>Operaciones asignadas</h2>
+            <p>Selecciona el viaje que vas a gestionar.</p>
+          </div>
+          <span className={styles.operationCount}>{assignedOperations.length}</span>
+        </div>
+        {assignedOperations.length ? (
+          <div className={styles.operationsList}>
+            {assignedOperations.map((operation) => (
+              <button
+                key={operation.id}
+                type="button"
+                aria-pressed={operation.id === activeOperation?.id}
+                onClick={() => onSelectOperation(operation.id)}
+                className={`${styles.operationListItem} ${
+                  operation.id === activeOperation?.id ? styles.operationListItemSelected : ''
+                }`}
+              >
+                <span className={styles.operationListMain}>
+                  <strong>Operación #{operation.id} · {operation.type || 'Viaje'}</strong>
+                  <span>{operation.clientName || 'Cliente por confirmar'}</span>
+                  <span>
+                    {operation.vehicle?.plate || operation.vehiclePlate || 'Vehículo sin placa'}
+                    {' · '}
+                    {operation.estadoViaje?.replace(/_/g, ' ') || operation.status || 'ASIGNADO'}
+                  </span>
+                  <span>
+                    Contenedor: {(operation.containerStatus || 'PENDIENTE').replace(/_/g, ' ')}
+                  </span>
+                </span>
+                <span
+                  className={`${styles.operationAccessBadge} ${
+                    operation.isActive ? styles.operationAccessEnabled : styles.operationAccessDisabled
+                  }`}
+                >
+                  {operation.isActive ? 'Habilitada' : 'Deshabilitada'}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.emptyState}>No tienes operaciones asignadas en este momento.</p>
+        )}
+      </section>
+
       <div className={styles.infoCard}>
         <div className={styles.vehicleHeader}>
           <div className={styles.truckIconBox}>🚛</div>
@@ -36,7 +98,17 @@ export function CurrentTripTab({
             <h2>{vehiculo?.plate || 'SIN ASIGNAR'}</h2>
             <p>Conductor: {driver.name}</p>
           </div>
-          <span className={styles.statusBadgeGreen}>Operativa</span>
+          {activeOperation && (
+            <span
+              className={
+                activeOperation.isActive
+                  ? styles.statusBadgeGreen
+                  : styles.statusBadgeRed
+              }
+            >
+              {activeOperation.isActive ? 'Habilitada' : 'Deshabilitada'}
+            </span>
+          )}
         </div>
 
         <hr className={styles.divider} />
@@ -47,17 +119,17 @@ export function CurrentTripTab({
             <div className={styles.tripDataGrid}>
               <span className={styles.label}>Cliente</span>
               <span className={styles.value}>
-                {(activeOperation as any).clientName || 'Gamalog'} ({(activeOperation as any).clientLocationName || 'Sede'})
+                {activeOperation.clientName || 'Gamalog'} ({activeOperation.clientLocationName || 'Sede'})
               </span>
               
               <span className={styles.label}>Ruta</span>
               <span className={styles.value}>
-                {(activeOperation as any).origenName || 'Origen'} ➡️ {(activeOperation as any).clientName} ➡️ {(activeOperation as any).destinoName || 'Patio'}
+                {activeOperation.origenName || 'Origen'} ➡️ {activeOperation.clientName || 'Cliente'} ➡️ {activeOperation.destinoName || 'Patio'}
               </span>
 
               <span className={styles.label}>Pago Estimado</span>
               <span className={styles.value} style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                ${Number((activeOperation as any).fletePago || 0).toLocaleString('es-CO')}
+                ${Number(activeOperation.fletePago || 0).toLocaleString('es-CO')}
               </span>
             </div>
           ) : (
@@ -80,14 +152,23 @@ export function CurrentTripTab({
       </div>
 
       <div className={styles.sequenceCard}>
-        {activeOperation ? (
+        {activeOperation?.isActive ? (
           <OperationWorkflow
+            key={`${activeOperation.id}-${activeOperation.containerStatus || 'PENDIENTE'}`}
             operation={activeOperation}
             isLoading={processingState}
             onUpdateState={onUpdateState}
+            onUpdateContainerStatus={onUpdateContainerStatus}
             onOpenOcrModal={onOpenOcrModal}
             onOpenClosingModal={onOpenClosingModal}
           />
+        ) : activeOperation ? (
+          <div className={styles.emptyWorkflow}>
+            <span style={{ fontSize: '2rem' }}>⏸️</span>
+            <p style={{ color: '#64748b', marginTop: '12px' }}>
+              Esta operación está deshabilitada por el analista.
+            </p>
+          </div>
         ) : (
            <div className={styles.emptyWorkflow}>
              <span style={{ fontSize: '2rem' }}>☕</span>

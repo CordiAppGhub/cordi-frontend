@@ -5,7 +5,12 @@ import { SuperModal } from '@/components/organisms/modal/modal';
 
 import { useAnalysts } from '@/hooks/useAnalysts';
 import { SuperForm } from '@/components/organisms/form/form';
-import { FormField } from '@/components/organisms/form/types/form.types';
+import {
+  FormField,
+  FormFieldValue,
+} from '@/components/organisms/form/types/form.types';
+import { TruckLoader } from '@/components/TruckLoader';
+import { showToast } from '@/utils/alerts';
 
 interface AssignAnalystModalProps {
   isOpen: boolean;
@@ -45,10 +50,10 @@ export const AssignAnalystModal: React.FC<AssignAnalystModalProps> = ({
     },
   ];
 
-  const handleSubmit = async (formData: Record<string, any>) => {
+  const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     const analystId = Number(formData.analystId);
     if (!analystId) {
-      SweetAlert('Debes seleccionar un analista para continuar.');
+      showToast.error('Debes seleccionar un analista para continuar.');
       return;
     }
 
@@ -68,7 +73,7 @@ export const AssignAnalystModal: React.FC<AssignAnalystModalProps> = ({
       </div>
       
       {isLoadingAnalysts ? (
-        <p>Cargando lista de analistas...</p>
+        <TruckLoader variant="compact" message="Cargando lista de analistas..." />
       ) : (
         <SuperForm
           fields={formFields}
@@ -83,7 +88,3 @@ export const AssignAnalystModal: React.FC<AssignAnalystModalProps> = ({
     </SuperModal>
   );
 };
-
-function SweetAlert(arg0: string) {
-  throw new Error('Function not implemented.');
-}

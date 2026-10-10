@@ -16,14 +16,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Recibimos la variable de entorno pública de la API
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Ya no necesitamos forzar la instalación de pnpm aquí tampoco
 RUN pnpm build
 
-# --- Etapa 4: Imagen final de producción (Ligera) ---
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production

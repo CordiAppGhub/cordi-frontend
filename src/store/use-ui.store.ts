@@ -10,9 +10,6 @@ interface UIState {
   openCreateModal: () => void;
   closeCreateModal: () => void;
 
-  isGlobalLoading: boolean;
-  startLoading: () => void;
-  stopLoading: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -26,7 +23,4 @@ export const useUIStore = create<UIState>((set) => ({
   openCreateModal: () => set({ isCreateModalOpen: true }),
   closeCreateModal: () => set({ isCreateModalOpen: false }),
 
-  isGlobalLoading: false,
-  startLoading: () => set({ isGlobalLoading: true }),
-  stopLoading: () => set({ isGlobalLoading: false }),
 }));

@@ -5,77 +5,216 @@ import { SuperModal } from '@/components/organisms/modal/modal';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { useUsers } from '@/hooks/useUser';
 import { useUserStore } from '@/store/userStore';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import UserForm from './hooks/useFormUser';
 import { Button } from '@/components/atoms/button/button';
+import { TruckLoader } from '@/components/TruckLoader';
+import { User, Role } from '@/types/user-types';
+import { UserCheck, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react';
+import styles from './user.module.css';
 
+const roleLabels: Record<Role, string> = {
+  ADMIN: 'Administrador',
+  JEFE_DE_FLOTA: 'Jefe de flota',
+  ANALISTA: 'Analista',
+};
 
 export default function UsersPage() {
-  const { users, isLoading, disable } = useUsers();
+  const { users, isLoading, error, refetch, disable, enable } = useUsers();
   const { isModalOpen, mode, currentPage, openModal, closeModal, setPage } = useUserStore();
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<Role | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const handleDisable = async (id: number) => {
     if (confirm('¿Estás seguro de desactivar este usuario?')) {
-      await disable(id);
+      try {
+        await disable(id);
+      } catch {
+        // La mutación presenta el error mediante una notificación.
+      }
     }
   };
 
+  const handleEnable = async (id: number) => {
+    try {
+      await enable(id);
+    } catch {
+      // La mutación presenta el error mediante una notificación.
+    }
+  };
+
+  const filteredUsers = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    return users.filter((user) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [user.name, user.email, user.telefono, user.cedula]
+          .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch));
+      const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' ? user.isActive : !user.isActive);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const pageUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const activeCount = users.filter((user) => user.isActive).length;
+  const inactiveCount = users.length - activeCount;
+  const adminCount = users.filter((user) => user.role === 'ADMIN').length;
+  const hasActiveFilters = Boolean(search.trim()) || roleFilter !== 'ALL' || statusFilter !== 'ALL';
+
+  const clearFilters = () => {
+    setSearch('');
+    setRoleFilter('ALL');
+    setStatusFilter('ALL');
+    setPage(1);
+  };
+
+  useEffect(() => {
+    if (currentPage > totalPages) setPage(totalPages);
+  }, [currentPage, totalPages, setPage]);
+
   const columns = [
-    { header: 'Nombre', id: 'name' },
+    {
+      header: 'Nombre',
+      id: 'name',
+      renderCell: (row: User) => (
+        <div className={styles.userCell}>
+          <span className={styles.userAvatar} aria-hidden="true">
+            {row.name.trim().slice(0, 1).toUpperCase() || '?'}
+          </span>
+          <span className={styles.userDetails}>
+            <strong>{row.name}</strong>
+            <span>{row.cedula || 'Sin cédula registrada'}</span>
+          </span>
+        </div>
+      ),
+    },
     { header: 'Correo', id: 'email' },
     { 
       header: 'Rol', 
       id: 'role',
-      renderCell: (row: any) => (
-        <span className="px-2 py-1 bg-gray-100 rounded text-sm font-medium text-gray-700">
-          {row.role.replace(/_/g, ' ')}
+      renderCell: (row: User) => (
+        <span className={styles.roleBadge}>
+          {roleLabels[row.role]}
         </span>
       )
     },
     { 
       header: 'Estado', 
       id: 'isActive',
-      renderCell: (row: any) => row.isActive 
-        ? <span className="text-green-600 font-bold text-sm">● Activo</span> 
-        : <span className="text-red-600 font-bold text-sm">● Inactivo</span>
+      renderCell: (row: User) => row.isActive
+        ? <span className={styles.activeStatus}>● Activo</span>
+        : <span className={styles.inactiveStatus}>● Inactivo</span>
     },
     {
       header: 'Acciones',
       id: 'actions',
-      renderCell: (row: any) => (
-        <div className="flex gap-4">
+      renderCell: (row: User) => (
+        <div className={styles.actions}>
           <Button 
             onClick={() => openModal('EDIT', row)} 
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
           >
             Editar
           </Button>
-          <Button 
-            onClick={() => handleDisable(row.id)} 
-            className="text-red-600 hover:text-red-800 font-medium text-sm"
-            disabled={!row.isActive}
+          <Button
+            onClick={() => row.isActive ? handleDisable(row.id) : handleEnable(row.id)}
+            className={row.isActive ? styles.dangerAction : ''}
           >
-            Desactivar
+            {row.isActive ? 'Desactivar' : 'Reactivar'}
           </Button>
         </div>
       )
     }
   ];
 
-  if (isLoading) return <div className="p-8">Cargando usuarios...</div>;
+  if (isLoading) return <TruckLoader message="Cargando usuarios..." />;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <span className={styles.eyebrow}>Administración</span>
+          <h1 className={styles.title}>Gestión de usuarios</h1>
+          <p className={styles.subtitle}>Administra accesos, roles y estado de las cuentas.</p>
+        </div>
+        <span className={styles.accessNote}>Panel exclusivo para administradores</span>
       </div>
 
+      <section className={styles.summaryGrid} aria-label="Resumen de usuarios">
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.totalIcon}`}><UsersRound size={18} /></span>
+          <div><span className={styles.summaryLabel}>Total de usuarios</span><strong>{users.length}</strong></div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.activeIcon}`}><UserCheck size={18} /></span>
+          <div><span className={styles.summaryLabel}>Cuentas activas</span><strong>{activeCount}</strong></div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.inactiveIcon}`}><UserRoundX size={18} /></span>
+          <div><span className={styles.summaryLabel}>Cuentas inactivas</span><strong>{inactiveCount}</strong></div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.adminIcon}`}><UserRoundPlus size={18} /></span>
+          <div><span className={styles.summaryLabel}>Administradores</span><strong>{adminCount}</strong></div>
+        </article>
+      </section>
+
+      <div className={styles.filters}>
+        <input
+          value={search}
+          onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+          placeholder="Buscar nombre, correo, teléfono o cédula"
+          aria-label="Buscar usuarios"
+          className={styles.search}
+        />
+        <select
+          value={roleFilter}
+          onChange={(event) => { setRoleFilter(event.target.value as Role | 'ALL'); setPage(1); }}
+          aria-label="Filtrar por rol"
+          className={styles.filter}
+        >
+          <option value="ALL">Todos los roles</option>
+          <option value="ADMIN">{roleLabels.ADMIN}</option>
+          <option value="JEFE_DE_FLOTA">{roleLabels.JEFE_DE_FLOTA}</option>
+          <option value="ANALISTA">{roleLabels.ANALISTA}</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }}
+          aria-label="Filtrar por estado"
+          className={styles.filter}
+        >
+          <option value="ALL">Todos los estados</option>
+          <option value="ACTIVE">Activos</option>
+          <option value="INACTIVE">Inactivos</option>
+        </select>
+        {hasActiveFilters && (
+          <button type="button" className={styles.clearFilters} onClick={clearFilters}>
+            Limpiar filtros
+          </button>
+        )}
+        <span className={styles.count}>
+          {filteredUsers.length} de {users.length} usuarios
+        </span>
+      </div>
+      {error && (
+        <div role="alert" className={styles.error}>
+          <span>No se pudieron cargar los usuarios.</span>
+          <Button variant="secondary" onClick={() => void refetch()}>Reintentar</Button>
+        </div>
+      )}
+
       <PaginationTable
-        data={users}
+        data={pageUsers}
         columns={columns}
-        totalPages={1}
+        totalPages={totalPages}
         currentPage={currentPage}
         onPageChange={setPage}
+        hideSearch
         nameButton="Nuevo Usuario"
         onOpenModal={() => openModal('CREATE')}
       />

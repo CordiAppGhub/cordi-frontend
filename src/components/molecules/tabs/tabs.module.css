@@ -1,11 +1,11 @@
 .tabsContainer {
   display: flex;
-  gap: 8px;
-  background-color: #f1f5f9;
-  padding: 6px;
-  border-radius: 12px;
+  gap: 2px;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
   width: fit-content;
-  border: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
   
   overflow-x: auto;
   max-width: 100%;
@@ -29,32 +29,34 @@
 .tabBtn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 7px;
+  padding: 8px 12px;
   border: none;
+  border-bottom: 2px solid transparent;
   background: transparent;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #64748b;
+  border-radius: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap; 
 }
 
 .tabBtn:hover {
-  color: #0f172a;
+  color: var(--color-brand-900);
 }
 
 .tabBtn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-brand-700);
   outline-offset: 2px;
 }
 
 .activeTab {
-  background-color: white;
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom-color: var(--color-accent);
+  background-color: transparent;
+  color: var(--color-brand-900);
+  box-shadow: none;
 }
 
 .iconWrapper {
@@ -74,6 +76,6 @@
 }
 
 .activeBadge {
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: var(--color-accent-soft);
+  color: var(--color-brand-700);
 }

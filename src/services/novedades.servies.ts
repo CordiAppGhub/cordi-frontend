@@ -16,8 +16,11 @@ export interface NovedadItem {
 }
 
 export const novedadesService = {
-  getAll: async (status?: string): Promise<NovedadItem[]> => {
-    const params = status && status !== 'TODAS' ? { status } : {};
+  getAll: async (status?: string, target?: string): Promise<NovedadItem[]> => {
+    const params = {
+      ...(status && status !== 'TODAS' ? { status } : {}),
+      ...(target && target !== 'TODAS' ? { target } : {}),
+    };
     const res = await api.get('/novedades', { params });
     return res.data;
   },
@@ -36,6 +39,10 @@ export const novedadesService = {
 
   resolve: async (id: number, resolutionNotes: string) => {
     const res = await api.patch(`/novedades/${id}/resolve`, { resolutionNotes });
+    return res.data;
+  },
+  markInReview: async (id: number) => {
+    const res = await api.patch(`/novedades/${id}/review`);
     return res.data;
   },
 };
