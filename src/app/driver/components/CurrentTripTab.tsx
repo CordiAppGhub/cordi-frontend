@@ -42,6 +42,22 @@ export function CurrentTripTab({
   onOpenClosingModal,
   onOpenDetailsModal,
 }: CurrentTripTabProps) {
+  const blockingOperations = activeOperation
+    ? assignedOperations.filter(
+        (operation) =>
+          operation.id !== activeOperation.id &&
+          operation.status === 'EN_CURSO',
+      )
+    : [];
+  const blockingOperation = blockingOperations[0];
+  const blockingOperationId =
+    blockingOperations.length === 1 &&
+    activeOperation?.type === 'IMPORTACION' &&
+    blockingOperation?.id === activeOperation.amparoExportOperationId &&
+    blockingOperation?.estadoViaje === 'RUMBO_AL_PUERTO'
+      ? undefined
+      : blockingOperation?.id;
+
   return (
     <div className={styles.gridLayout}>
       <section className={`${styles.infoCard} ${styles.operationsListCard}`}>
@@ -157,6 +173,7 @@ export function CurrentTripTab({
             key={`${activeOperation.id}-${activeOperation.containerStatus || 'PENDIENTE'}`}
             operation={activeOperation}
             isLoading={processingState}
+            blockingOperationId={blockingOperationId}
             onUpdateState={onUpdateState}
             onUpdateContainerStatus={onUpdateContainerStatus}
             onOpenOcrModal={onOpenOcrModal}

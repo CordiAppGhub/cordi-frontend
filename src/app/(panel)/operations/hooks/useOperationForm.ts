@@ -1,16 +1,25 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FormField, FormFieldValue } from '@/components/organisms/form/types/form.types';
 import { useClients } from '@/hooks/useClient';
 import { useLocations } from '@/app/(panel)/locations/hooks/useLocation';
-import { operationService } from '@/services/operation.service';
+import { operationService, UpdateOperationPayload } from '@/services/operation.service';
 import { useTariffs } from '../../tariff/hooks/useTariff';
 import { Operation } from '@/types/operation-types';
 import { useTrafico } from './useOperations';
 
+const typeOptions = [
+    { value: 'IMPORTACION', label: 'Importación' },
+    { value: 'EXPORTACION', label: 'Exportación' },
+    { value: 'RETIRO_VACIO', label: 'Retiro de Vacío' },
+    { value: 'DEVOLUCION', label: 'Devolución de Vacío' }
+];
+
 export const useOperationForm = (onClose: () => void, operationBase?: Operation | null) => {
     const { updateOperation, isLoadingOperations } = useTrafico(); 
+    const queryClient = useQueryClient();
     const { clients } = useClients();
     const { locations, isLoadingLocations } = useLocations();
     const { suggestedPrice, isCalculatingPrice, getLiveQuote, resetQuote } = useTariffs();
@@ -44,9 +53,19 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
 
     // 🚀 Valores precargados alineados al esquema oficial de Prisma
     const initialValues = useMemo(() => {
-        if (!operationBase) return {};
-        const formatDate = (dateStr?: string | Date | null) => 
-            dateStr ? new Date(dateStr).toISOString().slice(0, 16) : '';
+        const formatDate = (dateStr?: string | Date | null) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+            return localDate.toISOString().slice(0, 16);
+        };
+
+        if (!operationBase) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(8, 0, 0, 0);
+            return { scheduledAt: formatDate(tomorrow) };
+        }
 
         return {
             type: operationBase.type,
@@ -95,26 +114,17 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
         getLiveQuote(clientId, currentType, isAnticipada, commercialLocationId);
     }, [clientId, currentType, isAnticipada, selectedDescargueId, destinoId, isImport, isExport, getLiveQuote, resetQuote]);
 
-    const typeOptions = [
-        { value: 'IMPORTACION', label: 'Importación' },
-        { value: 'EXPORTACION', label: 'Exportación' },
-        { value: 'RETIRO_VACIO', label: 'Retiro de Vacío' },
-        { value: 'DEVOLUCION', label: 'Devolución de Vacío' }
-    ];
-
-    const getOrigenOptions = () => {
+    const origenOptions = useMemo(() => {
         if (isImport) return locations.filter(loc => loc.isPort).map(l => ({ value: l.id, label: l.name }));
         if (isExport || isRetiroVacio) return locations.filter(loc => loc.isDepot).map(l => ({ value: l.id, label: l.name }));
         return locations.map(l => ({ value: l.id, label: l.name }));
-    };
+    }, [isExport, isImport, isRetiroVacio, locations]);
 
-    const getDescargueOptions = () => {
-        return locations
-            .filter(loc => !loc.isPort && !loc.isDepot && loc.clients?.some(c => c.isClient))
-            .map(l => ({ value: l.id, label: l.name }));
-    };
+    const descargueOptions = useMemo(() => locations
+        .filter(loc => !loc.isPort && !loc.isDepot && loc.clients?.some(c => c.isClient))
+        .map(l => ({ value: l.id, label: l.name })), [locations]);
 
-    const getDestinoOptions = () => {
+    const destinoOptions = useMemo(() => {
         if (isImport || isDevolucion) return locations.filter(loc => loc.isDepot).map(l => ({ value: l.id, label: l.name }));
         if (isExport) return locations.filter(loc => loc.isPort).map(l => ({ value: l.id, label: l.name }));
         if (isRetiroVacio) {
@@ -123,20 +133,30 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
                 .map(l => ({ value: l.id, label: l.name }));
         }
         return locations.map(l => ({ value: l.id, label: l.name }));
-    };
+    }, [isDevolucion, isExport, isImport, isRetiroVacio, locations]);
 
-    const getClientOptions = () => {
+    const clientOptions = useMemo(() => {
+        let options = clients.map(client => ({ value: client.id, label: client.razonSocial }));
         if (selectedDescargueId) {
             const selectedLoc = locations.find(loc => loc.id === selectedDescargueId);
             if (selectedLoc && selectedLoc.clients && selectedLoc.clients.length > 0) {
-                const validClientIds = selectedLoc.clients.map((c: any) => c.clientId);
-                return clients
+                const validClientIds = selectedLoc.clients.map(c => c.clientId);
+                options = clients
                     .filter(client => validClientIds.includes(client.id))
                     .map(client => ({ value: client.id, label: client.razonSocial }));
             }
         }
-        return clients.map(client => ({ value: client.id, label: client.razonSocial }));
-    };
+
+        if (isEdit && clientId !== null && !options.some(option => option.value === clientId)) {
+            const selectedClient = clients.find(client => client.id === clientId)
+                ?? (operationBase?.client?.id === clientId ? operationBase.client : undefined);
+            if (selectedClient) {
+                options.push({ value: selectedClient.id, label: selectedClient.razonSocial });
+            }
+        }
+
+        return options;
+    }, [clients, locations, selectedDescargueId, isEdit, clientId, operationBase]);
 
     // 🚀 FORM FIELDS (Integrando exigeCitaOrigen y exigeCitaDestino en las etiquetas)
     const formFields: FormField[] = useMemo(() => {
@@ -149,21 +169,19 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
                 fullWidth: true,
             },
             { name: 'type', label: 'Tipo de Operación *', type: 'select', options: typeOptions, disabled: isEdit },
-            { name: 'clientId', label: 'Cliente *', type: 'select', options: getClientOptions(), disabled: isEdit },
+            { name: 'clientId', label: 'Cliente *', type: 'select', options: clientOptions, disabled: isEdit },
+            { name: 'scheduledAt', label: 'Fecha y hora de operación *', type: 'datetime-local' },
         ];
 
         if (isExport) {
             fields.push({ name: 'isAnticipada', label: '¿Es Exportación Anticipada?', type: 'checkbox', disabled: isEdit });
-            if (isAnticipada) {
-                fields.push({ name: 'scheduledAt', label: 'Fecha Programada *', type: 'datetime-local' });
-            }
         }
 
         if (currentType) {
             fields.push(
-                { name: 'origenId', label: isExport ? 'Patio de Retiro (Vacío) *' : 'Puerto de Retiro (Lleno) *', type: 'select', options: getOrigenOptions() },
-                { name: 'descargueId', label: isExport ? 'Lugar de Cargue (Cliente) *' : 'Lugar de Descargue (Cliente) *', type: 'select', options: getDescargueOptions() },
-                { name: 'destinoId', label: isExport ? 'Puerto de Ingreso (Lleno) *' : 'Patio de Devolución (Vacío) *', type: 'select', options: getDestinoOptions() },
+                { name: 'origenId', label: isExport ? 'Patio de Retiro (Vacío) *' : 'Puerto de Retiro (Lleno) *', type: 'select', options: origenOptions },
+                { name: 'descargueId', label: isExport ? 'Lugar de Cargue (Cliente) *' : 'Lugar de Descargue (Cliente) *', type: 'select', options: descargueOptions },
+                { name: 'destinoId', label: isExport ? 'Puerto de Ingreso (Lleno) *' : 'Patio de Devolución (Vacío) *', type: 'select', options: destinoOptions },
                 
                 { name: 'containerNumber', label: 'Número de Contenedor', type: 'text', placeholder: 'Ej: MSKU1234567' },
                 { name: 'containerType', label: 'Tipo Contenedor *', type: 'select', options: [{ value: 'DRY_20', label: 'DRY 20' }, { value: 'DRY_40', label: 'DRY 40' }, { value: 'HC_40', label: 'High Cube 40' }] },
@@ -197,7 +215,7 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
         }
 
         return fields;
-    }, [currentType, isAnticipada, selectedDescargueId, isEdit, exigeCitaOrigen, exigeCitaDestino]);
+    }, [currentType, isEdit, exigeCitaOrigen, exigeCitaDestino, clientOptions, origenOptions, descargueOptions, destinoOptions, isExport, isImport]);
 
     const handleFormChange = (name: string, value: FormFieldValue) => {
         setErrors({});
@@ -218,6 +236,7 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
 
         if (!formData.type && !isEdit) localErrors.type = 'El tipo es obligatorio.';
         if (!formData.clientId && !isEdit) localErrors.clientId = 'El cliente es obligatorio.';
+        if (!formData.scheduledAt) localErrors.scheduledAt = 'La fecha y hora son obligatorias.';
         if (!formData.containerType) localErrors.containerType = 'El tipo de contenedor es obligatorio.';
 
         if (Object.keys(localErrors).length > 0) {
@@ -225,7 +244,7 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
             return;
         }
 
-        const payload: Record<string, any> = {};
+        const payload: UpdateOperationPayload & Record<string, unknown> = {};
 
         if (!isEdit) {
             payload.type = String(formData.type);
@@ -269,7 +288,11 @@ export const useOperationForm = (onClose: () => void, operationBase?: Operation 
             if (isEdit && operationBase) {
                 await updateOperation(operationBase.id, payload);
             } else {
-                await operationService.createOperation(payload as any);
+                await operationService.createOperation(payload);
+                await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+                    queryClient.invalidateQueries({ queryKey: ['operations'] }),
+                ]);
             }
             onClose();
         } catch (error) {

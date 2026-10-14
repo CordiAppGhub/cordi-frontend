@@ -1,6 +1,5 @@
 import { api } from './api.service'; 
 import { Operation, OperationsClientGroup } from '@/types/operation-types';
-import { AxiosError } from 'axios';
 
 // ==========================================
 // INTERFACES Y PAYLOADS
@@ -54,9 +53,18 @@ export interface ConfirmAmparoPayload {
 }
 
 export type UpdateOperationPayload = Partial<{
+  type: string;
+  clientId: number;
+  isAnticipada: boolean;
+  origenId: number;
+  cargueId: number;
+  descargueId: number;
+  destinoId: number;
+  scheduledAt: string;
   driverId: number | null;
   vehicleId: number | null;
   trailerId: number | null;
+  fleteCobro: number | null;
   fleteCobroManual: number | null;
   containerNumber: string;
   containerType: string;
@@ -64,6 +72,12 @@ export type UpdateOperationPayload = Partial<{
   sealNumber: string;
   pinRetiro: string;
   documentoTransporte: string;
+  numeroPedido: string;
+  observaciones: string;
+  fechaCitaOrigen: string;
+  fechaCitaDestino: string;
+  fechaRetiro: string;
+  fechaLimiteDevolucion: string;
 }>;
 
 // ==========================================
@@ -90,17 +104,19 @@ export const operationService = {
   },
 
   getOperationsByDate: async (date: string): Promise<Operation[]> => {
-    try {
-      const response = await api.get<Operation[]>(`/operations/by-date?date=${date}`);
-      return response.data;
-    } catch (error: unknown) {
-      if (error instanceof AxiosError && error.response?.status === 404) return [];
-      throw error;
-    }
+    const response = await api.get<Operation[]>(`/operations/by-date?date=${date}`);
+    return response.data;
   },
 
   cancelOperation: async (id: number): Promise<void> => {
     await api.patch(`/operations/${id}/cancel`);
+  },
+
+  assignVehicle: async (id: number, vehicleId: number): Promise<Operation> => {
+    const response = await api.patch<Operation>(`/operations/${id}/assign-vehicle`, {
+      vehicleId,
+    });
+    return response.data;
   },
 
   // ----------------------------------------

@@ -39,6 +39,7 @@ export function useNovedades(initialTab = 'PENDING', initialTarget = 'TODAS') {
     onSuccess: () => {
       showToast.success('Novedad resuelta exitosamente.');
       queryClient.invalidateQueries({ queryKey: ['novedades'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
     },
     onError: (err: unknown) => {
       const axiosError = err as AxiosError<BackendErrorResponse>;
@@ -52,6 +53,7 @@ export function useNovedades(initialTab = 'PENDING', initialTarget = 'TODAS') {
     onSuccess: () => {
       showToast.success('Novedad tomada para revisión.');
       queryClient.invalidateQueries({ queryKey: ['novedades'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
     },
     onError: (err: unknown) => {
       const axiosError = err as AxiosError<BackendErrorResponse>;

@@ -120,6 +120,16 @@
   gap: 12px;
 }
 
+.startBlockedNotice {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
 .stepBtn {
   display: flex;
   align-items: center;

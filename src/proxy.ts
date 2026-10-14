@@ -16,7 +16,7 @@ const PROTECTED_ROUTES = [
   '/settings',
 ];
 
-const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations'];
+const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations', '/operations/programacion'];
 
 function decodeJwtRole(token: string): string | null {
   try {

@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { driversService } from '@/services/driver.service';
 import { vehiclesService } from '@/services/vehicles.service';
 import { novedadesService } from '@/services/novedades.servies';
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
+  const queryClient = useQueryClient();
   const [target, setTarget] = useState<'DRIVER' | 'VEHICLE'>('DRIVER');
   const [targetId, setTargetId] = useState('');
   const [severity, setSeverity] = useState('MEDIUM');
@@ -40,6 +41,9 @@ export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
         severity,
         target,
         ...(target === 'DRIVER' ? { driverId: Number(targetId) } : { vehicleId: Number(targetId) }),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'operation-alerts'],
       });
       showToast.success('Novedad registrada correctamente.');
       onSuccess();

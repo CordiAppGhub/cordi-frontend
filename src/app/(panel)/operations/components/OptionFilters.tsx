@@ -35,14 +35,12 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
   return (
     <div className={styles.filterCard}>
       <form onSubmit={handleSearch}>
-        
-        {/* FILA PRINCIPAL: Compacta y en una sola línea */}
         <div className={styles.mainRow}>
           <div className={styles.inputGroup}>
             <span className={styles.label}>Placa</span>
             <input name="placa" value={filters.placa || ''} onChange={handleChange} placeholder="Ej: TRL204" className={styles.input} />
           </div>
-          
+
           <div className={styles.inputGroup}>
             <span className={styles.label}>Contenedor</span>
             <input name="containerNumber" value={filters.containerNumber || ''} onChange={handleChange} placeholder="MSKU..." className={styles.input} />
@@ -66,14 +64,13 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
           </div>
         </div>
 
-        {/* FILA AVANZADA (Colapsable) */}
         {isExpanded && (
           <div className={styles.advancedRow}>
             <div className={styles.inputGroup}>
               <span className={styles.label}>Conductor</span>
               <input name="conductor" value={filters.conductor || ''} onChange={handleChange} placeholder="Nombre..." className={styles.input} />
             </div>
-            
+
             <div className={styles.inputGroup}>
               <span className={styles.label}>Pedido / DO</span>
               <input name="numeroPedido" value={filters.numeroPedido || ''} onChange={handleChange} placeholder="DO-123" className={styles.input} />
@@ -91,7 +88,6 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
             </div>
           </div>
         )}
-
       </form>
     </div>
   );

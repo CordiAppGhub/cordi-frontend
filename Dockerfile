@@ -1,43 +1,31 @@
-# --- Etapa 1: Base ---
+# Multi-stage Dockerfile
 FROM node:20-alpine AS base
-# Instalamos pnpm globalmente una sola vez aquí para que todas las etapas lo hereden
-RUN npm install -g pnpm --force
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
-# --- Etapa 2: Instalación de dependencias ---
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-# Ya no necesitamos forzar la instalación de pnpm aquí
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm i --frozen-lockfile
 
-# --- Etapa 3: Construcción (Build) ---
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN pnpm build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-
-# Copiamos la compilación standalone optimizada por Next.js
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
+ENV PORT=3000
 
+# Variables evaluadas al arrancar el contenedor
 CMD ["node", "server.js"]

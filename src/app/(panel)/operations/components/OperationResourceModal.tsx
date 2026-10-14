@@ -14,10 +14,12 @@ import styles from './OperationResourceModal.module.css';
 interface Props {
   operation: Operation | null;
   onClose: () => void;
+  onAssignVehicle: (operationId: number, vehicleId: number) => Promise<boolean>;
   onSave: (operationId: number, resources: { driverId: number | null; vehicleId: number | null }) => Promise<boolean>;
 }
 
-export function OperationResourceModal({ operation, onClose, onSave }: Props) {
+export function OperationResourceModal({ operation, onClose, onAssignVehicle, onSave }: Props) {
+  const isVehicleRequest = operation?.status === 'CREADO' || operation?.status === 'PROGRAMADO';
   const [driverId, setDriverId] = useState(
     operation?.driverId ? String(operation.driverId) : '',
   );
@@ -28,7 +30,7 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
   const driversQuery = useQuery({
     queryKey: ['drivers'],
     queryFn: driversService.getAll,
-    enabled: Boolean(operation),
+    enabled: Boolean(operation) && !isVehicleRequest,
   });
   const vehiclesQuery = useQuery({
     queryKey: ['vehicles'],
@@ -38,12 +40,18 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
 
   const save = async () => {
     if (!operation) return;
+    if (isVehicleRequest && !vehicleId) {
+      showToast.error('Selecciona el vehículo que atenderá la solicitud.');
+      return;
+    }
     setIsSaving(true);
     try {
-      const success = await onSave(operation.id, {
-        driverId: driverId ? Number(driverId) : null,
-        vehicleId: vehicleId ? Number(vehicleId) : null,
-      });
+      const success = isVehicleRequest
+        ? await onAssignVehicle(operation.id, Number(vehicleId))
+        : await onSave(operation.id, {
+            driverId: driverId ? Number(driverId) : null,
+            vehicleId: vehicleId ? Number(vehicleId) : null,
+          });
       if (success) onClose();
     } catch (error) {
       showToast.error(getUserFriendlyErrorMessage(error, 'No se pudo guardar la reasignación.'));
@@ -67,7 +75,11 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
     <SuperModal
       isOpen={Boolean(operation)}
       onClose={onClose}
-      title={operation ? `Reasignar operación #${operation.id}` : 'Reasignar operación'}
+      title={operation
+        ? isVehicleRequest
+          ? `Asignar vehículo a solicitud #${operation.id}`
+          : `Reasignar operación #${operation.id}`
+        : 'Reasignar operación'}
       width="620px"
     >
       {operation && (
@@ -83,13 +95,15 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
           </div>
 
           <p className={styles.description}>
-            Selecciona los recursos que continuarán este viaje. La reasignación quedará registrada en la trazabilidad.
+            {isVehicleRequest
+              ? 'Selecciona el vehículo para atender esta solicitud. Se asignará también el conductor asociado a ese vehículo.'
+              : 'Selecciona los recursos que continuarán este viaje. Al cambiar el vehículo se seleccionará su conductor asignado; puedes cambiarlo manualmente. La reasignación quedará registrada en la trazabilidad.'}
           </p>
 
           {isLoadingResources && (
             <div className={styles.loadingState} role="status">
               <Loader2 size={16} className={styles.spinner} />
-              Cargando conductores y vehículos…
+              {isVehicleRequest ? 'Cargando vehículos…' : 'Cargando conductores y vehículos…'}
             </div>
           )}
 
@@ -112,6 +126,7 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
           )}
 
           <div className={styles.fieldsGrid}>
+            {!isVehicleRequest && (
             <label className={styles.field} htmlFor={`operation-driver-${operation.id}`}>
               <span className={styles.fieldLabel}><UserRound size={15} /> Conductor</span>
               <span className={styles.selectWrap}>
@@ -138,6 +153,7 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
                   : 'Solo se muestran conductores activos y el asignado actualmente.'}
               </span>
             </label>
+            )}
 
             <label className={styles.field} htmlFor={`operation-vehicle-${operation.id}`}>
               <span className={styles.fieldLabel}><Truck size={15} /> Vehículo</span>
@@ -145,7 +161,18 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
                 <select
                   id={`operation-vehicle-${operation.id}`}
                   value={vehicleId}
-                  onChange={(event) => setVehicleId(event.target.value)}
+                  onChange={(event) => {
+                    const nextVehicleId = event.target.value;
+                    setVehicleId(nextVehicleId);
+                    const selectedVehicle = (vehiclesQuery.data ?? []).find(
+                      (vehicle) => vehicle.id === Number(nextVehicleId),
+                    );
+                    setDriverId(
+                      selectedVehicle?.driverId
+                        ? String(selectedVehicle.driverId)
+                        : '',
+                    );
+                  }}
                   disabled={isLoadingResources || vehiclesQuery.isError}
                   className={styles.select}
                 >
@@ -159,6 +186,9 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
                     return (
                       <option key={vehicle.id} value={vehicle.id}>
                         {vehicle.plate} · {statusLabel}
+                        {vehicle.driver?.name
+                          ? ` · ${vehicle.driver.name}`
+                          : ' · Sin conductor'}
                       </option>
                     );
                   })}
@@ -189,7 +219,7 @@ export function OperationResourceModal({ operation, onClose, onSave }: Props) {
               className={styles.saveButton}
             >
               {isSaving && <Loader2 size={15} className={styles.spinner} />}
-              Guardar reasignación
+              {isVehicleRequest ? 'Asignar vehículo' : 'Guardar reasignación'}
             </button>
           </div>
         </div>

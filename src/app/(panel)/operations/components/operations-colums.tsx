@@ -28,6 +28,7 @@ export const getOperationsColumns = (
   isSettingDriverAccess: boolean,
   onReassign: (operation: Operation) => void,
   canReassign: boolean,
+  canAssignVehicleRequests: boolean,
   onReportNovedad: (operation: Operation) => void,
 ): ColumnDef<Operation>[] => {
   return [
@@ -485,14 +486,26 @@ export const getOperationsColumns = (
               <PackagePlus size={16} />
             </button>
 
-            {canReassign &&
+            {((row.status === 'CREADO' || row.status === 'PROGRAMADO')
+              ? canAssignVehicleRequests
+              : canReassign) &&
               row.status !== 'FINALIZADO' &&
               row.status !== 'CANCELADO' && (
                 <button
                   type="button"
                   onClick={() => onReassign(row)}
-                  title={row.driverId || row.vehicleId ? 'Reasignar conductor o vehículo' : 'Asignar conductor y vehículo'}
-                  aria-label={`Reasignar recursos de la operación ${row.id}`}
+                  title={
+                    row.status === 'CREADO' || row.status === 'PROGRAMADO'
+                      ? 'Asignar vehículo a la solicitud'
+                      : row.driverId || row.vehicleId
+                        ? 'Reasignar conductor o vehículo'
+                        : 'Asignar conductor y vehículo'
+                  }
+                  aria-label={
+                    row.status === 'CREADO' || row.status === 'PROGRAMADO'
+                      ? `Asignar vehículo a la solicitud ${row.id}`
+                      : `Reasignar recursos de la operación ${row.id}`
+                  }
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: '32px', height: '32px', borderRadius: '8px', border: 'none',
@@ -500,7 +513,9 @@ export const getOperationsColumns = (
                     cursor: 'pointer', transition: 'all 0.2s'
                   }}
                 >
-                  <RefreshCw size={16} strokeWidth={2.5} />
+                  {row.status === 'CREADO' || row.status === 'PROGRAMADO'
+                    ? <Truck size={16} strokeWidth={2.5} />
+                    : <RefreshCw size={16} strokeWidth={2.5} />}
                 </button>
               )}
 

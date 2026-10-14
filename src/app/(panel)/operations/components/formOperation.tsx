@@ -4,6 +4,7 @@ import React from 'react';
 import { SuperForm } from '@/components/organisms/form/form';
 import { useOperationForm } from '../hooks/useOperationForm';
 import { Operation } from '@/types/operation-types';
+import { useAuthStore } from '@/store/use-auth.store';
 
 interface OperationFormProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface OperationFormProps {
 }
 
 export const OperationForm: React.FC<OperationFormProps> = ({ onClose, scheduleBase }) => {
+  const { user } = useAuthStore();
   const { 
     formFields, 
     initialValues,
@@ -61,7 +63,13 @@ export const OperationForm: React.FC<OperationFormProps> = ({ onClose, scheduleB
         onChange={handleFormChange}
         errors={errors}
         isLoading={isLoadingOperations}
-        submitText={scheduleBase ? 'Guardar cambios' : 'Crear Operación'}
+        submitText={
+          scheduleBase
+            ? 'Guardar cambios'
+            : user?.role === 'ANALISTA'
+              ? 'Enviar solicitud a flota'
+              : 'Crear Operación'
+        }
         cancelText="Cancelar"
       />
     </div>

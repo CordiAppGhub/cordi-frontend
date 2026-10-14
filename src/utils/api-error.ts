@@ -20,6 +20,7 @@ function readableMessage(message: unknown): string | null {
   if (
     !normalized ||
     /^(internal server error|bad request|forbidden resource|not found|unauthorized|conflict|unprocessable entity|request timeout|payload too large|too many requests)$/i.test(normalized) ||
+    /^revisa la información ingresada e inténtalo de nuevo\.?$/i.test(normalized) ||
     /^cannot (get|post|put|patch|delete)\s/i.test(normalized) ||
     /^(unexpected token|syntaxerror:|network error|request failed with status code|econn(?:refused|reset|aborted))/i.test(
       normalized,
@@ -44,16 +45,25 @@ export function getUserFriendlyErrorMessage(
   }
 
   const status = error.response?.status;
+
+  if (
+    status === 408 ||
+    error.code === 'ECONNABORTED' ||
+    error.code === 'ETIMEDOUT'
+  ) {
+    return 'La solicitud tardó demasiado. Comprueba tu conexión y vuelve a intentarlo. Si estabas guardando cambios, verifica primero si se registraron.';
+  }
+
   if (status && status >= 500) {
-    return 'El servicio no está disponible en este momento. Inténtalo más tarde.';
+    return 'Tuvimos un problema en el servidor y no pudimos completar la solicitud. Inténtalo de nuevo en unos minutos; si el problema continúa, contacta a soporte.';
   }
 
   if (status === 403) {
-    return 'No tienes permiso para realizar esta acción.';
+    return 'Tu cuenta no tiene permisos para realizar esta acción. Si necesitas acceso, contacta a un administrador.';
   }
 
   if (status === 404) {
-    return readableMessage(error.response?.data?.message) ?? 'No encontramos la información solicitada.';
+    return readableMessage(error.response?.data?.message) ?? 'No encontramos el registro solicitado. Puede que haya sido eliminado o que la dirección ya no sea válida.';
   }
 
   if (status === 401) {
@@ -61,26 +71,17 @@ export function getUserFriendlyErrorMessage(
   }
 
   const serverMessage = readableMessage(error.response?.data?.message);
-  if (serverMessage) return serverMessage;
-
-  if (
-    status === 408 ||
-    error.code === 'ECONNABORTED' ||
-    error.code === 'ETIMEDOUT'
-  ) {
-    return 'La solicitud tardó demasiado. Revisa tu conexión e inténtalo de nuevo.';
-  }
 
   if (!error.response) {
-    return 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.';
+    return 'No pudimos conectar con el servidor. Comprueba tu conexión a internet y vuelve a intentarlo.';
   }
 
   if (status === 400 || status === 422) {
-    return 'Revisa la información ingresada e inténtalo de nuevo.';
+    return serverMessage ?? 'Revisa los campos del formulario y corrige la información marcada antes de volver a intentarlo.';
   }
 
   if (status === 409) {
-    return 'No se pudo guardar porque el registro ya existe o cambió. Actualiza la página e inténtalo de nuevo.';
+    return serverMessage ?? 'El registro ya existe o fue modificado por otra persona. Actualiza la información y vuelve a intentarlo.';
   }
 
   if (status === 413) {
@@ -88,8 +89,21 @@ export function getUserFriendlyErrorMessage(
   }
 
   if (status === 429) {
-    return 'Hay muchas solicitudes en curso. Espera un momento e inténtalo de nuevo.';
+    return 'Recibimos demasiadas solicitudes seguidas. Espera un momento y vuelve a intentarlo.';
   }
 
-  return fallback;
+  return serverMessage ?? fallback;
+}
+
+export function shouldRetryApiRequest(error: unknown): boolean {
+  if (
+    !axios.isAxiosError(error) ||
+    axios.isCancel(error) ||
+    error.code === 'ERR_CANCELED'
+  ) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  return status === undefined || status === 408 || status >= 500;
 }

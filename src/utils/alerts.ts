@@ -1,3 +1,4 @@
+import axios from 'axios';
 import Swal from 'sweetalert2';
 import { getUserFriendlyErrorMessage } from './api-error';
 
@@ -15,11 +16,18 @@ export const showToast = {
   },
 
   error: (error: unknown, fallback?: string) => {
+    if (
+      axios.isCancel(error) ||
+      (axios.isAxiosError(error) && error.code === 'ERR_CANCELED')
+    ) {
+      return;
+    }
+
     const message = getUserFriendlyErrorMessage(error, fallback);
     const now = Date.now();
     if (
       lastErrorNotification?.message === message &&
-      now - lastErrorNotification.time < 1500
+      now - lastErrorNotification.time < 2500
     ) {
       return;
     }

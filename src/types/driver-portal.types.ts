@@ -57,6 +57,7 @@ export interface Operation {
   loadingCompletedAt?: string | null;
   unloadingStartedAt?: string | null;
   unloadingCompletedAt?: string | null;
+  amparoExportOperationId?: number | null;
   
   clientName?: string;
   clientLocationName?: string;

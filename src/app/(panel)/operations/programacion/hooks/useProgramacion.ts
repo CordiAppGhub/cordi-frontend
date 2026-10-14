@@ -1,8 +1,13 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
 import { operationService } from '@/services/operation.service'; 
 import Swal from 'sweetalert2';
+
+interface BackendErrorResponse {
+  message?: string;
+}
 
 export const useProgramacion = (date: string) => {
   const queryClient = useQueryClient();
@@ -13,48 +18,33 @@ export const useProgramacion = (date: string) => {
   const {
     data: operations = [],
     isLoading: isLoadingOperations,
+    error: operationsError,
     refetch: refreshOperations,
   } = useQuery({
     queryKey: ['operations', 'by-date', date],
     queryFn: () => operationService.getOperationsByDate(date),
-    retry: false, // Fundamental para evitar que React Query insista si hay error 404 (sin viajes)
-    staleTime: 1000 * 60 * 5, // 5 minutos de caché
+    retry: false,
+    staleTime: 1000 * 60 * 5,
   });
 
-  // ==========================================
-  // 2. CREAR NUEVA PROGRAMACIÓN
-  // ==========================================
-  const createMutation = useMutation({
-    mutationFn: (data: any) => operationService.createOperation(data),
+  const assignVehicleMutation = useMutation({
+    mutationFn: ({ operationId, vehicleId }: { operationId: number; vehicleId: number }) =>
+      operationService.assignVehicle(operationId, vehicleId),
     onSuccess: () => {
-      // Invalidamos para que tanto la vista de programación como la de tráfico se actualicen
       queryClient.invalidateQueries({ queryKey: ['operations'] });
       queryClient.invalidateQueries({ queryKey: ['trafico'] });
-      
-      Swal.fire({
-        title: '¡Programación Guardada!',
-        text: 'La operación ha sido registrada con éxito.',
-        icon: 'success',
-        confirmButtonColor: '#4f46e5', // Color índigo (Tailwind)
-      });
+      Swal.fire('Vehículo asignado', 'La solicitud quedó asignada al vehículo seleccionado.', 'success');
     },
-    onError: (error: any) => {
-      console.error('Error al guardar:', error);
-      // Extraemos el mensaje de validación del backend (ej: "Vehículo en mantenimiento")
-      const errorMsg = error.response?.data?.message || 'Hubo un error al guardar la programación.';
-      
+    onError: (error: AxiosError<BackendErrorResponse>) => {
       Swal.fire({
-        title: 'Atención',
-        text: errorMsg,
+        title: 'No se pudo asignar',
+        text: error.response?.data?.message || 'Ocurrió un error al asignar el vehículo.',
         icon: 'error',
-        confirmButtonColor: '#ef4444', // Color rose (Tailwind)
+        confirmButtonColor: '#ef4444',
       });
     }
   });
 
-  // ==========================================
-  // 3. CANCELAR PROGRAMACIÓN (LÓGICO)
-  // ==========================================
   const cancelMutation = useMutation({
     mutationFn: (id: number) => operationService.cancelOperation(id),
     onSuccess: () => {
@@ -68,8 +58,7 @@ export const useProgramacion = (date: string) => {
         confirmButtonColor: '#4f46e5',
       });
     },
-    onError: (error: any) => {
-      console.error('Error al cancelar:', error);
+    onError: (error: AxiosError<BackendErrorResponse>) => {
       const errorMsg = error.response?.data?.message || 'No se pudo cancelar la programación.';
       
       Swal.fire({
@@ -85,13 +74,27 @@ export const useProgramacion = (date: string) => {
     // Datos y estado de lectura
     operations,
     isLoadingOperations,
+    operationsError,
     refreshOperations,
     
-    // Funciones y estados de escritura
-    createOperation: createMutation.mutateAsync,
-    isCreating: createMutation.isPending,
+    assignVehicle: async (operationId: number, vehicleId: number) => {
+      try {
+        await assignVehicleMutation.mutateAsync({ operationId, vehicleId });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    isAssigningVehicle: assignVehicleMutation.isPending,
     
-    cancelOperation: cancelMutation.mutateAsync,
+    cancelOperation: async (id: number) => {
+      try {
+        await cancelMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     isCancelling: cancelMutation.isPending,
   };
 };

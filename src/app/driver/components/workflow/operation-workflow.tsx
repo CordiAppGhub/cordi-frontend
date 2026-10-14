@@ -22,6 +22,7 @@ interface OperationData {
 interface OperationWorkflowProps {
   operation: OperationData;
   isLoading: boolean;
+  blockingOperationId?: number;
   onUpdateState: (operationId: number, newState: string) => Promise<void>;
   onUpdateContainerStatus: (
     operationId: number,
@@ -44,6 +45,7 @@ const WORKFLOW_STEPS = [
 export function OperationWorkflow({
   operation,
   isLoading,
+  blockingOperationId,
   onUpdateState,
   onUpdateContainerStatus,
   onOpenOcrModal,
@@ -199,16 +201,29 @@ export function OperationWorkflow({
       </div>
 
       <div className={styles.actionList}>
+        {currentState === 'ASIGNADO' &&
+          operation.status !== 'EN_CURSO' &&
+          blockingOperationId !== undefined && (
+            <p className={styles.startBlockedNotice} role="status">
+              No puedes iniciar esta operación todavía. Finaliza primero la
+              operación #{blockingOperationId}.
+            </p>
+          )}
         {WORKFLOW_STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isActive = index === currentIndex;
           const isLocked = index > currentIndex;
+          const isBlockedByOtherOperation =
+            isActive &&
+            currentState === 'ASIGNADO' &&
+            operation.status !== 'EN_CURSO' &&
+            blockingOperationId !== undefined;
 
           return (
             <button
               key={step.id}
-              className={`${styles.stepBtn} ${isActive ? styles.activeBtn : isCompleted ? styles.completedBtn : styles.lockedBtn}`}
-              disabled={isLocked || isLoading}
+              className={`${styles.stepBtn} ${isBlockedByOtherOperation ? styles.lockedBtn : isActive ? styles.activeBtn : isCompleted ? styles.completedBtn : styles.lockedBtn}`}
+              disabled={isLocked || isLoading || isBlockedByOtherOperation}
               onClick={() => isActive && handleAction(step)}
             >
               <span className={styles.stepIcon}>

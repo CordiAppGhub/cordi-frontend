@@ -3,7 +3,7 @@
 
 import { SuperForm } from '@/components/organisms/form/form';
 import { FormField } from '@/components/organisms/form/types/form.types';
-import { useUsers } from '@/hooks/useUser';
+import { useUsers } from '@/app/(panel)/user/hooks/useUser';
 import { useUserStore } from '@/store/userStore';
 import { userSchema } from '@/types/user-types';
 import React, { useState } from 'react';

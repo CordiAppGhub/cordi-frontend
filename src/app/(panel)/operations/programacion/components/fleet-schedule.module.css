@@ -109,3 +109,171 @@
     align-items: center;
   }
 }
+
+.requestPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+}
+
+.requestHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.requestTitle {
+  margin: 0;
+  color: var(--color-brand-900);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.requestSubtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.dateFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-brand-800);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dateFilter input {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+}
+
+.requestTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+}
+
+.requestTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.requestTable th,
+.requestTable td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.requestTable th {
+  background: #f5f9fa;
+  color: var(--color-brand-800);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.requestTable td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.requestTable select {
+  min-width: 180px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+
+.assignButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-brand-800);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.assignButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cancelButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1px solid #f0caca;
+  border-radius: var(--radius-control);
+  background: #fff7f7;
+  color: #a33b3b;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.cancelButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.assignedStatus {
+  color: #167044;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.requestMessage {
+  display: flex;
+  min-height: 130px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-panel);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .requestHeader {
+    flex-direction: column;
+  }
+
+  .requestPanel {
+    padding: 14px;
+  }
+}

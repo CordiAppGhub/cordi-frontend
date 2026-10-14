@@ -1,12 +1,11 @@
-// src/app/dashboard/users/page.tsx
 'use client';
 
 import { SuperModal } from '@/components/organisms/modal/modal';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
-import { useUsers } from '@/hooks/useUser';
+import { useUsers } from '@/app/(panel)/user/hooks/useUser';
 import { useUserStore } from '@/store/userStore';
 import React, { useEffect, useMemo, useState } from 'react';
-import UserForm from './hooks/useFormUser';
+import UserForm from './components/useFormUser';
 import { Button } from '@/components/atoms/button/button';
 import { TruckLoader } from '@/components/TruckLoader';
 import { User, Role } from '@/types/user-types';

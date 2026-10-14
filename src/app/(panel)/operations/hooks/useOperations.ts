@@ -66,6 +66,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
       // Actualiza el detalle si está abierto
       queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
       queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
       
       showToast.success('Operación actualizada correctamente.');
     },
@@ -79,6 +80,24 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
         text: message, // Aquí saldrá si "El vehículo está en mantenimiento"
       });
     }
+  });
+
+  const assignVehicleMutation = useMutation({
+    mutationFn: ({ operationId, vehicleId }: { operationId: number; vehicleId: number }) =>
+      operationService.assignVehicle(operationId, vehicleId),
+    onSuccess: (updatedOp) => {
+      queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
+      queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['operations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
+      showToast.success('Vehículo asignado a la solicitud.');
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      showToast.error(
+        axiosError.response?.data?.message || 'No se pudo asignar el vehículo.',
+      );
+    },
   });
 
   const driverAccessMutation = useMutation({
@@ -116,6 +135,15 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   const updateOperation = async (id: number, data: UpdateOperationPayload): Promise<boolean> => {
     try {
       await updateMutation.mutateAsync({ id, data });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const assignVehicle = async (operationId: number, vehicleId: number): Promise<boolean> => {
+    try {
+      await assignVehicleMutation.mutateAsync({ operationId, vehicleId });
       return true;
     } catch {
       return false;
@@ -210,6 +238,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     fetchOperations,
     fetchOperationById,
     updateOperation,
+    assignVehicle,
     assignResources,
     setDriverAccess,
     isSettingDriverAccess: driverAccessMutation.isPending,

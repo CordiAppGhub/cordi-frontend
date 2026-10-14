@@ -43,12 +43,11 @@ export function OperationsView() {
     setDriverAccess,
     isSettingDriverAccess,
     updateOperation,
+    assignVehicle,
   } = useTrafico();
   const { user } = useAuthStore();
   const { openCreateModal } = useUIStore();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('TODAS');
   
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
@@ -93,6 +92,7 @@ export function OperationsView() {
     isSettingDriverAccess,
     handleOpenReassign,
     user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA' || user?.role === 'ANALISTA',
+    user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA',
     handleReportNovedad,
   ).filter((column) =>
     [
@@ -125,7 +125,6 @@ export function OperationsView() {
       page: overrides?.page || 1,
       limit: 10,
       type: currentTab === 'TODAS' ? undefined : currentTab,
-      status: statusFilter || undefined,
     });
   };
 
@@ -142,15 +141,25 @@ export function OperationsView() {
           <span className={styles.headerNumber}>2</span>
           <div>
             <h1 className={styles.titleText}>Torre de Control — Operaciones Activas</h1>
-            <p className={styles.subtitleText}>Control centralizado de despachos, flujos logísticos y flotas.</p>
+            <p className={styles.subtitleText}>
+              {user?.role === 'ANALISTA'
+                ? 'Registra la solicitud de operación; el jefe de flota asignará el vehículo.'
+                : 'Control centralizado de despachos, solicitudes y asignación de flota.'}
+            </p>
           </div>
         </div>
         <Button onClick={openCreateModal} style={{ padding: '10px 18px', fontWeight: 600 }}>
-          + Nueva Operación
+          {user?.role === 'ANALISTA' ? '+ Nueva solicitud' : '+ Nueva Operación'}
         </Button>
       </div>
 
-      <OperationAmparosPanel enabled={user?.role === 'ADMIN' || user?.role === 'ANALISTA'} />
+      <OperationAmparosPanel
+        enabled={
+          user?.role === 'ADMIN' ||
+          user?.role === 'JEFE_DE_FLOTA' ||
+          user?.role === 'ANALISTA'
+        }
+      />
 
       {/* TABS */}
       <div className={styles.tabsContainer}>
@@ -165,37 +174,11 @@ export function OperationsView() {
         ))}
       </div>
 
-      {/* FILTROS */}
-      <div className={styles.filtersBar}>
-        <input
-          type="text"
-          placeholder="Buscar por cliente, ID o detalles..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className={styles.searchInput}
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={styles.selectInput}
-        >
-          <option value="">Todos los estados</option>
-          <option value="CREADO">Creados</option>
-          <option value="ASIGNADO">Asignados</option>
-          <option value="EN_CURSO">En Curso</option>
-          <option value="PAUSADA">Pausados (Novedad)</option>
-          <option value="FINALIZADO">Finalizado</option>
-        </select>
-        <Button onClick={() => applyFilters({ page: 1 })} disabled={isLoadingOperations} variant="secondary">
-          {isLoadingOperations ? 'Buscando...' : '🔍 Filtrar Datos'}
-        </Button>
-      </div>
-
       {error && <div className={styles.errorMessage} role="alert">⚠️ {error}</div>}
 
-      <OperationFilters 
-        onFilter={setFilters} 
-        isLoading={isLoadingOperations} 
+      <OperationFilters
+        onFilter={setFilters}
+        isLoading={isLoadingOperations}
       />
 
       <div className={styles.tableCard}>
@@ -206,6 +189,7 @@ export function OperationsView() {
         ):<PaginationTable
           data={operations ?? []}
           nameButton="+ Nueva Operación"
+          hideSearch
           
           // --- PADRE (CLIENTE) ---
           columns={clientColumns} 
@@ -265,6 +249,7 @@ export function OperationsView() {
         width="680px"
       >
         <OperationForm 
+          key={`edit-${operationToEdit?.id ?? 'new'}`}
           onClose={() => {
             setIsEditModalOpen(false);
             setOperationToEdit(null);
@@ -278,6 +263,7 @@ export function OperationsView() {
         key={operationToReassign?.id ?? 'closed'}
         operation={operationToReassign}
         onClose={() => setOperationToReassign(null)}
+        onAssignVehicle={assignVehicle}
         onSave={async (operationId, resources) => {
           const saved = await updateOperation(operationId, resources);
           if (saved) await fetchOperations();

@@ -201,6 +201,9 @@ export function useDriverPortal() {
       showToast.success('Estado del contenedor actualizado correctamente.');
       loadData();
       refetchHistory();
+      queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'operation-alerts'],
+      });
     },
     onError: (err: unknown) => {
       showToast.error(
