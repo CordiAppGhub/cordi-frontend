@@ -5,50 +5,50 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(19, 39, 54, 0.52);
+  background-color: rgba(14, 34, 54, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 1055;
   padding: 1rem;
+  animation: overlayIn 0.18s ease-out;
 }
 
 .modal {
   background-color: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-  box-shadow: 0 10px 26px rgba(19, 39, 54, 0.14);
-  padding: 18px 20px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
-  max-height: 85vh; /* Evita que rebase la pantalla */
+  max-height: 88vh; /* Evita que rebase la pantalla */
   overflow-y: auto;  /* Scroll solo si es estrictamente necesario */
   box-sizing: border-box;
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Scrollbar moderno y delgado */
-.modal::-webkit-scrollbar {
-  width: 6px;
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-.modal::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-.modal::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-.modal::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .title {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-brand-900);
   margin-top: 0;
   margin-bottom: 20px;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 14px;
+  letter-spacing: -0.015em;
 }
 
 .content {

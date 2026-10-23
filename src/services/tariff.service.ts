@@ -6,7 +6,6 @@ export interface CreateSurchargeCatalogInput {
   name: string;
   description?: string;
   applicableTo?: string;
-  basePrice: number;
 }
 
 export interface CreateAffiliationTariffInput {
@@ -84,7 +83,10 @@ export const tariffService = {
     operationId: number; 
     surchargeCode: string; 
     quantity: number; 
+    unitPrice: number;
+    costPrice?: number;
     observations?: string;
+    isPatioCharge?: boolean
   }) => {
     const { data } = await api.post('/tariffs/operation-surcharges', payload);
     return data;

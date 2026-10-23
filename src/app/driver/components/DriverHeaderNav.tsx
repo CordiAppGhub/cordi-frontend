@@ -9,9 +9,11 @@ import { dashboardService } from '@/services/dashboard.service';
 import styles from '@/components/organisms/navbar/navbar.module.css';
 import React from 'react';
 
+export type DriverTab = 'current' | 'history' | 'novedades' | 'profile';
+
 interface DriverHeaderNavProps {
-  activeTab: 'current' | 'history' | 'profile';
-  setActiveTab: (tab: 'current' | 'history' | 'profile') => void;
+  activeTab: DriverTab;
+  setActiveTab: (tab: DriverTab) => void;
   historyCount?: number; 
   onLogout: () => void;
 }
@@ -41,6 +43,11 @@ export function DriverHeaderNav({ activeTab, setActiveTab, historyCount = 0, onL
       badge: historyCount > 0 ? historyCount : undefined 
     },
     {
+      id: 'novedades',
+      label: 'Novedades',
+      icon: '⚠️',
+    },
+    {
       id: 'profile',
       label: 'Mi perfil',
       icon: '👤',
@@ -50,11 +57,11 @@ export function DriverHeaderNav({ activeTab, setActiveTab, historyCount = 0, onL
   return (
     <>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'white', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '12px' }}>
-      <div style={{ flex: 1, maxWidth: '420px' }}>
+      <div style={{ flex: 1, maxWidth: '560px' }}>
         <Tabs 
           tabs={tabOptions} 
           activeTab={activeTab} 
-          onChange={(tabId) => setActiveTab(tabId as 'current' | 'history' | 'profile')}
+          onChange={(tabId) => setActiveTab(tabId as DriverTab)}
           fullWidth={true}
         />
       </div>

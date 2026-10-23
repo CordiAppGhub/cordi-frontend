@@ -51,13 +51,13 @@ export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
     },
   },
   {
-    id: 'basePrice',
-    header: 'Precio Base (COP)',
+    id: 'description',
+    header: 'Descripción',
     type: 'text',
     renderCell: (row) => (
-      <strong style={{ color: '#15803d', fontSize: '1.1rem' }}>
-        ${Number(row.basePrice).toLocaleString('es-CO')}
-      </strong>
+      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
+        {row.description || 'El valor se define manualmente en cada operación'}
+      </span>
     ),
   },
 ];

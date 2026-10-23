@@ -16,6 +16,8 @@ import {
   BadgeDollarSign,
   PackagePlus,
   Power,
+  Ban,
+  Trash2,
 } from 'lucide-react';
 
 export const getOperationsColumns = (
@@ -28,8 +30,13 @@ export const getOperationsColumns = (
   isSettingDriverAccess: boolean,
   onReassign: (operation: Operation) => void,
   canReassign: boolean,
-  canAssignVehicleRequests: boolean,
   onReportNovedad: (operation: Operation) => void,
+  onCancelOperation: (operationId: number) => void,
+  canCancelOperations: boolean,
+  isCancellingOperation: boolean,
+  onDeleteOperation: (operationId: number) => void,
+  canDeleteOperations: boolean,
+  isDeletingOperation: boolean,
 ): ColumnDef<Operation>[] => {
   return [
     {
@@ -219,60 +226,32 @@ export const getOperationsColumns = (
       }
     },
     {
-      id: 'fleteCobro',
-      header: 'Flete del viaje · Cobro',
+      id: 'fleteACobrar',
+      header: 'Flete a cobrar',
       type: 'text',
       renderCell: (row) => {
-        const fare = row.fleteCobroManual ?? row.fleteCobro;
+        const fare = row.fleteACobrarManual ?? row.fleteACobrar;
         return (
           <span style={{ color: fare == null ? '#94a3b8' : '#15803d', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {fare == null ? 'Pendiente' : `$${Number(fare).toLocaleString('es-CO')}`}
-            {row.fleteCobroManual != null && <small style={{ display: 'block', color: '#64748b', fontWeight: 500 }}>Manual</small>}
+            {row.fleteACobrarManual != null && <small style={{ display: 'block', color: '#64748b', fontWeight: 500 }}>Manual</small>}
           </span>
         );
       },
     },
     {
-      id: 'fletePago',
-      header: 'Pago conductor / flota',
+      id: 'fleteAPagar',
+      header: 'Flete a pagar',
       type: 'text',
       renderCell: (row) => (
-        <span style={{ color: row.fletePago == null ? '#94a3b8' : '#b45309', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {row.fletePago == null ? 'Pendiente' : `$${Number(row.fletePago).toLocaleString('es-CO')}`}
-        </span>
-      ),
-    },
-    {
-      id: 'patioCosto',
-      header: 'Patio · Costo empresa',
-      type: 'text',
-      renderCell: (row) => (
-        <span style={{ color: row.patioCosto == null ? '#94a3b8' : '#b91c1c', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {row.patioCosto == null
-            ? row.patioId
-              ? 'Pendiente tarifa'
-              : '—'
-            : `$${Number(row.patioCosto).toLocaleString('es-CO')}`}
-        </span>
-      ),
-    },
-    {
-      id: 'patioCobro',
-      header: 'Patio · Cobro cliente',
-      type: 'text',
-      renderCell: (row) => (
-        <span style={{ color: row.patioCobro == null ? '#94a3b8' : '#15803d', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {row.patioCobro == null
-            ? row.patioId
-              ? 'Pendiente tarifa'
-              : '—'
-            : `$${Number(row.patioCobro).toLocaleString('es-CO')}`}
+        <span style={{ color: row.fleteAPagar == null ? '#94a3b8' : '#b45309', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {row.fleteAPagar == null ? 'Pendiente' : `$${Number(row.fleteAPagar).toLocaleString('es-CO')}`}
         </span>
       ),
     },
     {
       id: 'recargos',
-      header: 'Recargos aplicados',
+      header: 'Recargos / Patio',
       type: 'text',
       renderCell: (row) => {
         const surcharges = row.surcharges ?? [];
@@ -284,14 +263,17 @@ export const getOperationsColumns = (
                 title={surcharge.observations || surcharge.surcharge?.description}
                 style={{
                   display: 'flex',
-                  flexDirection: 'column', /* Esto apila el nombre y el precio */
+                  flexDirection: 'column',
                   color: '#b45309',
                   fontSize: '0.75rem',
                   fontVariantNumeric: 'tabular-nums'
                 }}
               >
                 <strong>{surcharge.surcharge?.name || surcharge.surchargeCode}</strong>
-                <span>${Number(surcharge.totalPrice).toLocaleString('es-CO')}</span>
+                <span>Venta: ${Number(surcharge.totalPrice).toLocaleString('es-CO')}</span>
+                {Number(surcharge.costPrice) > 0 && (
+                  <span style={{ color: '#b91c1c' }}>Costo: ${Number(surcharge.costPrice).toLocaleString('es-CO')}</span>
+                )}
               </div>
             ))}
           </div>
@@ -302,12 +284,12 @@ export const getOperationsColumns = (
     },
     {
       id: 'totalCobrosExtras',
-      header: 'Total cobros extra',
+      header: 'Total extra (Novedades/Patio)',
       type: 'text',
       renderCell: (row) => (
         <strong style={{ color: Number(row.totalCobrosExtras ?? 0) > 0 ? '#b45309' : '#94a3b8', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {row.totalCobrosExtras == null
-            ? 'Pendiente'
+          {row.totalCobrosExtras == null || Number(row.totalCobrosExtras) === 0
+            ? '—'
             : `$${Number(row.totalCobrosExtras).toLocaleString('es-CO')}`}
         </strong>
       ),
@@ -317,17 +299,14 @@ export const getOperationsColumns = (
       header: 'Total cobro cliente',
       type: 'text',
       renderCell: (row) => {
-        const hasFreight = row.fleteCobroManual != null || row.fleteCobro != null;
-        const hasPartialBilling = Number(row.totalCobrosExtras ?? 0) > 0;
+        const hasFreight = row.fleteACobrarManual != null || row.fleteACobrar != null;
         return (
           <strong style={{ color: '#047857', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {row.totalFacturacion == null
               ? 'Pendiente'
               : hasFreight
-                ? `${row.patioId && row.patioCobro == null ? 'Parcial · ' : ''}$${Number(row.totalFacturacion).toLocaleString('es-CO')}`
-                : hasPartialBilling
-                  ? `Parcial · $${Number(row.totalFacturacion).toLocaleString('es-CO')}`
-                  : 'Pendiente'}
+                ? `$${Number(row.totalFacturacion).toLocaleString('es-CO')}`
+                : `Solo Recargos · $${Number(row.totalFacturacion).toLocaleString('es-CO')}`}
           </strong>
         );
       },
@@ -360,7 +339,7 @@ export const getOperationsColumns = (
       header: 'Novedad operativa',
       type: 'text',
       renderCell: (row) => {
-        const issues = row.historialNovedades ?? [];
+        const issues = row.issues ?? [];
         return issues.length > 0 ? (
           <span style={{ color: '#b91c1c', fontWeight: 600, whiteSpace: 'nowrap' }}>
             <AlertTriangle size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
@@ -472,6 +451,7 @@ export const getOperationsColumns = (
                 </button>
               )}
 
+            {row.status !== 'FINALIZADO' && row.status !== 'CANCELADO' && (
             <button
               onClick={() => onEditOperation(row)}
               title="Completar / Editar Datos de Operación"
@@ -485,27 +465,17 @@ export const getOperationsColumns = (
             >
               <PackagePlus size={16} />
             </button>
+            )}
 
-            {((row.status === 'CREADO' || row.status === 'PROGRAMADO')
-              ? canAssignVehicleRequests
-              : canReassign) &&
+            {canReassign &&
+              row.vehicleId &&
               row.status !== 'FINALIZADO' &&
               row.status !== 'CANCELADO' && (
                 <button
                   type="button"
                   onClick={() => onReassign(row)}
-                  title={
-                    row.status === 'CREADO' || row.status === 'PROGRAMADO'
-                      ? 'Asignar vehículo a la solicitud'
-                      : row.driverId || row.vehicleId
-                        ? 'Reasignar conductor o vehículo'
-                        : 'Asignar conductor y vehículo'
-                  }
-                  aria-label={
-                    row.status === 'CREADO' || row.status === 'PROGRAMADO'
-                      ? `Asignar vehículo a la solicitud ${row.id}`
-                      : `Reasignar recursos de la operación ${row.id}`
-                  }
+                  title="Reasignar conductor o vehículo"
+                  aria-label={`Reasignar recursos de la operación ${row.id}`}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: '32px', height: '32px', borderRadius: '8px', border: 'none',
@@ -513,11 +483,50 @@ export const getOperationsColumns = (
                     cursor: 'pointer', transition: 'all 0.2s'
                   }}
                 >
-                  {row.status === 'CREADO' || row.status === 'PROGRAMADO'
-                    ? <Truck size={16} strokeWidth={2.5} />
-                    : <RefreshCw size={16} strokeWidth={2.5} />}
+                  <RefreshCw size={16} strokeWidth={2.5} />
                 </button>
               )}
+
+            {canCancelOperations &&
+              ['CREADO', 'PROGRAMADO', 'ASIGNADO'].includes(row.status) && (
+                <button
+                  type="button"
+                  onClick={() => onCancelOperation(row.id)}
+                  disabled={isCancellingOperation}
+                  title="Cancelar operación"
+                  aria-label={`Cancelar operación ${row.id}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                    backgroundColor: '#fef2f2', color: '#b91c1c',
+                    cursor: isCancellingOperation ? 'wait' : 'pointer',
+                    opacity: isCancellingOperation ? 0.6 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Ban size={16} />
+                </button>
+              )}
+
+            {canDeleteOperations && (
+              <button
+                type="button"
+                onClick={() => onDeleteOperation(row.id)}
+                disabled={isDeletingOperation}
+                title="Eliminar operación permanentemente"
+                aria-label={`Eliminar operación ${row.id}`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                  backgroundColor: '#fee2e2', color: '#b91c1c',
+                  cursor: isDeletingOperation ? 'wait' : 'pointer',
+                  opacity: isDeletingOperation ? 0.6 : 1,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
 
             <button
               type="button"

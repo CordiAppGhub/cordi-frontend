@@ -56,6 +56,10 @@ export const RouteTariffModal: React.FC<RouteTariffModalProps> = ({ isOpen, onCl
           { value: 'IMPORTACION', label: 'Importación' },
           { value: 'RETIRO_VACIO', label: 'Retiro de Vacío' },
           { value: 'DEVOLUCION', label: 'Devolución' },
+          { value: 'NACIONAL', label: 'Nacional' },
+          { value: 'CARGA_SUELTA_URBANA', label: 'Carga Suelta Urbana' },
+          { value: 'CARGA_SUELTA_NACIONAL', label: 'Carga Suelta Nacional' },
+          { value: 'MOVIMIENTO_INTERNO', label: 'Movimiento Interno' },
         ]
       },
       {

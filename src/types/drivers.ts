@@ -1,3 +1,5 @@
+import type { VehicleStatus } from './vehicles';
+
 export interface Driver {
   id: number;
   name: string | null;
@@ -5,9 +7,19 @@ export interface Driver {
   telefono: string | null;
   chatId: string | null;
   isActive: boolean;
-  drivenVehicles?: { plate: string }[];
+  drivenVehicles?: { plate: string; status?: VehicleStatus }[];
   portalLink: string | null;
   isAvailable: boolean;
+  conductorStatus?:
+    | 'AVAILABLE'
+    | 'BUSY'
+    | 'BLOCKED_BY_NOVEDAD'
+    | 'BLOCKED_BY_ABSENCE';
+  ausenciaActiva?: {
+    id: number;
+    reason: string;
+    endDate: string;
+  } | null;
 }
 
 export type CreateDriverDto = {

@@ -29,13 +29,13 @@ export const createOperationSchema = z.object({
   observaciones: z.string().optional(),
 
   isAnticipada: z.boolean().optional(),
-  fleteCobroManual: z.coerce.number().positive('El flete debe ser mayor a 0').optional(),
+  fleteACobrarManual: z.coerce.number().positive('El flete debe ser mayor a 0').optional(),
 });
 
 export const assignOperationSchema = z.object({
   driverId: z.coerce.number().min(1, 'El conductor es obligatorio'),
   vehicleId: z.coerce.number().min(1, 'El vehículo es obligatorio'),
-  fletePagoManual: z.coerce.number().positive('El flete de pago debe ser positivo').optional(),
+  fleteAPagarManual: z.coerce.number().positive('El flete a pagar debe ser positivo').optional(),
 });
 
 export type CreateOperationFormData = z.infer<typeof createOperationSchema>;

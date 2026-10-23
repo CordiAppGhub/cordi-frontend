@@ -92,7 +92,8 @@ export default function FleetScheduleGrid() {
             </thead>
             <tbody>
               {operations.map((operation) => {
-                const pending = isAwaitingVehicle(operation.status);
+                const pending =
+                  isAwaitingVehicle(operation.status) && !operation.vehicleId;
                 const selectedVehicle = vehicleByOperation[operation.id] || '';
                 return (
                   <tr key={operation.id}>
@@ -131,7 +132,12 @@ export default function FleetScheduleGrid() {
                           ))}
                         </select>
                       ) : (
-                        <span>{operation.vehicle?.plate || 'Asignación pendiente'}</span>
+                        <span>
+                          {operation.vehicle?.plate ||
+                            (operation.vehicleId
+                              ? `Vehículo #${operation.vehicleId}`
+                              : '—')}
+                        </span>
                       )}
                     </td>
                     <td>
@@ -150,7 +156,11 @@ export default function FleetScheduleGrid() {
                           Asignar vehículo
                         </button>
                       ) : (
-                        <span className={styles.assignedStatus}>Vehículo asignado</span>
+                        operation.vehicleId ? (
+                          <span className={styles.assignedStatus}>Vehículo asignado</span>
+                        ) : (
+                          <span>—</span>
+                        )
                       )}
                       {operation.status !== 'CANCELADO' &&
                         operation.status !== 'FINALIZADO' &&

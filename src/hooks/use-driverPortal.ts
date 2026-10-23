@@ -1,29 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { driverAuthService, driverPortalService } from '@/services/driverPortal.service';
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  driverAuthService,
+  driverPortalService,
+} from "@/services/driverPortal.service";
 import {
   OperationContainerStatus,
   TripMicroState,
   OcrResult,
-} from '@/types/driver-portal.types';
-import { showToast } from '@/utils/alerts';
-import { useDriverAuthStore } from '@/store/use-auth-driver-store';
-import { socket } from '@/lib/socket';
-import { authService } from '@/services/auth.services';
-import { getUserFriendlyErrorMessage } from '@/utils/api-error';
+} from "@/types/driver-portal.types";
+import { showToast } from "@/utils/alerts";
+import { useDriverAuthStore } from "@/store/use-auth-driver-store";
+import { socket } from "@/lib/socket";
+import { authService } from "@/services/auth.services";
+import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 
 export function useDriverPortal() {
   const queryClient = useQueryClient();
 
-  const { 
-    authStep, 
-    setAuthStep, 
-    setLoginSuccess, 
+  const {
+    authStep,
+    setAuthStep,
+    setLoginSuccess,
     logout: logoutStore,
     driver: storeDriver,
-    isAuthenticated: storeIsAuthenticated
+    isAuthenticated: storeIsAuthenticated,
   } = useDriverAuthStore();
 
   const [authError, setAuthError] = useState<string | null>(null);
@@ -34,7 +37,7 @@ export function useDriverPortal() {
     isSuccess: isProfileSuccess,
     refetch: loadData,
   } = useQuery({
-    queryKey: ['driver-portal-profile'],
+    queryKey: ["driver-portal-profile"],
     queryFn: () => driverAuthService.getDriverProfile(),
     retry: false,
     staleTime: 1000 * 60 * 2,
@@ -45,10 +48,10 @@ export function useDriverPortal() {
     isLoading: loadingHistory,
     refetch: refetchHistory,
   } = useQuery({
-    queryKey: ['driver-trip-history'],
+    queryKey: ["driver-trip-history"],
     queryFn: () => driverPortalService.getDriverHistory(),
-    enabled: storeIsAuthenticated || (isProfileSuccess && !!queryDriver), 
-    staleTime: 1000 * 60 * 5, 
+    enabled: storeIsAuthenticated || (isProfileSuccess && !!queryDriver),
+    staleTime: 1000 * 60 * 5,
   });
 
   useEffect(() => {
@@ -58,58 +61,62 @@ export function useDriverPortal() {
   }, [isProfileSuccess, queryDriver, setLoginSuccess]);
 
   const driver = storeDriver || queryDriver;
-  const isAuthenticated = storeIsAuthenticated || (isProfileSuccess && !!queryDriver);
+  const isAuthenticated =
+    storeIsAuthenticated || (isProfileSuccess && !!queryDriver);
 
   useEffect(() => {
     const assignedOperationIds = new Set(
       driver?.assignedOperations.map((operation) => operation.id) || [],
     );
-    const handleOperationUpdate = (data: { operationId?: number; id?: number }) => {
+    const handleOperationUpdate = (data: {
+      operationId?: number;
+      id?: number;
+    }) => {
       const operationId = data.operationId ?? data.id;
       if (operationId && assignedOperationIds.has(operationId)) {
         void queryClient.invalidateQueries({
-          queryKey: ['driver-portal-profile'],
+          queryKey: ["driver-portal-profile"],
         });
       }
     };
 
-    socket.on('global_operations_updated', handleOperationUpdate);
+    socket.on("global_operations_updated", handleOperationUpdate);
     return () => {
-      socket.off('global_operations_updated', handleOperationUpdate);
+      socket.off("global_operations_updated", handleOperationUpdate);
     };
   }, [driver?.assignedOperations, queryClient]);
 
   const requestOtpMutation = useMutation({
     mutationFn: (cedula: string) => driverAuthService.requestOtp(cedula),
     onSuccess: () => {
-      showToast.success('Código enviado. Revisa tus mensajes.');
+      showToast.success("Código enviado. Revisa tus mensajes.");
       setAuthError(null);
-      setAuthStep('OTP');
+      setAuthStep("OTP");
     },
     onError: (err: unknown) => {
       setAuthError(
         getUserFriendlyErrorMessage(
           err,
-          'No pudimos enviar el código. Revisa tu documento e inténtalo de nuevo.',
+          "No pudimos enviar el código. Revisa tu documento e inténtalo de nuevo.",
         ),
       );
     },
   });
 
   const verifyOtpMutation = useMutation({
-    mutationFn: ({ cedula, code }: { cedula: string; code: string }) => 
+    mutationFn: ({ cedula, code }: { cedula: string; code: string }) =>
       driverAuthService.verifyOtp(cedula, code),
     onSuccess: () => {
       setAuthError(null);
-      showToast.success('¡Bienvenido al portal!');
-      queryClient.invalidateQueries({ queryKey: ['driver-portal-profile'] });
-      queryClient.invalidateQueries({ queryKey: ['driver-trip-history'] });
+      showToast.success("¡Bienvenido al portal!");
+      queryClient.invalidateQueries({ queryKey: ["driver-portal-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["driver-trip-history"] });
     },
     onError: (err: unknown) => {
       setAuthError(
         getUserFriendlyErrorMessage(
           err,
-          'El código no es correcto o ya venció. Solicita uno nuevo.',
+          "El código no es correcto o ya venció. Solicita uno nuevo.",
         ),
       );
     },
@@ -118,37 +125,74 @@ export function useDriverPortal() {
   const logout = async () => {
     try {
       await authService.logout();
-      queryClient.removeQueries({ queryKey: ['driver-portal-profile'] });
-      queryClient.removeQueries({ queryKey: ['driver-trip-history'] });
+      queryClient.removeQueries({ queryKey: ["driver-portal-profile"] });
+      queryClient.removeQueries({ queryKey: ["driver-trip-history"] });
       logoutStore();
     } catch (err: unknown) {
-      showToast.error(err, 'No pudimos cerrar la sesión. Inténtalo de nuevo.');
+      showToast.error(err, "No pudimos cerrar la sesión. Inténtalo de nuevo.");
     }
   };
 
   const uploadEvidenceMutation = useMutation({
-    mutationFn: ({ operationId, file }: { operationId: number; file: File }) =>
-      driverPortalService.uploadEvidence(operationId, file),
+    mutationFn: ({
+      operationId,
+      file,
+      evidenceType,
+    }: {
+      operationId: number;
+      file: File;
+      evidenceType?: string;
+    }) => driverPortalService.uploadEvidence(operationId, file, evidenceType),
     onSuccess: () => {
-      showToast.success('¡Evidencia subida correctamente!');
+      showToast.success("¡Evidencia subida correctamente!");
       loadData();
       refetchHistory();
     },
     onError: (err: unknown) => {
-      showToast.error(err, 'No pudimos subir la imagen. Inténtalo de nuevo.');
+      showToast.error(err, "No pudimos subir la imagen. Inténtalo de nuevo.");
+    },
+  });
+
+  const reportDeviationMutation = useMutation({
+    mutationFn: ({ operationId, file }: { operationId: number; file: File }) =>
+      driverPortalService.reportDeviation(operationId, file),
+    onSuccess: async () => {
+      showToast.success(
+        "Desvío reportado. El analista recibió el comodato y debe confirmar el destino.",
+      );
+      await Promise.all([
+        loadData(),
+        refetchHistory(),
+        queryClient.invalidateQueries({ queryKey: ["novedades"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", "operation-alerts"],
+        }),
+      ]);
+    },
+    onError: (error: unknown) => {
+      showToast.error(
+        error,
+        "No pudimos reportar el desvío. Inténtalo de nuevo.",
+      );
     },
   });
 
   const updateStateMutation = useMutation({
-    mutationFn: ({ operationId, estadoViaje }: { operationId: number; estadoViaje: string }) =>
-      driverPortalService.updateTravelState(operationId, estadoViaje as TripMicroState),
+    mutationFn: ({
+      operationId,
+      estadoViaje,
+    }: {
+      operationId: number;
+      estadoViaje: string;
+    }) =>
+      driverPortalService.updateTravelState(
+        operationId,
+        estadoViaje as TripMicroState,
+      ),
     onSuccess: () => {
-      showToast.success('Estado del viaje actualizado correctamente.');
+      showToast.success("Estado del viaje actualizado correctamente.");
       loadData();
       refetchHistory();
-    },
-    onError: (err: unknown) => {
-      showToast.error(err, 'No pudimos actualizar el viaje. Inténtalo de nuevo.');
     },
   });
 
@@ -159,7 +203,7 @@ export function useDriverPortal() {
       loadData();
     },
     onError: (err: unknown) => {
-      showToast.error(err, 'No pudimos leer la placa. Inténtalo de nuevo.');
+      showToast.error(err, "No pudimos leer la placa. Inténtalo de nuevo.");
     },
   });
 
@@ -170,16 +214,42 @@ export function useDriverPortal() {
       loadData();
     },
     onError: (err: unknown) => {
-      showToast.error(err, 'No pudimos leer el contenedor. Inténtalo de nuevo.');
+      showToast.error(
+        err,
+        "No pudimos leer el contenedor. Inténtalo de nuevo.",
+      );
     },
   });
 
-  const uploadEvidence = async (operationId: number, file: File): Promise<void> => {
-    await uploadEvidenceMutation.mutateAsync({ operationId, file });
+  const uploadEvidence = async (
+    operationId: number,
+    file: File,
+    evidenceType?: string,
+  ): Promise<void> => {
+    await uploadEvidenceMutation.mutateAsync({ operationId, file, evidenceType });
   };
 
-  const updateTravelState = async (operationId: number, estadoViaje: string): Promise<void> => {
-    await updateStateMutation.mutateAsync({ operationId, estadoViaje });
+  const reportDeviation = async (
+    operationId: number,
+    file: File,
+  ): Promise<void> => {
+    await reportDeviationMutation.mutateAsync({ operationId, file });
+  };
+
+  const updateTravelState = async (
+    operationId: number,
+    estadoViaje: string,
+  ): Promise<void> => {
+    try {
+      await updateStateMutation.mutateAsync({ operationId, estadoViaje });
+    } catch (err: unknown) {
+      // Superficie errores HTTP (p. ej. getClosingMissingRequirements → 400)
+      showToast.error(
+        err,
+        "No pudimos actualizar el viaje. Inténtalo de nuevo.",
+      );
+      throw err;
+    }
   };
 
   const updateContainerStatusMutation = useMutation({
@@ -198,17 +268,17 @@ export function useDriverPortal() {
         issueDescription,
       ),
     onSuccess: () => {
-      showToast.success('Estado del contenedor actualizado correctamente.');
+      showToast.success("Estado del contenedor actualizado correctamente.");
       loadData();
       refetchHistory();
       queryClient.invalidateQueries({
-        queryKey: ['dashboard', 'operation-alerts'],
+        queryKey: ["dashboard", "operation-alerts"],
       });
     },
     onError: (err: unknown) => {
       showToast.error(
         err,
-        'No pudimos actualizar el estado del contenedor. Inténtalo de nuevo.',
+        "No pudimos actualizar el estado del contenedor. Inténtalo de nuevo.",
       );
     },
   });
@@ -225,7 +295,10 @@ export function useDriverPortal() {
     });
   };
 
-  const scanPlate = async (operationId: number, file: File): Promise<OcrResult | null> => {
+  const scanPlate = async (
+    operationId: number,
+    file: File,
+  ): Promise<OcrResult | null> => {
     try {
       return await scanPlateMutation.mutateAsync({ operationId, file });
     } catch {
@@ -233,45 +306,47 @@ export function useDriverPortal() {
     }
   };
 
-  const scanContainer = async (operationId: number, file: File): Promise<OcrResult | null> => {
-    try {
-      return await scanContainerMutation.mutateAsync({ operationId, file });
-    } catch {
-      return null;
-    }
+  const scanContainer = async (
+    operationId: number,
+    file: File,
+  ): Promise<OcrResult> => {
+    return scanContainerMutation.mutateAsync({ operationId, file });
   };
 
   return {
     driver,
     loading: loadingProfile,
     isAuthenticated,
-    
+
     history,
     loadingHistory,
     refetchHistory,
-    
+
     authStep,
     setAuthStep,
     authError,
     logout,
-    
+
     requestOtp: (cedula: string) => requestOtpMutation.mutateAsync(cedula),
-    verifyOtp: (cedula: string, code: string) => verifyOtpMutation.mutateAsync({ cedula, code }),
+    verifyOtp: (cedula: string, code: string) =>
+      verifyOtpMutation.mutateAsync({ cedula, code }),
     isRequestingOtp: requestOtpMutation.isPending,
     isVerifyingOtp: verifyOtpMutation.isPending,
-    
+
     uploadEvidence,
+    reportDeviation,
     updateTravelState,
     updateContainerStatus,
     scanPlate,
     scanContainer,
     loadData,
-    
+
     uploading: uploadEvidenceMutation.isPending,
-    processingState: 
-      scanPlateMutation.isPending || 
-      scanContainerMutation.isPending || 
+    processingState:
+      scanPlateMutation.isPending ||
+      scanContainerMutation.isPending ||
       updateStateMutation.isPending ||
-      updateContainerStatusMutation.isPending,
+      updateContainerStatusMutation.isPending ||
+      reportDeviationMutation.isPending,
   };
 }

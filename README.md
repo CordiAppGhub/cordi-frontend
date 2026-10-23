@@ -34,3 +34,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Aplicación PWA
+
+En producción, ejecuta `pnpm build` y luego `pnpm start`. El build usa Webpack
+para que `next-pwa` genere el service worker y los recursos de caché; estos
+archivos se regeneran y no se editan manualmente. La aplicación debe servirse
+por HTTPS (excepto en localhost).
+
+El botón **Instalar Cordibot** solicita primero el perfil de uso:
+
+- **Conductor** abre el portal `/driver`.
+- **Jefe de flota**, **Analista** y **Administrador** abren el acceso
+  administrativo y, después de iniciar sesión, el panel `/dashboard`.
+
+La selección solo determina la ruta de inicio; los permisos siguen dependiendo
+del rol autenticado. En navegadores que no muestran el diálogo de instalación,
+la preferencia queda guardada y se muestran las instrucciones para agregar la
+aplicación desde el menú del navegador.

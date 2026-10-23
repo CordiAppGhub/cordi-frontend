@@ -4,6 +4,7 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/profiles',
   '/operations',
+  '/programacion',
   '/fleet',
   '/locations',
   '/novedades',
@@ -16,7 +17,7 @@ const PROTECTED_ROUTES = [
   '/settings',
 ];
 
-const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations', '/operations/programacion'];
+const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations', '/programacion'];
 
 function decodeJwtRole(token: string): string | null {
   try {
@@ -49,13 +50,16 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname === '/') {
+    const installEntry = request.cookies.get('cordibot_pwa_entry')?.value;
     return NextResponse.redirect(
       new URL(
         sessionToken
           ? userRole === 'CONDUCTOR'
             ? '/driver'
             : '/dashboard'
-          : '/login',
+          : installEntry === 'driver'
+            ? '/driver'
+            : '/login',
         request.url,
       ),
     );

@@ -93,7 +93,7 @@ export const Navbar: React.FC = () => {
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={16} /> },
     { path: '/profiles', label: 'Perfiles', icon: <ContactRound size={16} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={16} /> },
-    { path: '/operations/programacion', label: 'Solicitudes de flota', icon: <Truck size={16} /> },
+    { path: '/programacion', label: 'Solicitudes de flota', icon: <Truck size={16} /> },
     { path: '/fleet', label: 'Flota', icon: <Truck size={16} /> },
     { path: '/locations', label: 'Ubicaciones', icon: <MapPin size={16} /> },
     { path: '/tariff', label: 'Tarifas', icon: <BarChart3 size={16} /> },
@@ -106,7 +106,7 @@ export const Navbar: React.FC = () => {
       return userRole === 'ADMIN' || userRole === 'JEFE_DE_FLOTA';
     }
     if (userRole === 'ANALISTA') {
-      return !['/fleet', '/locations', '/operations/programacion'].includes(item.path);
+      return !['/fleet', '/locations', '/programacion'].includes(item.path);
     }
     if (userRole === 'CONDUCTOR') {
       return item.path === '/profiles';

@@ -4,7 +4,7 @@
   background-color: var(--color-surface);
   border-radius: var(--radius-panel);
   border: 1px solid var(--color-border);
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   display: flex;
   flex-direction: column;

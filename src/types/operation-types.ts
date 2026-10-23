@@ -3,12 +3,27 @@ export interface Evidence {
   url: string;
   type: string;
   createdAt?: string;
+  etapa?: string;
+  estadoRevision: 'PENDIENTE' | 'APROBADO' | 'DEVUELTO';
+  notaAnalista?: string;
+  formato?: string;
 }
 
 export interface NovedadHistorial {
   id: number;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   description: string;
+  status?: string;
+  createdAt?: string;
+  metadata?: {
+    comodatoOcr?: {
+      legible: boolean;
+      destino: string | null;
+      fechaCita: string | null;
+      numeroContenedor: string | null;
+      referencia: string | null;
+    };
+  } | null;
 }
 
 export interface Vehicle {
@@ -43,6 +58,10 @@ export interface SubOperation {
   createdAt: string;
   origen?: LogisticNode | null;
   destino?: LogisticNode | null;
+  nuevoDestinoId?: number | null;
+  nuevoDestino?: LogisticNode | null;
+  fechaCitaDestino?: string | null;
+  fechaCitaDesvio?: string | null;
   driver?: UserDriver | null;
 }
 
@@ -51,6 +70,7 @@ export interface OperationSurcharge {
   operationId: number;
   surchargeCode: string;
   appliedPrice: number;
+  costPrice?: number;
   quantity: number;
   totalPrice: number;
   observations?: string;
@@ -69,20 +89,41 @@ export interface Operation {
   id: number;
   type: string;
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
-  status: 'CREADO' | 'PROGRAMADO' | 'ASIGNADO' | 'PENDIENTE' | 'EN_CURSO' | 'FINALIZADO' | 'PAUSADA' | 'CANCELADO';
+  status:
+    | "CREADO"
+    | "PROGRAMADO"
+    | "ASIGNADO"
+    | "PENDIENTE"
+    | "EN_CURSO"
+    | "FINALIZADO"
+    | "PAUSADA"
+    | "CANCELADO"
+    | "DESVIO_REPORTADO";
 
   isActive: boolean;
   isAnticipada?: boolean;
+  requiresInspection?: boolean;
+  inspectionStatus?: "APROBADO" | "RECHAZADO_MAL_ESTADO" | null;
+  shippingLineId?: number | null;
+  shippingLine?: { id: number; name: string; nit: string } | null;
+  deviations?: Array<{
+    id: number;
+    reason: string;
+    comodatoUrl: string;
+    observations?: string | null;
+    createdAt: string;
+    newLocation: LogisticNode;
+  }>;
 
   // CONTENEDOR Y CARGA
   containerNumber: string | null;
   containerType?: string | null;
   // 🚀 ACTUALIZADO: Alineado con Prisma
-  peso?: number | null; 
+  peso?: number | null;
   sealNumber?: string | null; // Sello/Precinto
-  pinRetiro?: string | null;  // PIN del puerto
+  pinRetiro?: string | null; // PIN del puerto
 
-  numeroPedido?: string | null; 
+  numeroPedido?: string | null;
   arin?: string | null;
   documentoTransporte?: string | null; // Usado para Manifiesto / DO / BL
   radicado?: string | null;
@@ -92,26 +133,27 @@ export interface Operation {
 
   estadoViaje?: string | null;
   containerStatus?:
-    | 'PENDIENTE'
-    | 'EN_PISO'
-    | 'EN_INSPECCION'
-    | 'FALLA_REPORTADA'
-    | 'EN_CARGUE'
-    | 'CARGADO'
-    | 'EN_DESCARGUE'
-    | 'DESCARGADO';
+    | "PENDIENTE"
+    | "EN_PISO"
+    | "PENDIENTE_DEVOLUCION"
+    | "EN_INSPECCION"
+    | "FALLA_REPORTADA"
+    | "EN_CARGUE"
+    | "CARGADO"
+    | "EN_DESCARGUE"
+    | "DESCARGADO";
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;
   loadingStartedAt?: string | null;
   loadingCompletedAt?: string | null;
   unloadingStartedAt?: string | null;
   unloadingCompletedAt?: string | null;
-  
+
   // FECHAS BASE
   scheduledAt?: string | null;
   createdAt?: string | Date;
 
-  // 🚀 IDs DE LOS ACTORES 
+  // 🚀 IDs DE LOS ACTORES
   driverId?: number | null;
   vehicleId?: number | null;
   trailerId?: number | null; // NUEVO: Remolque/Chasis
@@ -124,25 +166,29 @@ export interface Operation {
   trailer?: Vehicle | null; // NUEVO: Objeto Remolque
   evidences?: Evidence[];
   placaIA?: string | null;
-  
+
   // NODOS LOGÍSTICOS
   origen?: LogisticNode | null;
   cargue?: LogisticNode | null;
   descargue?: LogisticNode | null;
   destino?: LogisticNode | null;
+  nuevoDestinoId?: number | null;
+  nuevoDestino?: LogisticNode | null;
 
   historialNovedades?: NovedadHistorial[];
+  issues?: Array<{ id: number }>;
 
   // CLIENTE
-  clientId?: number | null; 
+  clientId?: number | null;
   client?: ClientNode | null;
-  
+
   parentId?: number | null;
   children?: SubOperation[];
-  
+
   // CITAS Y TIEMPOS OPERATIVOS
   fechaCitaOrigen?: string | null;
   fechaCitaDestino?: string | null;
+  fechaCitaDesvio?: string | null;
   fechaRetiro?: string | null;
   fechaLimiteDevolucion?: string | null;
   fechaAsignacion?: string | null;
@@ -158,9 +204,9 @@ export interface Operation {
 
   // LIQUIDACIÓN Y FINANZAS
   // 🚀 ACTUALIZADO: Alineado con Prisma
-  fleteCobro?: number | null;
-  fleteCobroManual?: number | null; // Flete manual/excepción
-  fletePago?: number | null;
+  fleteACobrar?: number | null;
+  fleteACobrarManual?: number | null; // Flete manual/excepción
+  fleteAPagar?: number | null;
   retencionFlotaPorcentaje?: number | null;
   patioId?: number | null;
   patioCosto?: number | null;
@@ -175,9 +221,16 @@ export interface Operation {
 
 export interface OperationsClientGroup {
   id: string | number;
+  clientId: number | null;
   clientName: string;
   analystName: string;
   totalOperaciones: number;
-  totalFacturacion: number;
+  totalFacturacion?: number;
   operations: Operation[];
+  operationsMeta?: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
 }

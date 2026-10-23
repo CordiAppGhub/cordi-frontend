@@ -84,6 +84,10 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
                 <option value="EXPORTACION">Exportación</option>
                 <option value="RETIRO_VACIO">Retiro Vacío</option>
                 <option value="DEVOLUCION">Devolución</option>
+                <option value="NACIONAL">Nacional</option>
+                <option value="CARGA_SUELTA_URBANA">Carga Suelta Urbana</option>
+                <option value="CARGA_SUELTA_NACIONAL">Carga Suelta Nacional</option>
+                <option value="MOVIMIENTO_INTERNO">Movimiento Interno</option>
               </select>
             </div>
           </div>

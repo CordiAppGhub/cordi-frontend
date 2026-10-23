@@ -53,7 +53,7 @@ export function HistoryTab({ history, loadingHistory }: HistoryTabProps) {
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Tu Pago</span>
                 <strong style={{ fontSize: '1.2rem', color: '#059669' }}>
-                  ${Number(op.fletePago || 0).toLocaleString('es-CO')}
+                  ${Number(op.fleteAPagar || 0).toLocaleString('es-CO')}
                 </strong>
               </div>
             </div>

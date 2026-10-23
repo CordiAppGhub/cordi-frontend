@@ -1,6 +1,11 @@
-import { api } from './api.service';
+import { api } from "./api.service";
 
-export type ProfileKind = 'containers' | 'vehicles' | 'drivers' | 'analysts';
+export type ProfileKind =
+  | "containers"
+  | "vehicles"
+  | "drivers"
+  | "analysts"
+  | "shipping-lines";
 
 export interface ProfileSummary {
   id: number | string;
@@ -12,6 +17,7 @@ export interface ProfileSummary {
   totalOperations: number;
   activeOperations?: number;
   lastActivity?: string | null;
+  nit?: string;
   [key: string]: unknown;
 }
 
@@ -36,7 +42,24 @@ export interface ProfileOperation {
   trailer?: { plate: string } | null;
   origen?: { name: string } | null;
   destino?: { name: string } | null;
-  evidences: Array<{ id: number; type: string; url?: string | null; createdAt: string }>;
+  nuevoDestino?: { name: string } | null;
+  shippingLine?: { id: number; name: string; nit: string } | null;
+  requiresInspection: boolean;
+  inspectionStatus?: "APROBADO" | "RECHAZADO_MAL_ESTADO" | null;
+  deviations: Array<{
+    id: number;
+    reason: string;
+    comodatoUrl: string;
+    observations?: string | null;
+    createdAt: string;
+    newLocation: { id: number; name: string };
+  }>;
+  evidences: Array<{
+    id: number;
+    type: string;
+    url?: string | null;
+    createdAt: string;
+  }>;
   events: Array<{
     id: number;
     eventType: string;
@@ -61,8 +84,18 @@ export interface ProfileDetail {
     completedOperations: number;
     incidents: number;
     evidences: number;
+    inspections: number;
+    rejectedInspections: number;
+    deviations: number;
+    operationsByStatus: Array<{ status: string; count: number }>;
+    operationsByDestination: Array<{
+      locationId: number;
+      locationName: string;
+      count: number;
+    }>;
   };
   operations: ProfileOperation[];
+  meta: { total: number; page: number; limit: number; lastPage: number };
 }
 
 export const profilesService = {
@@ -78,9 +111,15 @@ export const profilesService = {
     return data;
   },
 
-  get: async (kind: ProfileKind, id: number | string): Promise<ProfileDetail> => {
+  get: async (
+    kind: ProfileKind,
+    id: number | string,
+    page = 1,
+    limit = 20,
+  ): Promise<ProfileDetail> => {
     const { data } = await api.get<ProfileDetail>(
       `/profiles/${kind}/${encodeURIComponent(String(id))}`,
+      { params: { page, limit } },
     );
     return data;
   },

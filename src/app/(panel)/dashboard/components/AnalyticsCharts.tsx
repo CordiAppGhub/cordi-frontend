@@ -11,6 +11,10 @@ const TYPE_LABELS: Record<string, string> = {
   DEVOLUCION: 'Devolución',
   DESVIO: 'Desvíos',
   INSPECCION: 'Inspecciones',
+  NACIONAL: 'Nacional',
+  CARGA_SUELTA_URBANA: 'Carga suelta urbana',
+  CARGA_SUELTA_NACIONAL: 'Carga suelta nacional',
+  MOVIMIENTO_INTERNO: 'Movimiento interno',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,7 +71,8 @@ export function AnalyticsCharts({ data, showFleet }: Props) {
     (_, index) => tripAxisMax - index * tripAxisStep,
   );
   const gridIntervals = tripTicks.length - 1;
-  const chartWidth = 640;
+  const chartWidth = Math.max(640, trend.length * 28 + 78);
+  const labelStep = Math.max(1, Math.ceil(trend.length / 10));
   const chartHeight = 232;
   const left = 39;
   const right = 39;
@@ -191,14 +196,16 @@ export function AnalyticsCharts({ data, showFleet }: Props) {
                           {point.label}: {point.totalTrips} viajes
                         </title>
                       </rect>
-                      <text
-                        x={left + pointSpacing * (index + 0.5)}
-                        y={chartHeight - 8}
-                        textAnchor="middle"
-                        className={styles.chartAxisText}
-                      >
-                        {point.label}
-                      </text>
+                      {index % labelStep === 0 && (
+                        <text
+                          x={left + pointSpacing * (index + 0.5)}
+                          y={chartHeight - 8}
+                          textAnchor="middle"
+                          className={styles.chartAxisText}
+                        >
+                          {point.label}
+                        </text>
+                      )}
                     </g>
                   );
                 })}

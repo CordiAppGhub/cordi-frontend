@@ -26,6 +26,11 @@ export const driversService = {
     await api.patch(`/drivers/${id}/disable`);
   },
 
+  delete: async (id: number): Promise<{ message: string }> => {
+    const { data } = await api.delete(`/drivers/${id}`);
+    return data;
+  },
+
   importExcel: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

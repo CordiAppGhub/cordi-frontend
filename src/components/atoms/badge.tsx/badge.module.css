@@ -5,43 +5,47 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 0.66rem;
+  font-weight: 700;
 
-  white-space: nowrap; 
-  
-  line-height: 1; 
-  
-  border: 1px solid transparent; 
-  
+  white-space: nowrap;
+
+  line-height: 1;
+
+  border: 1px solid transparent;
+
   text-transform: uppercase;
-  letter-spacing: 0.35px;
+  letter-spacing: 0.04em;
 }
 
-.success { 
-  background-color: #dcfce7; 
-  color: #166534; 
+.success {
+  background-color: var(--color-success-soft);
+  border-color: #c3e6cd;
+  color: #146a34;
 }
 
-.warning { 
-  background-color: #ffedd5; 
-  color: #9a3412; 
+.warning {
+  background-color: var(--color-warning-soft);
+  border-color: #f6d9a8;
+  color: #92400e;
 }
 
-.danger { 
-  background-color: #fee2e2; 
-  color: #991b1b; 
+.danger {
+  background-color: var(--color-danger-soft);
+  border-color: #f4c3c1;
+  color: #a12623;
 }
 
-.info { 
-  background-color: #dbeafe; 
-  color: #1e40af; 
+.info {
+  background-color: var(--color-info-soft);
+  border-color: #c4d8f4;
+  color: #1a4f9c;
 }
 
-.default { 
-  background-color: #f3f4f6; 
-  color: #374151; 
+.default {
+  background-color: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  color: #3f5163;
 }

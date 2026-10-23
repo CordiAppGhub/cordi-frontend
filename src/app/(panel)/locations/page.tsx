@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, Building2 } from 'lucide-react';
+import { Users, Building2, Ship } from 'lucide-react';
 import { TabOption, Tabs } from '@/components/molecules/tabs/tabs';
 import { ClientsView } from './views/clienViews';
 import { LocationsView } from './views/location-views';
 import { AssignmentsView } from './views/AssignmentsView';
+import { ShippingLinesView } from './views/shipping-lines-view';
 import styles from './locations.module.css';
 
 export default function ComercialDirectoryPage() {
@@ -26,6 +27,11 @@ export default function ComercialDirectoryPage() {
       id: 'assignments',
       label: 'Asignaciones',
       icon: <Users size={18} />,
+    },
+    {
+      id: 'shipping-lines',
+      label: 'Navieras',
+      icon: <Ship size={18} />,
     },
   ];
 
@@ -51,6 +57,7 @@ export default function ComercialDirectoryPage() {
         {activeTab === 'clients' && <ClientsView />}
         {activeTab === 'locations' && <LocationsView />}
         {activeTab === 'assignments' && <AssignmentsView />}
+        {activeTab === 'shipping-lines' && <ShippingLinesView />}
       </div>
 
     </div>

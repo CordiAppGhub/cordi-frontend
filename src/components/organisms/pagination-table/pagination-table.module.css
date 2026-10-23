@@ -1,9 +1,9 @@
 .tableContainer {
   box-sizing: border-box;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -12,7 +12,7 @@
 }
 
 .toolbar {
-  padding: 12px 14px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -30,29 +30,31 @@
 
 .searchInput {
   box-sizing: border-box;
-  padding: 8px 12px 8px 34px;
-  border: 1px solid var(--color-border);
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-control);
   font-size: 14px;
   line-height: 1.4;
   width: 100%;
-  min-height: 36px;
-  background: #fff;
+  min-height: 38px;
+  background: var(--color-surface-muted);
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
 
 .searchInput:focus {
-  border-color: var(--color-brand-700);
-  box-shadow: 0 0 0 2px rgba(47, 100, 127, 0.1);
+  border-color: var(--color-accent);
+  background: #fff;
+  box-shadow: var(--focus-ring);
 }
 
 .searchIcon {
   position: absolute;
-  left: 11px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   font-size: 13px;
   pointer-events: none;
 }
@@ -68,34 +70,44 @@
 .btnPrimary {
   box-sizing: border-box;
   width: 100%;
-  min-height: 36px;
-  padding: 7px 12px;
-  border-radius: 6px;
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: var(--radius-control);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .btnSecondary {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   background: #fff;
-  color: #334155;
+  color: var(--color-brand-900);
+  box-shadow: var(--shadow-xs);
 }
 
 .btnPrimary {
-  border: 1px solid var(--color-brand-800);
+  border: 1px solid var(--color-brand-900);
   background: var(--color-brand-800);
   color: #fff;
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.btnSecondary:focus-visible,
+.btnPrimary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .btnSecondary:hover {
-    background: #f8fafc;
+    background: var(--color-surface-muted);
+    border-color: var(--color-brand-700);
   }
 
   .btnPrimary:hover {
@@ -111,29 +123,37 @@
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   text-align: left;
   min-width: 600px;
 }
 
 .th {
-  background: #f8fafc;
-  color: #64748b;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  padding: 9px 11px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--color-border);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
 .td {
-  padding: 8px 11px;
+  padding: 11px 14px;
   font-size: 13px;
   line-height: 1.45;
   color: var(--color-text);
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-surface-sunken);
+}
+
+.row:last-child .td {
+  border-bottom: none;
 }
 
 .row {
@@ -142,7 +162,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .row:hover {
-    background: #f8fafc;
+    background: #f4f8fa;
   }
 }
 
@@ -154,21 +174,21 @@
 .cellSelect {
   box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
-  padding: 5px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
   background: #fff;
   font-size: 12px;
   color: #1e293b;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .cellInput:focus,
 .cellSelect:focus {
-  border-color: var(--color-brand-700);
-  box-shadow: 0 0 0 2px rgba(47, 100, 127, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
 }
 
 .cellSelect {
@@ -182,7 +202,7 @@
   border-radius: 3px;
   border: 1px solid #cbd5e1;
   cursor: pointer;
-  accent-color: var(--color-brand-700);
+  accent-color: var(--color-accent);
 }
 
 .pagination {
@@ -192,14 +212,14 @@
   gap: 10px;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  background: #fff;
-  border-top: 1px solid #e2e8f0;
+  padding: 11px 16px;
+  background: var(--color-surface-muted);
+  border-top: 1px solid var(--color-border);
 }
 
 .pageInfo {
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,8 +229,8 @@
 
 .selectedBadge {
   margin-left: 6px;
-  color: var(--color-brand-700);
-  font-weight: 500;
+  color: var(--color-accent-strong);
+  font-weight: 600;
 }
 
 .paginationControls {
@@ -226,20 +246,25 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .selectPageSize {
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
-  padding: 5px 7px;
-  min-height: 30px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  padding: 5px 8px;
+  min-height: 32px;
   background: #fff;
   font-size: 12px;
   color: #334155;
   outline: none;
   cursor: pointer;
+}
+
+.selectPageSize:focus {
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
 }
 
 .pageButtons {
@@ -252,20 +277,23 @@
 .pageBtn {
   flex: 1;
   min-height: 32px;
-  padding: 5px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
   font-size: 12px;
+  font-weight: 600;
   background: #fff;
-  color: #334155;
+  color: var(--color-brand-900);
   cursor: pointer;
   text-align: center;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--transition-fast),
+    border-color var(--transition-fast), opacity var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .pageBtn:hover:not(:disabled) {
-    background: #f8fafc;
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
   }
 }
 
@@ -275,9 +303,9 @@
 }
 
 .emptyState {
-  padding: 24px 16px;
+  padding: 36px 16px;
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -374,7 +402,7 @@
 
 .expandIconExpanded {
   transform: rotate(90deg);
-  color: #2563eb;
+  color: var(--color-accent);
 }
 
 .expandedRow {

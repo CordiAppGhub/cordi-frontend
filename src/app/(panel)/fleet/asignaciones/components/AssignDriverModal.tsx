@@ -34,6 +34,16 @@ export default function AssignDriverModal({
     }
   }, [isOpen, loadDrivers]);
 
+  const vehicleOptions = vehicles.filter(
+    (v) => String(v.id) === vehicleId || (v.status === 'AVAILABLE' && !v.driverId),
+  );
+  const driverOptions = drivers.filter(
+    (d) =>
+      d.isActive &&
+      d.conductorStatus !== 'BLOCKED_BY_NOVEDAD' &&
+      (d.drivenVehicles ?? []).every((v) => v.status === 'MAINTENANCE' || v.status === 'OUT_OF_SERVICE'),
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicleId || !driverId) return;
@@ -82,7 +92,7 @@ export default function AssignDriverModal({
             <option value="" disabled>
               {loadingVehicles ? 'Cargando flota...' : '-- Selecciona una placa --'}
             </option>
-            {vehicles.map((v) => (
+            {vehicleOptions.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.plate} {v.empresa ? `- ${v.empresa}` : ''}
               </option>
@@ -110,13 +120,18 @@ export default function AssignDriverModal({
             <option value="" disabled>
               {loadingDrivers ? 'Cargando personal...' : '-- Selecciona un conductor --'}
             </option>
-            {drivers.map((d) => (
+            {driverOptions.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name} (C.C. {d.cedula})
               </option>
             ))}
           </select>
         </div>
+
+        <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
+          Solo se listan vehículos disponibles sin conductor y conductores disponibles sin vehículo
+          (o cuyo vehículo está en mantenimiento).
+        </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
           <Button

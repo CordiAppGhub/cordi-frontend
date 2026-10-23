@@ -118,6 +118,42 @@ export const useDrivers = () => {
     [removeDriverFromStore, setIsLoading]
   );
 
+  const deleteDriver = useCallback(
+    async (id: number, name: string | null): Promise<boolean> => {
+      const result = await Swal.fire({
+        title: '¿Eliminar conductor?',
+        text: `¿Estás seguro de eliminar permanentemente a ${name || 'este conductor'}? Esta acción no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc2626',
+      });
+
+      if (!result.isConfirmed) {
+        return false;
+      }
+
+      setIsLoading(true);
+      try {
+        const res = await driversService.delete(id);
+        removeDriverFromStore(id);
+        showToast.success(res.message || 'El conductor fue eliminado correctamente.');
+        return true;
+      } catch (err: unknown) {
+        console.error('Error al eliminar conductor:', err);
+        const axiosError = err as AxiosError<BackendErrorResponse>;
+        const message =
+          axiosError.response?.data?.message || 'No se pudo eliminar al conductor.';
+        showToast.error(message);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [removeDriverFromStore, setIsLoading]
+  );
+
   const uploadExcel = useCallback(async (file: File) => {
     try {
       const result = await driversService.importExcel(file);
@@ -139,6 +175,7 @@ export const useDrivers = () => {
     createDriver,
     editDriver,
     disableDriver,
+    deleteDriver,
     uploadExcel,
   };
 };

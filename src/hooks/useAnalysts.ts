@@ -9,7 +9,7 @@ export interface Analyst {
   email: string;
 }
 
-export function useAnalysts() {
+export function useAnalysts(enabled = true) {
   const {
     data: analysts = [],
     isLoading: isLoadingAnalysts,
@@ -20,6 +20,7 @@ export function useAnalysts() {
       const response = await api.get('/users/analysts');
       return response.data;
     },
+    enabled,
     staleTime: 1000 * 60 * 15, 
   });
 

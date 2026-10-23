@@ -6,9 +6,12 @@ import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { Button } from '@/components/atoms/button/button';
 import { ColumnDef } from '@/types/table';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
+import { Pencil, Trash2 } from 'lucide-react';
 
 import styles from './driver-details.module.css';
 import { useDriverDetail } from '../../hooks/use-driver-details';
+import { useDrivers } from '../../hooks/use-drivers';
+import CreateDriverModal from '../../components/CreateDriverModal';
 import { TruckLoader } from '@/components/TruckLoader';
 
 export function DriverDetailView() {
@@ -17,6 +20,8 @@ export function DriverDetailView() {
   const driverId = parseInt(params.id as string, 10);
 
   const { details, isLoading, error, loadDriverDetails } = useDriverDetail();
+  const { editDriver, deleteDriver } = useDrivers();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -84,13 +89,38 @@ export function DriverDetailView() {
 
   return (
     <div className={styles.layout}>
-      <div className={styles.header}>
-        <button onClick={() => router.back()} className={styles.backButton}>
-          ← Volver
-        </button>
-        <div>
-          <h1 className={styles.title}>Perfil del Conductor</h1>
-          <p className={styles.subtitle}>Información detallada y registro de actividad</p>
+      <div className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button onClick={() => router.back()} className={styles.backButton}>
+            ← Volver
+          </button>
+          <div>
+            <h1 className={styles.title}>Perfil del Conductor</h1>
+            <p className={styles.subtitle}>Información detallada y registro de actividad</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button
+            variant="secondary"
+            onClick={() => setIsEditModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px' }}
+          >
+            <Pencil size={15} color="#2563eb" /> Editar Conductor
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              const deleted = await deleteDriver(driverId, details.name);
+              if (deleted) {
+                router.push('/fleet');
+              }
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', backgroundColor: '#dc2626', color: '#fff', border: 'none' }}
+          >
+            <Trash2 size={15} /> Eliminar Conductor
+          </Button>
         </div>
       </div>
 
@@ -156,6 +186,26 @@ export function DriverDetailView() {
           </div>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <CreateDriverModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onEditDriver={async (id, data) => {
+            const ok = await editDriver(id, data);
+            if (ok) {
+              loadDriverDetails(driverId);
+            }
+            return ok;
+          }}
+          driverToEdit={{
+            id: details.id,
+            cedula: details.cedula,
+            name: details.name,
+            telefono: details.telefono,
+          } as any}
+        />
+      )}
     </div>
   );
 }

@@ -1,20 +1,39 @@
-'use client';
-
 import { SuperModal } from '@/components/organisms/modal/modal';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/atoms/button/button';
+import { Driver } from '@/types/drivers';
 
 interface CreateDriverModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateDriver: (data: { cedula: string; name?: string; telefono?: string }) => Promise<boolean>;
+  onCreateDriver?: (data: { cedula: string; name?: string; telefono?: string }) => Promise<boolean>;
+  onEditDriver?: (id: number, data: { cedula?: string; name?: string; telefono?: string }) => Promise<boolean>;
+  driverToEdit?: Driver | null;
 }
 
-export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: CreateDriverModalProps) {
+export default function CreateDriverModal({
+  isOpen,
+  onClose,
+  onCreateDriver,
+  onEditDriver,
+  driverToEdit,
+}: CreateDriverModalProps) {
   const [cedula, setCedula] = useState('');
   const [name, setName] = useState('');
   const [telefono, setTelefono] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (driverToEdit) {
+      setCedula(driverToEdit.cedula || '');
+      setName(driverToEdit.name || '');
+      setTelefono(driverToEdit.telefono || '');
+    } else {
+      setCedula('');
+      setName('');
+      setTelefono('');
+    }
+  }, [driverToEdit, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,16 +41,22 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
 
     setIsSubmitting(true);
     try {
-      const success = await onCreateDriver({
-        cedula,
-        name: name ? name.toUpperCase() : undefined,
-        telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
-      });
+      let success = false;
+      if (driverToEdit && onEditDriver) {
+        success = await onEditDriver(driverToEdit.id, {
+          cedula,
+          name: name ? name.toUpperCase() : undefined,
+          telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
+        });
+      } else if (onCreateDriver) {
+        success = await onCreateDriver({
+          cedula,
+          name: name ? name.toUpperCase() : undefined,
+          telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
+        });
+      }
 
       if (success) {
-        setCedula('');
-        setName('');
-        setTelefono('');
         onClose();
       }
     } finally {
@@ -39,11 +64,13 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
     }
   };
 
+  const isEditing = Boolean(driverToEdit);
+
   return (
     <SuperModal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="Registrar Nuevo Conductor"
+      title={isEditing ? 'Editar Conductor' : 'Registrar Nuevo Conductor'}
       width="450px"
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -141,7 +168,7 @@ export default function CreateDriverModal({ isOpen, onClose, onCreateDriver }: C
               fontWeight: 500,
             }}
           >
-            Guardar Conductor
+            {isEditing ? 'Guardar Cambios' : 'Registrar Conductor'}
           </Button>
         </div>
 

@@ -324,6 +324,64 @@
   font-size: 0.94rem;
 }
 
+.breakdownSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.breakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.breakdownItem {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.breakdownLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+
+.breakdownLabel span {
+  overflow-wrap: anywhere;
+}
+
+.breakdownLabel strong {
+  color: #0f172a;
+}
+
+.breakdownTrack {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e2e8f0;
+}
+
+.breakdownTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width 180ms ease;
+}
+
 .sectionTitle {
   display: flex;
   align-items: center;

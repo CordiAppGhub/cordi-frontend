@@ -1,60 +1,82 @@
 .card {
+  position: relative;
   box-sizing: border-box;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 14px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   min-width: 0;
-  min-height: 88px;
+  min-height: 92px;
   width: 100%;
   height: 100%;
-  transition: border-color 0.2s ease;
+  overflow: hidden;
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+/* Barra de acento lateral según el estado del indicador */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--color-border-strong));
 }
 
 @media (hover: hover) and (pointer: fine) {
   .card:hover {
-    border-color: #cbd5e1;
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
 }
 
 .value {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 4px;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .title {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
   text-align: left;
   line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.success .value { color: #059669; }
-.warning .value { color: #d97706; }
-.danger .value { color: #dc2626; }
-.info .value { color: #2563eb; }
-.default .value { color: #1f2937; }
+.success { --kpi-accent: #22a35a; }
+.warning { --kpi-accent: #e08a1e; }
+.danger { --kpi-accent: #d64541; }
+.info { --kpi-accent: #2f7bd6; }
+.default { --kpi-accent: var(--color-brand-700); }
+
+.success .value { color: #15803d; }
+.warning .value { color: #b45309; }
+.danger .value { color: #c2312d; }
+.info .value { color: #1d5fb8; }
+.default .value { color: var(--color-brand-900); }
 
 @media (max-width: 768px) {
   .card {
-    min-height: 76px;
-    padding: 12px;
+    min-height: 80px;
+    padding: 12px 12px 12px 14px;
   }
 
   .value {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
 
   .title {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }

@@ -1,16 +1,22 @@
 /** @type {import('next').NextConfig} */
+import nextPWA from 'next-pwa';
+const withPWA = nextPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+});
 const nextConfig = {
-  output: 'standalone',
+  output: 'standalone' as const,
+  turbopack: {},
   async rewrites() {
     return [
       {
-        // Cualquier petición desde el cliente a /api/...
         source: '/api/:path*',
-        // ...se reenviará a tu servidor NestJS real
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/:path*`,
       },
     ];
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

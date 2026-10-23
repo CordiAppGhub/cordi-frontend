@@ -13,8 +13,6 @@ export const createSurchargeCatalogSchema = z.object({
   applicableTo: z.enum(['IMPORTACION', 'EXPORTACION', 'AMBOS'], {
     message: 'Selecciona a qué modalidad aplica',
   }),
-  
-  basePrice: z.coerce.number().positive('El precio base debe ser mayor a 0'),
 });
 
 export const createSurchargeOverrideSchema = z.object({

@@ -5,7 +5,50 @@ import { ColumnDef } from '@/types/table';
 import { formatLocationLabel } from '@/utils/location';
 import { ClientTariff } from '@/types/tariff-ypes';
 
-export const getTariffColumns = (): ColumnDef<ClientTariff>[] => [
+export interface ClientTariffGroup {
+  id: number;
+  clientName: string;
+  tariffs: ClientTariff[];
+}
+
+export const groupTariffsByClient = (tariffs: ClientTariff[]): ClientTariffGroup[] => {
+  const groups = new Map<number, ClientTariffGroup>();
+  for (const tariff of tariffs) {
+    const group = groups.get(tariff.clientId) ?? {
+      id: tariff.clientId,
+      clientName: tariff.client?.razonSocial || 'Desconocido',
+      tariffs: [],
+    };
+    group.tariffs.push(tariff);
+    groups.set(tariff.clientId, group);
+  }
+  return [...groups.values()].sort((a, b) => a.clientName.localeCompare(b.clientName));
+};
+
+export const getClientGroupColumns = (): ColumnDef<ClientTariffGroup>[] => [
+  {
+    id: 'client',
+    header: 'Cliente Titular',
+    type: 'text',
+    renderCell: (row) => <strong style={{ color: '#0f172a' }}>{row.clientName}</strong>,
+  },
+  {
+    id: 'count',
+    header: 'Tarifas Configuradas',
+    type: 'text',
+    renderCell: (row) => (
+      <span style={{ padding: '4px 8px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>
+        {row.tariffs.length} {row.tariffs.length === 1 ? 'tarifa' : 'tarifas'}
+      </span>
+    ),
+  },
+];
+
+export const getTariffColumns = (): ColumnDef<ClientTariff>[] => getClientTariffColumns().filter(
+  (column) => column.id !== 'client',
+);
+
+const getClientTariffColumns = (): ColumnDef<ClientTariff>[] => [
   {
     id: 'client',
     header: 'Cliente Titular',

@@ -1,0 +1,73 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(14, 34, 54, 0.5);
+  backdrop-filter: blur(3px);
+  z-index: 1040;
+  display: flex;
+  justify-content: flex-end; /* Alinea el drawer a la derecha */
+  animation: fadeIn 0.2s ease-out;
+}
+
+.drawer {
+  background-color: white;
+  width: 100%;
+  max-width: 600px; /* Drawer ancho para formularios complejos */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -18px 0 40px -12px rgba(14, 34, 54, 0.3);
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-brand-900);
+  letter-spacing: -0.015em;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.closeButton:hover {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-brand-900);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: var(--color-background);
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

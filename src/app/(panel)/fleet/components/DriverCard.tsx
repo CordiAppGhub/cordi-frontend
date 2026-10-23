@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Truck } from 'lucide-react';
+import { Star, Truck, Pencil, Trash2 } from 'lucide-react';
 import { Driver } from '@/types/drivers';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import styles from './fleet-cards.module.css';
@@ -7,9 +7,16 @@ import styles from './fleet-cards.module.css';
 interface DriverCardProps {
   driver: Driver;
   onClickDetail: (id: number) => void;
+  onEdit?: (driver: Driver) => void;
+  onDelete?: (id: number, name: string | null) => void;
 }
 
-export const DriverCard: React.FC<DriverCardProps> = ({ driver, onClickDetail }) => {
+export const DriverCard: React.FC<DriverCardProps> = ({
+  driver,
+  onClickDetail,
+  onEdit,
+  onDelete,
+}) => {
   const initials = driver.name 
     ? driver.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
     : 'DR';
@@ -67,6 +74,67 @@ export const DriverCard: React.FC<DriverCardProps> = ({ driver, onClickDetail })
           <span style={{ fontWeight: '600', color: '#16a34a' }}>Vence 2027-04-30</span>
         </div>
       </div>
+
+      {/* Botones de acción rápida */}
+      {(onEdit || onDelete) && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '8px',
+            paddingTop: '10px',
+            borderTop: '1px solid #f1f5f9',
+            marginTop: '4px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onEdit && (
+            <button
+              type="button"
+              title="Editar conductor"
+              onClick={() => onEdit(driver)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '5px 10px',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#f8fafc',
+                color: '#334155',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Pencil size={13} color="#2563eb" /> Editar
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              type="button"
+              title="Eliminar conductor"
+              onClick={() => onDelete(driver.id, driver.name)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '5px 10px',
+                borderRadius: '6px',
+                border: '1px solid #fee2e2',
+                backgroundColor: '#fff5f5',
+                color: '#dc2626',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={13} color="#dc2626" /> Eliminar
+            </button>
+          )}
+        </div>
+      )}
 
     </div>
   );

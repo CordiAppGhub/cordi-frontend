@@ -8,43 +8,52 @@ import { useClients } from '@/hooks/useClient';
 import { useAnalysts } from '@/hooks/useAnalysts';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import { SuperForm } from '@/components/organisms/form/form';
-import { FormField } from '@/components/organisms/form/types/form.types';
+import {
+  FormField,
+  FormFieldValue,
+} from '@/components/organisms/form/types/form.types';
 import { assignmentSchema } from '@/schemas/assignment.schema'; // 🚀 Importamos el esquema Zod
 import { useAssignments } from '../hooks/useAssignments';
-import { useLocations } from '../hooks/useLocation';
-import { getAssignmentColumns } from '../components/AssignmentColumn';
+import { AnalystDelegationModal } from '../components/analyst-delegation-modal';
+import {
+  getAnalystGroupColumns,
+  getAssignedClientColumns,
+  groupAssignmentsByAnalyst,
+} from '../components/AssignmentColumn';
 import { TruckLoader } from '@/components/TruckLoader';
 import styles from '../locations.module.css';
 export const AssignmentsView: React.FC = () => {
-  const { assignments, isLoadingAssignments, createAssignment, removeAssignment, isAssigning } = useAssignments();
+  const {
+    assignments,
+    delegations,
+    delegationsError,
+    isLoadingAssignments,
+    isLoadingDelegations,
+    createAssignment,
+    createDelegation,
+    revokeDelegation,
+    removeAssignment,
+    isAssigning,
+    isDelegating,
+  } = useAssignments();
   const { clients, isLoadingClients } = useClients();
-  const { locations, isLoadingLocations } = useLocations();
   const { analysts, isLoadingAnalysts } = useAnalysts();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const handleOpenCreate = () => {
     setIsModalOpen(true);
     setValidationErrors({});
-    setSelectedClientId(''); 
   };
 
-  const columns = useMemo(() => getAssignmentColumns(removeAssignment), [removeAssignment]);
-
-  const availableLocations = useMemo(() => {
-    if (!selectedClientId) return [];
-
-    return locations.filter((loc) => 
-     
-      loc.clients?.some((c) => String(c.clientId) === selectedClientId)
-    );
-  }, [locations, selectedClientId]);
+  const columns = useMemo(() => getAnalystGroupColumns(), []);
+  const subColumns = useMemo(() => getAssignedClientColumns(removeAssignment), [removeAssignment]);
+  const groups = useMemo(() => groupAssignmentsByAnalyst(assignments), [assignments]);
 
   const formFields: FormField[] = [
     {
@@ -67,26 +76,14 @@ export const AssignmentsView: React.FC = () => {
       ],
       disabled: isLoadingClients,
     },
-    {
-      name: 'locationId',
-  
-      label: selectedClientId 
-        ? '3. Seleccionar Ubicación / Instalación' 
-        : '3. Selecciona un cliente primero',
-      type: 'select',
-      options: [
-        { value: '', label: '-- Selecciona una ubicación --' },
-        ...availableLocations.map((l) => ({ value: String(l.id), label: l.name })),
-      ],
-      disabled: isLoadingLocations || availableLocations.length === 0,
-    },
   ];
 
-  const handleSubmit = async (formData: Record<string, any>) => {
+  const handleSubmit = async (
+    formData: Record<string, FormFieldValue>,
+  ) => {
     const payload = {
       analystId: Number(formData.analystId),
       clientId: Number(formData.clientId),
-      locationId: Number(formData.locationId),
     };
 
     const validation = assignmentSchema.safeParse(payload);
@@ -104,15 +101,14 @@ export const AssignmentsView: React.FC = () => {
     if (success) {
       setIsModalOpen(false);
       setValidationErrors({});
-      setSelectedClientId('');
     }
   };
 
-  const totalPages = Math.ceil((assignments?.length || 0) / itemsPerPage) || 1;
+  const totalPages = Math.ceil(groups.length / itemsPerPage) || 1;
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return assignments.slice(startIndex, startIndex + itemsPerPage);
-  }, [assignments, currentPage]);
+    return groups.slice(startIndex, startIndex + itemsPerPage);
+  }, [groups, currentPage]);
 
   return (
     <div className={styles.page}>
@@ -120,14 +116,20 @@ export const AssignmentsView: React.FC = () => {
       <div className={styles.header}>
         <div>
           <h2 className={styles.title}>
-            Matriz de Permisos Directos
+            Asignación de Clientes a Analistas
           </h2>
           <p className={styles.subtitle}>
-            Asigna qué analistas pueden auditar y gestionar clientes específicos en cada puerto o bodega.
+            Cada cliente tiene un único analista responsable en todas sus ubicaciones.
           </p>
         </div>
         <Button onClick={handleOpenCreate} variant="primary">
           + Nueva Asignación
+        </Button>
+        <Button
+          onClick={() => setIsDelegationModalOpen(true)}
+          variant="secondary"
+        >
+          Delegar cobertura parcial
         </Button>
       </div>
 
@@ -141,9 +143,70 @@ export const AssignmentsView: React.FC = () => {
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
+            isCollapsible={true}
+            subColumns={subColumns}
+            getSubRows={(row) => row.clients}
           />
         </div>
       )}
+
+      <section style={{ marginTop: 28 }}>
+        <h3>Delegaciones activas</h3>
+        {isLoadingDelegations ? (
+          <TruckLoader variant="compact" message="Cargando coberturas..." />
+        ) : delegationsError ? (
+          <p role="alert">{delegationsError}</p>
+        ) : delegations.length === 0 ? (
+          <p>No hay coberturas parciales activas.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={delegationCellStyle}>Cliente / alcance</th>
+                  <th style={delegationCellStyle}>Titular → cobertura</th>
+                  <th style={delegationCellStyle}>Motivo</th>
+                  <th style={delegationCellStyle}>Fin previsto</th>
+                  <th style={delegationCellStyle}>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {delegations.map((delegation) => {
+                  const scope = delegation.clientLocation
+                    ? `Ubicación: ${delegation.clientLocation.location.name}`
+                    : `Operación #${delegation.operation?.id ?? delegation.operationId}`;
+                  return (
+                    <tr key={delegation.id}>
+                      <td style={delegationCellStyle}>
+                        <strong>{delegation.client.razonSocial}</strong>
+                        <div>{scope}</div>
+                      </td>
+                      <td style={delegationCellStyle}>
+                        {delegation.principalAnalyst.name ?? 'Sin nombre'} →{' '}
+                        {delegation.delegateAnalyst.name ?? 'Sin nombre'}
+                      </td>
+                      <td style={delegationCellStyle}>{delegation.reason}</td>
+                      <td style={delegationCellStyle}>
+                        {delegation.endsAt
+                          ? new Date(delegation.endsAt).toLocaleString('es-CO')
+                          : 'Sin fecha'}
+                      </td>
+                      <td style={delegationCellStyle}>
+                        <button
+                          type="button"
+                          onClick={() => void revokeDelegation(delegation.id)}
+                        >
+                          Finalizar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {isModalOpen && (
         <SuperModal
@@ -153,35 +216,34 @@ export const AssignmentsView: React.FC = () => {
           width="500px"
         >
           <div className={styles.modalDescription}>
-            Selecciona el analista y el cliente. Solo podrás asignar al analista a las ubicaciones donde el cliente ya tiene operación activa.
+            Selecciona el analista y el cliente. El analista quedará a cargo de todas las ubicaciones del cliente, reemplazando al anterior si lo había.
           </div>
           <SuperForm
             fields={formFields}
             errors={validationErrors}
             isLoading={isAssigning}
-            submitText="Otorgar Permiso"
+            submitText="Asignar"
             cancelText="Cancelar"
             onSubmit={handleSubmit}
             onCancel={() => setIsModalOpen(false)}
-           onChange={(arg1: any, arg2: any) => {
-              setValidationErrors({});
-              
-              if (typeof arg1 === 'object' && arg1 !== null) {
-                if (arg1.clientId) {
-                  setSelectedClientId(String(arg1.clientId));
-                } else {
-                  setSelectedClientId('');
-                }
-              } 
-              else if (typeof arg1 === 'string') {
-                if (arg1 === 'clientId') {
-                  setSelectedClientId(arg2 ? String(arg2) : '');
-                }
-              }
-            }}
+            onChange={() => setValidationErrors({})}
           />
         </SuperModal>
       )}
+      {isDelegationModalOpen && (
+        <AnalystDelegationModal
+          onClose={() => setIsDelegationModalOpen(false)}
+          onCreate={createDelegation}
+          isSaving={isDelegating}
+        />
+      )}
     </div>
   );
+};
+
+const delegationCellStyle = {
+  padding: '10px 12px',
+  borderBottom: '1px solid #e2e8f0',
+  textAlign: 'left' as const,
+  verticalAlign: 'top' as const,
 };

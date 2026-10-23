@@ -5,8 +5,11 @@ export type OperationType =
   | 'DEVOLUCION'
   | 'INGRESO_EXPORTACION'
   | 'RETIRO_IMPORTACION'
-  | 'DESVIO'
-  | 'INSPECCION';
+  | 'INSPECCION'
+  | 'NACIONAL'
+  | 'CARGA_SUELTA_URBANA'
+  | 'CARGA_SUELTA_NACIONAL'
+  | 'MOVIMIENTO_INTERNO';
 
 export type ContainerType = 'DRY_20' | 'DRY_40' | 'HC_40' | 'REEFER_20' | 'REEFER_40' | 'FLAT_RACK' | 'OPEN_TOP';
 

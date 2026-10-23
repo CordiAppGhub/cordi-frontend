@@ -16,6 +16,7 @@ interface SuperTableProps<T, S extends object> {
   isCollapsible?: boolean;
   subColumns?: ColumnDef<S>[];
   getSubRows?: (row: T) => S[];
+  renderExpandedContent?: (row: T) => React.ReactNode;
 }
 
 export default function PaginationTable<
@@ -33,6 +34,7 @@ export default function PaginationTable<
   isCollapsible = false,
   subColumns,
   getSubRows,
+  renderExpandedContent,
 }: SuperTableProps<T, S>) {
   const safeData = Array.isArray(data) ? data : [];
   const [expandedRows, setExpandedRows] = useState<Set<number | string>>(new Set());
@@ -118,9 +120,15 @@ export default function PaginationTable<
                     </tr>
 
                     {/* 🚀 TABLA ANIDADA (AUTOMÁTICA) */}
-                    {isCollapsible && isExpanded && subColumns && subRows.length > 0 && (
+                    {isCollapsible &&
+                      isExpanded &&
+                      (renderExpandedContent ||
+                        (subColumns && subRows.length > 0)) && (
                       <tr className={styles.expandedRow}>
                         <td colSpan={columns.length + 1} style={{ padding: 0, border: 'none' }}>
+                          {renderExpandedContent ? (
+                            renderExpandedContent(row)
+                          ) : subColumns && subRows.length > 0 ? (
                           <div className={styles.nestedTableWrapper}>
                             <table className={styles.nestedTable}>
                               <thead>
@@ -152,6 +160,7 @@ export default function PaginationTable<
                               </tbody>
                             </table>
                           </div>
+                          ) : null}
                         </td>
                       </tr>
                     )}

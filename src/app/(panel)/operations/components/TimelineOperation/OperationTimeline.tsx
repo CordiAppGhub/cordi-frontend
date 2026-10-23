@@ -82,27 +82,32 @@ const getEventIcon = (eventType: string) => {
                 )}
 
               {/* Módulo de Evidencias Integrado */}
-              {event.eventType === 'EVIDENCIA_SUBIDA' && event.metadata?.url && (
-                <button 
-                  onClick={() => onViewImage(event.metadata.url)}
-                  style={{
-                    marginTop: '8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    backgroundColor: '#e0e7ff',
-                    color: '#4f46e5',
-                    border: '1px solid #c7d2fe',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <FileImage size={14} /> Ver Soporte 
-                </button>
-              )}
+              {event.eventType === 'EVIDENCIA_SUBIDA' &&
+                (event.metadata?.url || event.metadata?.fileUrl) && (
+                  <button 
+                    onClick={() =>
+                      onViewImage(
+                        (event.metadata?.url || event.metadata?.fileUrl) as string,
+                      )
+                    }
+                    style={{
+                      marginTop: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      backgroundColor: '#e0e7ff',
+                      color: '#4f46e5',
+                      border: '1px solid #c7d2fe',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FileImage size={14} /> Ver Soporte 
+                  </button>
+                )}
             </div>
 
             {/* La Firma Digital */}

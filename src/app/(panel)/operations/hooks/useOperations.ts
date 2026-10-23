@@ -8,10 +8,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GetOperationsParams, operationService, UpdateOperationPayload } from '@/services/operation.service';
 import { socket } from '@/lib/socket';
 import { showToast } from '@/utils/alerts';
+import type { Operation } from '@/types/operation-types';
 
 interface BackendErrorResponse {
   message?: string;
 }
+
+type OperationSocketPayload = Partial<Operation> & {
+  id?: number;
+  operationId?: number;
+  deleted?: boolean;
+};
 
 export function useTrafico(initialParams: GetOperationsParams = {}) {
   const queryClient = useQueryClient();
@@ -29,12 +36,16 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   // ==========================================
   const {
     data: operationsResponse,
-    isLoading: isLoadingOperations,
+    isLoading: isLoadingOperationsQuery,
     error: queryError,
     refetch: fetchOperationsQuery,
   } = useQuery({
     queryKey: ['trafico', queryParams],
-    queryFn: () => operationService.getActiveOperations(queryParams),
+    queryFn: () =>
+      operationService.getActiveOperations({
+        ...queryParams,
+        deferOperations: true,
+      }),
     staleTime: 1000 * 60 * 1, // 1 min por el websocket
   });
 
@@ -55,10 +66,34 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   });
 
   // ==========================================
-  // 2. MUTACIONES (ACTUALIZAR / ASIGNAR)
+  // 2. MUTACIONES (CREAR / ACTUALIZAR / ASIGNAR)
   // ==========================================
   
-  // 🚀 Mutación Única: Sirve para asignar conductor, reasignar, poner contenedor, etc.
+  // 🚀 NUEVA: Mutación para Crear Operación
+  const createMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => 
+      operationService.createOperation(data),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['operations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
+      
+      showToast.success('Operación creada correctamente.');
+    },
+    onError: (err: unknown) => {
+      const axiosError = err as AxiosError<BackendErrorResponse>;
+      const message = axiosError.response?.data?.message || 'Error al crear la operación.';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de validación',
+        text: message,
+      });
+    }
+  });
+
+  // Mutación Única: Sirve para actualizar, asignar conductor, reasignar, poner contenedor, etc.
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateOperationPayload }) => 
       operationService.updateOperation(id, data),
@@ -66,6 +101,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
       // Actualiza el detalle si está abierto
       queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
       queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
       
       showToast.success('Operación actualizada correctamente.');
@@ -77,7 +113,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
       Swal.fire({
         icon: 'error',
         title: 'Error de validación',
-        text: message, // Aquí saldrá si "El vehículo está en mantenimiento"
+        text: message,
       });
     }
   });
@@ -88,6 +124,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     onSuccess: (updatedOp) => {
       queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
       queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
       queryClient.invalidateQueries({ queryKey: ['operations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
       showToast.success('Vehículo asignado a la solicitud.');
@@ -106,6 +143,7 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     onSuccess: (updatedOp) => {
       queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
       queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
       showToast.success(
         `Operación ${updatedOp.isActive ? 'habilitada' : 'deshabilitada'} para el conductor.`,
       );
@@ -131,7 +169,16 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     await fetchOperationsQuery();
   }, [fetchOperationsQuery]);
 
-  // Envoltorio limpio para cualquier actualización operativa
+  // Envoltorio para crear operación
+  const createOperation = async (data: Record<string, unknown>): Promise<boolean> => {
+    try {
+      await createMutation.mutateAsync(data);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const updateOperation = async (id: number, data: UpdateOperationPayload): Promise<boolean> => {
     try {
       await updateMutation.mutateAsync({ id, data });
@@ -176,49 +223,78 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   // 4. WEBSOCKETS (TIEMPO REAL)
   // ==========================================
   useEffect(() => {
-   const handleGlobalUpdate = (data: any) => {
+    const handleGlobalUpdate = (data: OperationSocketPayload) => {
       // Dependiendo de tu EventsGateway, el ID podría venir como data.id o data.operationId
-      const opId = data.id || data.operationId;
+      const opId = data.id ?? data.operationId;
 
-      if (opId) {
-        console.log(`🔄 [WebSocket] Tráfico actualizado para operación #${opId}`, data);
-        
-        queryClient.setQueryData(['trafico', queryParams], (oldData: any) => {
-          if (!oldData) return oldData;
-          
-          // Soporta si oldData es Array o Paginated Object
-          const isArray = Array.isArray(oldData);
-          const list = isArray ? oldData : (oldData.data || []);
-          
-          // 🚀 SOLUCIÓN: Recorremos los grupos de clientes, no operaciones planas
-          const updatedList = list.map((group: any) => {
-            // Verificamos si la operación que llegó por el socket pertenece a este grupo
-            const hasChangedOp = group.operations?.some((op: any) => op.id === opId);
-            
-            if (hasChangedOp) {
-              // Si está aquí, mutamos las operaciones de ESTE grupo
-              return {
-                ...group,
-                operations: group.operations.map((op: any) => 
-                  op.id === opId 
-                    ? { ...op, ...data } // 👈 ¡Inyectamos los datos frescos del socket!
-                    : op
-                )
-              };
-            }
-            
-            return group;
-          });
-          
-          return isArray ? updatedList : { ...oldData, data: updatedList };
-        });
+      if (!opId) return;
 
-        // Actualizamos también la vista de detalle si está abierta
-        queryClient.setQueryData(['trafico-detail', opId], (oldDetail: any) => {
-          if (!oldDetail) return oldDetail; // o return data, según prefieras
-          return { ...oldDetail, ...data };
-        });
+      if (data.deleted) {
+        queryClient.invalidateQueries({ queryKey: ['trafico'] });
+        queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
+        queryClient.invalidateQueries({ queryKey: ['operations'] });
+        queryClient.invalidateQueries({ queryKey: ['operation-history'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
+        queryClient.removeQueries({ queryKey: ['trafico-detail', opId] });
+
+        if (currentOperationId === opId) {
+          setCurrentOperationId(null);
+        }
+
+        return;
       }
+
+      console.log(`🔄 [WebSocket] Tráfico actualizado para operación #${opId}`, data);
+      queryClient.setQueryData(['trafico', queryParams], (oldData: unknown) => {
+        if (!oldData) return oldData;
+
+        const currentData = oldData as
+          | Array<{ operations?: Array<{ id: number }> }>
+          | { data?: Array<{ operations?: Array<{ id: number }> }> };
+
+        // Soporta si oldData es Array o Paginated Object
+        const isArray = Array.isArray(currentData);
+        const list = isArray ? currentData : (currentData.data || []);
+        
+        // 🚀 SOLUCIÓN: Recorremos los grupos de clientes, no operaciones planas
+        const updatedList = list.map((group) => {
+          const operations = group.operations ?? [];
+          const hasChangedOp = operations.some((op) => op.id === opId);
+          
+          if (hasChangedOp) {
+            // Si está aquí, mutamos las operaciones de ESTE grupo
+            return {
+              ...group,
+              operations: operations.map((op) => 
+                op.id === opId 
+                  ? { ...op, ...data } // 👈 ¡Inyectamos los datos frescos del socket!
+                  : op
+              )
+            };
+          }
+          
+          return group;
+        });
+        queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
+
+        if (isArray) {
+          return updatedList;
+        }
+
+        return {
+          ...(currentData as Record<string, unknown>),
+          data: updatedList,
+        };
+      });
+
+      // Actualizamos también la vista de detalle si está abierta
+      queryClient.setQueryData(['trafico-detail', opId], (oldDetail: unknown) => {
+        if (!oldDetail) return oldDetail; // o return data, según prefieras
+        return {
+          ...(oldDetail as Record<string, unknown>),
+          ...data,
+        };
+      });
     };
 
     socket.on('global_operations_updated', handleGlobalUpdate);
@@ -226,17 +302,20 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     return () => {
       socket.off('global_operations_updated', handleGlobalUpdate);
     };
-  }, [queryClient, queryParams]);
+  }, [queryClient, queryParams, currentOperationId]);
 
   return {
     operations,
+    queryParams,
     currentOperation,
     meta,
-    isLoadingOperations: isLoadingOperations || updateMutation.isPending,
+    // 🚀 La magia ocurre aquí: Unificamos el estado de carga
+    isLoadingOperations: isLoadingOperationsQuery || updateMutation.isPending || createMutation.isPending,
     isLoadingCurrent,
     error,
     fetchOperations,
     fetchOperationById,
+    createOperation, // 🚀 Exportamos el método
     updateOperation,
     assignVehicle,
     assignResources,

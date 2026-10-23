@@ -26,7 +26,7 @@ export function useDashboard(filters: DashboardFilters = {}) {
   if (queryError) {
     errorMessage =
       isAxiosError(queryError) && (queryError.response?.status ?? 0) >= 500
-        ? 'El servidor no pudo consultar el dashboard. Verifica que la base de datos esté sincronizada con el esquema Prisma.'
+        ? 'El servidor no pudo procesar los datos del dashboard. Inténtalo de nuevo en unos minutos.'
         : getUserFriendlyErrorMessage(
             queryError,
             'No se pudieron cargar los datos del panel. Inténtalo de nuevo.',

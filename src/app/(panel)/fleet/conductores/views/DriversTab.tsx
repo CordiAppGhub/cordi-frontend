@@ -11,11 +11,14 @@ import CreateDriverModal from '../components/CreateDriverModal';
 import { DriverCard } from '../../components/DriverCard'; 
 import styles from '../../components/fleet-cards.module.css';
 
+import { Driver } from '@/types/drivers';
+
 export const DriversTab = () => {
   const router = useRouter();
-  const { drivers, isLoading, loadDrivers, createDriver } = useDrivers();
+  const { drivers, isLoading, loadDrivers, createDriver, editDriver, deleteDriver } = useDrivers();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
   const isInitialized = useRef(false);
 
   useEffect(() => {
@@ -26,7 +29,18 @@ export const DriversTab = () => {
   }, [loadDrivers]);
 
   const handleOpenCreate = () => {
+    setDriverToEdit(null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (driver: Driver) => {
+    setDriverToEdit(driver);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setDriverToEdit(null);
   };
 
   return (
@@ -57,7 +71,9 @@ export const DriversTab = () => {
             <DriverCard 
               key={driver.id} 
               driver={driver} 
-              onClickDetail={(id) => router.push(`/fleet/conductores/${id}`)} 
+              onClickDetail={(id) => router.push(`/fleet/conductores/${id}`)}
+              onEdit={handleOpenEdit}
+              onDelete={deleteDriver}
             />
           ))}
         </div>
@@ -66,8 +82,10 @@ export const DriversTab = () => {
       {isModalOpen && (
         <CreateDriverModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseModal}
           onCreateDriver={createDriver}
+          onEditDriver={editDriver}
+          driverToEdit={driverToEdit}
         />
       )}
     </div>

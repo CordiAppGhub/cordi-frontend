@@ -4,6 +4,21 @@
   width: 100%;
 }
 
+.amparoBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .containerStatusSection {
   display: flex;
   flex-direction: column;
@@ -174,4 +189,37 @@
   font-weight: 700;
   border: 1px solid #bbf7d0;
   font-size: 0.9rem;
+}
+
+.stepWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.containerHint,
+.stepInstruction {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.rejectedNotice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.8rem;
+}
+
+.rejectedBtn {
+  border-color: #f87171;
+  background: #fef2f2;
+  color: #b91c1c;
 }

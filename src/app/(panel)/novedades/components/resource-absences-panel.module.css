@@ -1,0 +1,128 @@
+.panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: #fff;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header h2 {
+  margin: 0;
+  color: var(--color-brand-900);
+  font-size: 1.05rem;
+}
+
+.header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.header button,
+.actions button {
+  border: 1px solid #1d4ed8;
+  border-radius: 7px;
+  padding: 8px 11px;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 10px;
+}
+
+.card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cardHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.cardHeader div > span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.activeBadge,
+.closedBadge {
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.activeBadge {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.closedBadge {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.dates {
+  display: grid;
+  gap: 3px;
+  color: #475569;
+  font-size: 0.8rem;
+}
+
+.vehicle,
+.coverage {
+  margin: 0;
+  color: #334155;
+  font-size: 0.82rem;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actions .closeButton {
+  color: #334155;
+  background: #fff;
+  border-color: #cbd5e1;
+}
+
+.state,
+.error {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.error {
+  color: #b91c1c;
+}
