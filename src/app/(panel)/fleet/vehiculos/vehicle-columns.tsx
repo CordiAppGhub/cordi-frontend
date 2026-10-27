@@ -39,7 +39,7 @@ export const getVehicleColumns = (
 
   { id: 'empresa', header: 'Empresa', type: 'text', renderCell: (row: Vehicle) => row.empresa || '--' },
   { id: 'brand', header: 'Marca', type: 'text', renderCell: (row: Vehicle) => row.brand || '--' },
-  { id: 'capacityWeight', header: 'Capacidad', type: 'text', renderCell: (row: Vehicle) => row.capacityWeight || '--' },
+  { id: 'cargoCapacity', header: 'Capacidad', type: 'text', renderCell: (row: Vehicle) => row.cargoCapacity || '--' },
   { id: 'status', header: 'Estado', type: 'text', renderCell: (row: Vehicle) => <StatusBadge status={row.status} /> },
   { id: 'soatExpiration', header: 'Venc. SOAT', type: 'text', renderCell: (row: Vehicle) => row.soatExpiration ? new Date(row.soatExpiration).toLocaleDateString() : '--' },
   {

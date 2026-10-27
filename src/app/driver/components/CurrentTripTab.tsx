@@ -104,11 +104,9 @@ export function CurrentTripTab({
                       "ASIGNADO"}
                   </span>
                   <span>
-                    Contenedor:{" "}
-                    {(operation.containerStatus || "PENDIENTE").replace(
-                      /_/g,
-                      " ",
-                    )}
+                    {operation.cargoFormat === "SUELTA"
+                      ? "Carga suelta"
+                      : `Contenedor: ${(operation.containerStatus || "PENDIENTE").replace(/_/g, " ")}`}
                   </span>
                 </span>
                 <span

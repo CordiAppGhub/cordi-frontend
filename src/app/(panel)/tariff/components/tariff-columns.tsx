@@ -4,6 +4,7 @@ import React from 'react';
 import { ColumnDef } from '@/types/table';
 import { formatLocationLabel } from '@/utils/location';
 import { ClientTariff } from '@/types/tariff-ypes';
+import { Button } from '@/components/atoms/button/button';
 
 export interface ClientTariffGroup {
   id: number;
@@ -44,11 +45,14 @@ export const getClientGroupColumns = (): ColumnDef<ClientTariffGroup>[] => [
   },
 ];
 
-export const getTariffColumns = (): ColumnDef<ClientTariff>[] => getClientTariffColumns().filter(
-  (column) => column.id !== 'client',
-);
+export const getTariffColumns = (
+  onEdit: (tariff: ClientTariff) => void,
+): ColumnDef<ClientTariff>[] =>
+  getClientTariffColumns(onEdit).filter((column) => column.id !== 'client');
 
-const getClientTariffColumns = (): ColumnDef<ClientTariff>[] => [
+const getClientTariffColumns = (
+  onEdit: (tariff: ClientTariff) => void,
+): ColumnDef<ClientTariff>[] => [
   {
     id: 'client',
     header: 'Cliente Titular',
@@ -89,26 +93,38 @@ const getClientTariffColumns = (): ColumnDef<ClientTariff>[] => [
     ),
   },
   {
-    id: 'location',
-    header: 'Cobertura / Zona',
+    id: 'cargoFormat',
+    header: 'Formato / Capacidad',
+    type: 'text',
+    renderCell: (row) => (
+      <span>
+        {row.cargoFormat === 'SUELTA'
+          ? `Suelta · ${row.vehicleType?.name ?? 'Capacidad pendiente'}`
+          : `Contenerizada · ${row.containerSize ?? 'Tamaño pendiente'}`}
+      </span>
+    ),
+  },
+  {
+    id: 'route',
+    header: 'Ruta',
     type: 'text',
     renderCell: (row) => {
-      if (row.location) {
+      if (row.originLocation && row.destinationLocation) {
         return (
           <span style={{ fontSize: '0.85rem' }}>
-            📍 {formatLocationLabel(row.location)}
+            {formatLocationLabel(row.originLocation)} → {formatLocationLabel(row.destinationLocation)}
           </span>
         );
       }
       return (
-        <span style={{ 
-          padding: '4px 8px', 
-          backgroundColor: '#f1f5f9', 
-          color: '#475569', 
-          borderRadius: '12px', 
-          fontSize: '0.8rem' 
+        <span style={{
+          padding: '4px 8px',
+          backgroundColor: '#fef3c7',
+          color: '#92400e',
+          borderRadius: '12px',
+          fontSize: '0.8rem',
         }}>
-          🌐 Tarifa Plana (Cualquier Zona)
+          Ruta pendiente de configurar
         </span>
       );
     },
@@ -121,6 +137,23 @@ const getClientTariffColumns = (): ColumnDef<ClientTariff>[] => [
       <strong style={{ color: '#16a34a', fontSize: '1.1rem' }}>
         ${row.price.toLocaleString('es-CO')}
       </strong>
+    ),
+  },
+  {
+    id: 'actions',
+    header: 'Acciones',
+    type: 'text',
+    renderCell: (row) => (
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={(event) => {
+          event.stopPropagation();
+          onEdit(row);
+        }}
+      >
+        Editar
+      </Button>
     ),
   },
 ];

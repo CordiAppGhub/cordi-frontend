@@ -17,6 +17,26 @@ export const vehiclesService = {
     return data;
   },
 
+  uploadDocument: async (file: File): Promise<{ fileUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/vehicles/documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+    return data;
+  },
+
+  extractDates: async (file: File): Promise<{ expirationDate: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/vehicles/extract-dates', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+    return data;
+  },
+
   update: async (id: number, payload: UpdateVehicleDto): Promise<Vehicle> => {
     const { data } = await api.patch(`/vehicles/${id}`, payload);
     return data;

@@ -70,6 +70,7 @@ export interface Operation {
   id: number;
   createdAt: string;
   type?: string;
+  cargoFormat?: "CONTENERIZADA" | "SUELTA";
   status?: OperationStatus;
   isActive: boolean;
   fleteAPagar?: number | null;
@@ -77,6 +78,9 @@ export interface Operation {
   placaIA?: string | null;
   containerNumber?: string | null;
   containerType?: string | null;
+  cargoDescription?: string | null;
+  weight?: number | null;
+  dimensions?: string | null;
   containerStatus?: OperationContainerStatus;
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;

@@ -8,6 +8,7 @@ import { useClients } from '@/hooks/useClient';
 import { Client } from '@/types/client.-types';
 import { getClientColumns } from '../components/ClientColumns';
 import { ClientModal } from '../components/clientModal/ClientModal';
+import { PageHeader } from '@/components/molecules/page-header/page-header';
 import styles from '../locations.module.css';
 
 export const ClientsView: React.FC = () => {
@@ -42,13 +43,19 @@ export const ClientsView: React.FC = () => {
   return (
     <div className={styles.page}>
       
-      <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>Portafolio de Clientes</h2>
-          <p className={styles.subtitle}>Gestión de datos fiscales y facturación de la operación.</p>
-        </div>
-        <Button onClick={handleOpenCreate} variant="primary">+ Nuevo Cliente</Button>
-      </div>
+      <PageHeader
+        title="Portafolio de Clientes"
+        description="Gestión de datos fiscales y facturación de la operación."
+        titleLevel={2}
+        className={styles.header}
+        titleClassName={styles.title}
+        descriptionClassName={styles.subtitle}
+        actions={
+          <Button onClick={handleOpenCreate} variant="primary">
+            + Nuevo Cliente
+          </Button>
+        }
+      />
 
       {isLoadingClients ? (
         <TruckLoader variant="compact" message="Sincronizando base de datos comercial..." />

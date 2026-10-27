@@ -26,17 +26,6 @@ export function useAssignments() {
     queryFn: assignmentService.getAll,
     staleTime: 1000 * 60 * 5,
   });
-  const {
-    data: delegations = [],
-    isLoading: isLoadingDelegations,
-    error: delegationsQueryError,
-    refetch: refreshDelegations,
-  } = useQuery({
-    queryKey: ['analyst-delegations'],
-    queryFn: assignmentService.getActiveDelegations,
-    staleTime: 1000 * 60,
-  });
-
   let errorMessage: string | null = null;
   if (queryError) {
     errorMessage = getUserFriendlyErrorMessage(
@@ -44,13 +33,6 @@ export function useAssignments() {
       'No se pudieron cargar las asignaciones. Inténtalo de nuevo.',
     );
   }
-  const delegationsError = delegationsQueryError
-    ? getUserFriendlyErrorMessage(
-        delegationsQueryError,
-        'No se pudieron cargar las coberturas parciales.',
-      )
-    : null;
-
   const createMutation = useMutation({
     mutationFn: (data: CreateAssignmentInput) => assignmentService.create(data),
     onSuccess: () => {
@@ -74,44 +56,6 @@ export function useAssignments() {
     },
     onError: (err: AxiosError<{ message?: string }>) => {
       showToast.error(err.response?.data?.message || 'No se pudo revocar la asignación.');
-    },
-  });
-
-  const createDelegationMutation = useMutation({
-    mutationFn: (data: CreateDelegationInput) =>
-      assignmentService.createDelegation(data),
-    onSuccess: async () => {
-      showToast.success('Cobertura parcial asignada correctamente.');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['analyst-delegations'] }),
-        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
-        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
-        queryClient.invalidateQueries({ queryKey: ['operations'] }),
-      ]);
-    },
-    onError: (err: AxiosError<{ message?: string }>) => {
-      showToast.error(
-        err.response?.data?.message || 'No se pudo crear la cobertura.',
-      );
-    },
-  });
-
-  const revokeDelegationMutation = useMutation({
-    mutationFn: (delegationId: number) =>
-      assignmentService.revokeDelegation(delegationId),
-    onSuccess: async () => {
-      showToast.success('La cobertura se finalizó correctamente.');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['analyst-delegations'] }),
-        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
-        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
-        queryClient.invalidateQueries({ queryKey: ['operations'] }),
-      ]);
-    },
-    onError: (err: AxiosError<{ message?: string }>) => {
-      showToast.error(
-        err.response?.data?.message || 'No se pudo finalizar la cobertura.',
-      );
     },
   });
 
@@ -152,16 +96,81 @@ export function useAssignments() {
     [deleteMutation]
   );
 
+  return {
+    assignments,
+    isLoadingAssignments,
+    error: errorMessage,
+    createAssignment,
+    removeAssignment,
+    refreshAssignments,
+    isAssigning: createMutation.isPending,
+  };
+}
+
+export function useAnalystDelegations(enabled = true) {
+  const queryClient = useQueryClient();
+  const {
+    data: delegations = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['analyst-delegations'],
+    queryFn: assignmentService.getActiveDelegations,
+    staleTime: 1000 * 60,
+    enabled,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateDelegationInput) =>
+      assignmentService.createDelegation(data),
+    onSuccess: async () => {
+      showToast.success('Cobertura parcial asignada correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['analyst-delegations'] }),
+        queryClient.invalidateQueries({ queryKey: ['novedades'] }),
+        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+        queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      ]);
+    },
+    onError: (err: AxiosError<{ message?: string }>) => {
+      showToast.error(
+        err.response?.data?.message || 'No se pudo crear la cobertura.',
+      );
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (delegationId: number) =>
+      assignmentService.revokeDelegation(delegationId),
+    onSuccess: async () => {
+      showToast.success('La cobertura se finalizó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['analyst-delegations'] }),
+        queryClient.invalidateQueries({ queryKey: ['novedades'] }),
+        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+        queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      ]);
+    },
+    onError: (err: AxiosError<{ message?: string }>) => {
+      showToast.error(
+        err.response?.data?.message || 'No se pudo finalizar la cobertura.',
+      );
+    },
+  });
+
   const createDelegation = useCallback(
     async (data: CreateDelegationInput): Promise<boolean> => {
       try {
-        await createDelegationMutation.mutateAsync(data);
+        await createMutation.mutateAsync(data);
         return true;
       } catch {
         return false;
       }
     },
-    [createDelegationMutation],
+    [createMutation],
   );
 
   const revokeDelegation = useCallback(
@@ -179,30 +188,28 @@ export function useAssignments() {
       if (!result.isConfirmed) return false;
 
       try {
-        await revokeDelegationMutation.mutateAsync(delegationId);
+        await revokeMutation.mutateAsync(delegationId);
         return true;
       } catch {
         return false;
       }
     },
-    [revokeDelegationMutation],
+    [revokeMutation],
   );
 
   return {
-    assignments,
     delegations,
-    isLoadingDelegations,
-    delegationsError,
-    isLoadingAssignments,
-    error: errorMessage,
-    createAssignment,
-    removeAssignment,
+    isLoading,
+    error: error
+      ? getUserFriendlyErrorMessage(
+          error,
+          'No se pudieron cargar las coberturas parciales.',
+        )
+      : null,
+    refetch,
     createDelegation,
     revokeDelegation,
-    refreshDelegations,
-    refreshAssignments,
-    isAssigning: createMutation.isPending,
-    isDelegating: createDelegationMutation.isPending,
+    isDelegating: createMutation.isPending,
   };
 }
 

@@ -91,9 +91,13 @@ export function DriverDetailView() {
     <div className={styles.layout}>
       <div className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => router.back()} className={styles.backButton}>
+          <Button
+            variant="secondary"
+            onClick={() => router.back()}
+            className={styles.backButton}
+          >
             ← Volver
-          </button>
+          </Button>
           <div>
             <h1 className={styles.title}>Perfil del Conductor</h1>
             <p className={styles.subtitle}>Información detallada y registro de actividad</p>

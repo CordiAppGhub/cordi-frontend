@@ -1,4 +1,4 @@
-import { ClientTariff, CreateClientTariffInput, PatioTariff, SurchargeCatalog, CreateSurchargeOverrideInput, QuoteResponse, AffiliationTariff, UpsertPatioTariffInput } from "@/types/tariff-ypes";
+import { CargoVehicleType, ClientQuoteParams, ClientTariff, CreateClientTariffInput, PatioTariff, SurchargeCatalog, CreateSurchargeOverrideInput, QuoteResponse, AffiliationTariff, UpsertPatioTariffInput } from "@/types/tariff-ypes";
 import { api } from "./api.service";
 
 export interface CreateSurchargeCatalogInput {
@@ -21,8 +21,18 @@ export const tariffService = {
     return data;
   },
 
+  getCargoVehicleTypes: async (): Promise<CargoVehicleType[]> => {
+    const { data } = await api.get('/tariffs/vehicle-types');
+    return data;
+  },
+
   createClientTariff: async (payload: CreateClientTariffInput): Promise<ClientTariff> => {
     const { data } = await api.post('/tariffs', payload);
+    return data;
+  },
+
+  updateClientTariff: async (id: number, payload: CreateClientTariffInput): Promise<ClientTariff> => {
+    const { data } = await api.patch(`/tariffs/${id}`, payload);
     return data;
   },
 
@@ -61,12 +71,7 @@ export const tariffService = {
     return data;
   },
 
-  getQuote: async (params: { 
-    clientId: number; 
-    operationType: string; 
-    isAnticipada: boolean; 
-    locationId?: number 
-  }): Promise<QuoteResponse> => {
+  getQuote: async (params: ClientQuoteParams): Promise<QuoteResponse> => {
     const { data } = await api.get('/tariffs/quote', { params });
     return data;
   },

@@ -28,7 +28,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClickEdit }
         <div className={styles.metricItem}>
           <span className={styles.metricLabel}>Capacidad</span>
           <span className={styles.metricValue}>
-            {vehicle.capacityWeight ? `${vehicle.capacityWeight.toLocaleString()} kg` : '--'}
+            {vehicle.cargoCapacity ? `${vehicle.cargoCapacity.toLocaleString()} kg` : '--'}
           </span>
         </div>
         <div className={styles.metricItem}>

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ColumnDef } from '@/types/table';
+import { Button } from '@/components/atoms/button/button';
 import styles from './pagination-table.module.css';
 
 interface SuperTableProps<T, S extends object> {
@@ -63,9 +64,14 @@ export default function PaginationTable<
         )}
         <div className={styles.actionButtons}>
           {nameButton && (
-            <button type="button" onClick={onOpenModal ? onOpenModal : () => alert('Falta la función onOpenModal')} className={styles.btnPrimary}>
+            <Button
+              type="button"
+              onClick={onOpenModal}
+              disabled={!onOpenModal}
+              className={styles.btnPrimary}
+            >
               {nameButton}
-            </button>
+            </Button>
           )}
         </div>
       </div>

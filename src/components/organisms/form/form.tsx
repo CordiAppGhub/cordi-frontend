@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 import { Input } from '../../atoms/input/input';
 import { Select } from '../../atoms/select/select';
 import { Button } from '../../atoms/button/button';
 import { SuperFormProps, FormFieldValue } from './types/form.types';
 import styles from './SuperForm.module.css';
 
+const EMPTY_DEFAULT_VALUES: Record<string, FormFieldValue> = {};
+
 export const SuperForm: React.FC<SuperFormProps> = ({
   fields,
-  defaultValues = {},
+  defaultValues = EMPTY_DEFAULT_VALUES,
   errors = {},
   isLoading = false,
   submitText = 'Guardar',
@@ -18,13 +21,27 @@ export const SuperForm: React.FC<SuperFormProps> = ({
   onCancel,
   onChange,
 }) => {
-  const [formData, setFormData] = useState<Record<string, FormFieldValue>>(defaultValues);
+  const { handleSubmit: submitForm, reset, setValue, watch } = useForm<
+    Record<string, FormFieldValue>
+  >({ defaultValues });
+  const formData = watch();
+  const previousDefaultValues = useRef(defaultValues);
+
+  useEffect(() => {
+    const previous = previousDefaultValues.current;
+    const valuesChanged =
+      Object.keys(previous).length !== Object.keys(defaultValues).length ||
+      Object.entries(defaultValues).some(
+        ([key, value]) => !Object.is(previous[key], value),
+      );
+    if (valuesChanged) {
+      reset(defaultValues);
+      previousDefaultValues.current = defaultValues;
+    }
+  }, [defaultValues, reset]);
 
   const handleChange = (name: string, value: FormFieldValue) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setValue(name, value, { shouldDirty: true, shouldTouch: true });
     if (onChange) {
       onChange(name, value);
     }
@@ -32,7 +49,7 @@ export const SuperForm: React.FC<SuperFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    void submitForm((values) => onSubmit(values))(e);
   };
 
   return (

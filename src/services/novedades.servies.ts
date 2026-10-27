@@ -145,7 +145,11 @@ export interface NovedadItem {
   resolvedBy?: { name: string };
   vehicle?: { plate: string };
   driver?: { name: string };
-  analyst?: { name: string };
+  analyst?: { id: number; name: string | null };
+  analystDelegations?: Array<{
+    id: number;
+    delegateAnalyst: { id: number; name: string | null };
+  }>;
   operation?: {
     id: number;
     type: string;

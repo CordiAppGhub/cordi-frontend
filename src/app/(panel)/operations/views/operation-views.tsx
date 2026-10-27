@@ -8,6 +8,7 @@ import { useTrafico } from '../hooks/useOperations';
 import { CreateDrawerOperation } from '../components/create-modal/create-modal';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { SuperModal } from '@/components/organisms/modal/modal';
 
 import styles from '../operations.module.css';
@@ -95,9 +96,10 @@ function ClientOperationsExpansion({
         </span>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           Mostrar
-          <select
+          <Select
             aria-label={`Operaciones por página para ${group.clientName}`}
             value={limit}
+            style={{ width: 'auto' }}
             onChange={(event) => {
               setLimit(Number(event.target.value));
               setPage(1);
@@ -108,7 +110,7 @@ function ClientOperationsExpansion({
                 {size}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 
@@ -174,23 +176,25 @@ function ClientOperationsExpansion({
           marginTop: 10,
         }}
       >
-        <button
+        <Button
+          variant="secondary"
           type="button"
           onClick={() => setPage(Math.max(1, page - 1))}
           disabled={page <= 1 || operationsQuery.isFetching}
         >
           Anterior
-        </button>
+        </Button>
         <span>
           Página {page} de {totalPages}
         </span>
-        <button
+        <Button
+          variant="secondary"
           type="button"
           onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages || operationsQuery.isFetching}
         >
           Siguiente
-        </button>
+        </Button>
       </div>
     </div>
   );

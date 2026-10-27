@@ -6,6 +6,7 @@ import { useDriverPortal } from "@/hooks/use-driverPortal";
 import { TruckLoader } from "@/components/TruckLoader";
 import styles from "./driver.module.css";
 import { Button } from "@/components/atoms/button/button";
+import { Select } from "@/components/atoms/select/select";
 import { SuperModal } from "@/components/organisms/modal/modal";
 import { Operation } from "@/types/driver-portal.types";
 import { DriverHeaderNav } from "./components/DriverHeaderNav";
@@ -320,7 +321,7 @@ export default function DriverPortalPage() {
                     style={{ display: "flex", flexDirection: "column", gap: 6 }}
                   >
                     Motivo del desvío
-                    <select
+                    <Select
                       value={deviationReason}
                       onChange={(event) =>
                         setDeviationReason(event.target.value)
@@ -328,7 +329,7 @@ export default function DriverPortalPage() {
                       disabled={processingState}
                     >
                       <option value="AVERIA_NO_APTO">Avería / No apto</option>
-                    </select>
+                    </Select>
                     <span>
                       Adjunta una foto clara del comodato entregado por el
                       patio.

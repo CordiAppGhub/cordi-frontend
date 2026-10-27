@@ -27,17 +27,6 @@
   font-size: 0.85rem;
 }
 
-.header button,
-.actions button {
-  border: 1px solid #1d4ed8;
-  border-radius: 7px;
-  padding: 8px 11px;
-  background: #1d4ed8;
-  color: #fff;
-  font-weight: 650;
-  cursor: pointer;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));

@@ -88,6 +88,9 @@ export interface OperationSurcharge {
 export interface Operation {
   id: number;
   type: string;
+  cargoFormat?: "CONTENERIZADA" | "SUELTA";
+  vehicleTypeId?: number | null;
+  vehicleType?: { id: number; code: string; name: string } | null;
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
   status:
     | "CREADO"
@@ -120,6 +123,9 @@ export interface Operation {
   containerType?: string | null;
   // 🚀 ACTUALIZADO: Alineado con Prisma
   peso?: number | null;
+  cargoDescription?: string | null;
+  weight?: number | null;
+  dimensions?: string | null;
   sealNumber?: string | null; // Sello/Precinto
   pinRetiro?: string | null; // PIN del puerto
 

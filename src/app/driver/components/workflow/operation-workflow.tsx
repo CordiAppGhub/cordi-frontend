@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./operation-workflow.module.css";
 import { Button } from "@/components/atoms/button/button";
+import { Select } from "@/components/atoms/select/select";
 import { OperationContainerStatus } from "@/types/driver-portal.types";
 
 const PORT_ENTRY_EVIDENCE = "INGRESO_PUERTO";
@@ -15,6 +16,10 @@ const CONTAINER_NUMBER_EVIDENCE = "Número de contenedor";
 interface OperationData {
   id: number;
   type?: string;
+  cargoFormat?: "CONTENERIZADA" | "SUELTA";
+  cargoDescription?: string | null;
+  weight?: number | null;
+  dimensions?: string | null;
   estadoViaje?: string;
   status?: string;
   containerStatus?: OperationContainerStatus;
@@ -424,6 +429,17 @@ export function OperationWorkflow({
     workflowSteps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
   }
 
+  if (operation.cargoFormat === "SUELTA") {
+    workflowSteps = workflowSteps
+      .filter(
+        (step) =>
+          step.action !== "ocr" &&
+          !step.requiresEvidence?.includes(CONTAINER_NUMBER_EVIDENCE) &&
+          !step.evidenceTypes?.includes(SEAL_EVIDENCE),
+      )
+      .map((step) => ({ ...step, requiresContainerStatus: undefined }));
+  }
+
   const currentIndex = isFinished
     ? workflowSteps.length
     : Math.max(
@@ -476,6 +492,14 @@ export function OperationWorkflow({
         </div>
       )}
 
+      {operation.cargoFormat === "SUELTA" ? (
+        <section className={styles.containerStatusSection}>
+          <h3 className={styles.title}>DATOS DE CARGA SUELTA</h3>
+          <p>{operation.cargoDescription || "Descripción pendiente"}</p>
+          <p>Peso: {operation.weight ?? "Pendiente"}</p>
+          <p>Dimensiones: {operation.dimensions || "Pendientes"}</p>
+        </section>
+      ) : (
       <section className={styles.containerStatusSection}>
         <h3 className={styles.title}>ESTADO DEL CONTENEDOR</h3>
         <p className={styles.containerStatusCurrent}>
@@ -490,7 +514,7 @@ export function OperationWorkflow({
         <label className={styles.containerStatusLabel} htmlFor={`container-status-${operation.id}`}>
           Reportar estado en campo
         </label>
-        <select
+        <Select
           id={`container-status-${operation.id}`}
           className={styles.containerStatusSelect}
           value={selectedContainerStatus}
@@ -508,7 +532,7 @@ export function OperationWorkflow({
           <option value="CARGADO">Cargue finalizado (CARGADO)</option>
           <option value="EN_DESCARGUE">Iniciar descargue</option>
           <option value="DESCARGADO">Descargue finalizado (DESCARGADO)</option>
-        </select>
+        </Select>
         {selectedContainerStatus === "FALLA_REPORTADA" && (
           <textarea
             className={styles.issueDescription}
@@ -547,6 +571,7 @@ export function OperationWorkflow({
           <p>Descargue: {formatTimestamp(operation.unloadingStartedAt)} — {formatTimestamp(operation.unloadingCompletedAt)}</p>
         </div>
       </section>
+      )}
 
       <div className={styles.header}>
         <h3 className={styles.title}>SECUENCIA DEL VIAJE</h3>

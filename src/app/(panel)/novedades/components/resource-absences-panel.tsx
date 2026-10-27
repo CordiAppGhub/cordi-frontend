@@ -2,17 +2,16 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { SuperModal } from '@/components/organisms/modal/modal';
+import { Button } from '@/components/atoms/button/button';
 import { useAuthStore } from '@/store/use-auth.store';
 import {
   resourceAbsenceService,
   type ResourceAbsence,
 } from '@/services/resource-absence.service';
-import { showToast } from '@/utils/alerts';
+import { showConfirm, showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { AnalystDelegationModal } from './analyst-delegation-modal';
 import { DriverSubstitutionModal } from './driver-substitution-modal';
-import { ResourceAbsenceForm } from './resource-absence-form';
 import styles from './resource-absences-panel.module.css';
 
 const reasonLabels = {
@@ -31,7 +30,6 @@ export function ResourceAbsencesPanel() {
     queryFn: resourceAbsenceService.getAbsences,
     enabled: canManage,
   });
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedAbsence, setSelectedAbsence] =
     useState<ResourceAbsence | null>(null);
   const [delegationType, setDelegationType] = useState<
@@ -47,13 +45,14 @@ export function ResourceAbsencesPanel() {
   };
 
   const handleCloseAbsence = async (absence: ResourceAbsence) => {
-    if (
-      !window.confirm(
-        `¿Cerrar la ausencia de ${absence.user.name || 'este recurso'} y restaurar las asignaciones temporales?`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: '¿Cerrar ausencia?',
+      text: `Se cerrará la ausencia de ${absence.user.name || 'este recurso'} y se restaurarán las asignaciones temporales.`,
+      confirmButtonText: 'Sí, cerrar ausencia',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
     try {
       await resourceAbsenceService.closeAbsence(absence.id);
       showToast.success('Ausencia cerrada y asignaciones temporales restauradas.');
@@ -69,15 +68,12 @@ export function ResourceAbsencesPanel() {
     <section className={styles.panel}>
       <div className={styles.header}>
         <div>
-          <h2>Ausentismo de recursos</h2>
+          <h2>Ausencias formales de recursos</h2>
           <p>
-            Registra ausencias y gestiona coberturas temporales sin cambiar las
-            asignaciones titulares.
+            Consulta periodos formales y gestiona sustituciones o restauración
+            de asignaciones titulares.
           </p>
         </div>
-        <button type="button" onClick={() => setIsCreateOpen(true)}>
-          + Registrar ausencia
-        </button>
       </div>
 
       {absencesQuery.isLoading ? (
@@ -136,17 +132,18 @@ export function ResourceAbsencesPanel() {
                 {absence.status === 'ACTIVE' && (
                   <div className={styles.actions}>
                     {isAnalyst ? (
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
                         onClick={() => {
                           setSelectedAbsence(absence);
                           setDelegationType('ANALYST');
                         }}
                       >
                         Delegar clientes
-                      </button>
+                      </Button>
                     ) : absence.vehicle && !hasDriverSubstitution ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           setSelectedAbsence(absence);
@@ -154,15 +151,16 @@ export function ResourceAbsencesPanel() {
                         }}
                       >
                         Asignar conductor sustituto
-                      </button>
+                      </Button>
                     ) : null}
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
                       className={styles.closeButton}
                       onClick={() => void handleCloseAbsence(absence)}
                     >
                       Cerrar ausencia
-                    </button>
+                    </Button>
                   </div>
                 )}
               </article>
@@ -172,21 +170,6 @@ export function ResourceAbsencesPanel() {
       ) : (
         <p className={styles.state}>No hay ausencias registradas.</p>
       )}
-
-      <SuperModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Registrar ausencia de recurso"
-        width="600px"
-      >
-        <ResourceAbsenceForm
-          onCancel={() => setIsCreateOpen(false)}
-          onSuccess={() => {
-            setIsCreateOpen(false);
-            void refresh();
-          }}
-        />
-      </SuperModal>
 
       {selectedAbsence && delegationType === 'ANALYST' && (
         <AnalystDelegationModal

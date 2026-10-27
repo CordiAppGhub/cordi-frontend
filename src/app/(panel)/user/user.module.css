@@ -148,6 +148,11 @@
   flex: 0 1 180px;
 }
 
+.filterWrapper {
+  flex: 0 1 180px;
+  min-width: 0;
+}
+
 .search::placeholder {
   color: #8997a1;
 }

@@ -11,26 +11,50 @@ export type OperationType =
   | 'CARGA_SUELTA_NACIONAL'
   | 'MOVIMIENTO_INTERNO';
 
-export type ContainerType = 'DRY_20' | 'DRY_40' | 'HC_40' | 'REEFER_20' | 'REEFER_40' | 'FLAT_RACK' | 'OPEN_TOP';
+export type ContainerType = 'DRY_20' | 'DRY_40' | 'HC_40' | 'REEFER_40' | 'FLAT_RACK' | 'OPEN_TOP';
+export type CargoFormat = 'CONTENERIZADA' | 'SUELTA';
+
+export interface CargoVehicleType {
+  id: number;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
 
 export interface ClientTariff {
   id: number;
   clientId: number;
   operationType: OperationType;
   isAnticipada: boolean;
+  cargoFormat: CargoFormat;
+  originLocationId?: number | null;
+  destinationLocationId?: number | null;
+  originLocation?: { id: number; name: string } | null;
+  destinationLocation?: { id: number; name: string } | null;
+  containerSize?: ContainerType | null;
+  vehicleTypeId?: number | null;
+  vehicleType?: CargoVehicleType | null;
   locationId?: number | null;
   price: number;
   client?: { id: number; razonSocial: string };
   location?: { id: number; name: string };
 }
 
-export interface CreateClientTariffInput {
+interface CreateClientTariffBase {
   clientId: number;
   operationType: OperationType;
   isAnticipada?: boolean;
-  locationId?: number;
+  cargoFormat: CargoFormat;
+  originLocationId: number;
+  destinationLocationId: number;
   price: number;
 }
+
+export type CreateClientTariffInput = CreateClientTariffBase &
+  (
+    | { cargoFormat: 'CONTENERIZADA'; containerSize: ContainerType; vehicleTypeId?: never }
+    | { cargoFormat: 'SUELTA'; vehicleTypeId: number; containerSize?: never }
+  );
 
 export interface PatioTariff {
   id: number;
@@ -71,6 +95,16 @@ export interface QuoteResponse {
   tariffId?: number;
 }
 
+export interface ClientQuoteParams {
+  clientId: number;
+  operationType: string;
+  isAnticipada: boolean;
+  cargoFormat: CargoFormat;
+  originLocationId: number;
+  destinationLocationId: number;
+  containerSize?: ContainerType;
+  vehicleTypeId?: number;
+}
 
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';
 

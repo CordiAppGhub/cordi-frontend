@@ -13,6 +13,20 @@ import { useTariffs } from "../../tariff/hooks/useTariff";
 import { Operation } from "@/types/operation-types";
 import { useTrafico } from "./useOperations";
 import { OperationDateTimePicker } from "../components/operation-date-time-picker";
+import { operationCargoSchema } from "@/schemas/operation.schema";
+import { CargoFormat, ContainerType } from "@/types/tariff-ypes";
+
+const containerSizeValues: ContainerType[] = [
+  "DRY_20",
+  "DRY_40",
+  "HC_40",
+  "REEFER_40",
+  "FLAT_RACK",
+  "OPEN_TOP",
+];
+
+const getContainerSize = (value?: string | null): ContainerType | null =>
+  containerSizeValues.find((containerSize) => containerSize === value) ?? null;
 
 const typeOptions = [
   { value: "IMPORTACION", label: "Importación" },
@@ -48,8 +62,13 @@ export const useOperationForm = (
     queryKey: ["shipping-lines"],
     queryFn: operationService.getShippingLines,
   });
-  const { suggestedPrice, isCalculatingPrice, getLiveQuote, resetQuote } =
-    useTariffs();
+  const {
+    suggestedPrice,
+    isCalculatingPrice,
+    getLiveQuote,
+    resetQuote,
+    vehicleTypes,
+  } = useTariffs();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [programarDesvio, setProgramarDesvio] = useState(false);
@@ -61,6 +80,15 @@ export const useOperationForm = (
   );
   const [isAnticipada, setIsAnticipada] = useState<boolean>(
     operationBase?.isAnticipada || false,
+  );
+  const [cargoFormat, setCargoFormat] = useState<CargoFormat>(
+    operationBase?.cargoFormat || "CONTENERIZADA",
+  );
+  const [containerSize, setContainerSize] = useState<ContainerType | null>(
+    getContainerSize(operationBase?.containerType) ?? "DRY_40",
+  );
+  const [vehicleTypeId, setVehicleTypeId] = useState<number | null>(
+    operationBase?.vehicleTypeId ?? null,
   );
   const [selectedDescargueId, setSelectedDescargueId] = useState<number | null>(
     operationBase?.descargue?.id || operationBase?.cargue?.id || null,
@@ -109,6 +137,9 @@ export const useOperationForm = (
       tomorrow.setHours(8, 0, 0, 0);
       return {
         scheduledAt: formatDate(tomorrow),
+        cargoFormat: "CONTENERIZADA",
+        containerSize: "DRY_40",
+        vehicleTypeId: "",
         programarDesvio: false,
         nuevoDestinoId: "",
         fechaCitaDesvio: "",
@@ -119,6 +150,8 @@ export const useOperationForm = (
 
     return {
       type: operationBase.type,
+      cargoFormat: operationBase.cargoFormat || "CONTENERIZADA",
+      vehicleTypeId: operationBase.vehicleTypeId ?? "",
       shippingLineId: operationBase.shippingLineId ?? "",
       requiresInspection: operationBase.requiresInspection ?? false,
       clientId: operationBase.client?.id || operationBase.clientId,
@@ -128,8 +161,11 @@ export const useOperationForm = (
       destinoId: operationBase.destino?.id,
 
       containerNumber: operationBase.containerNumber || "",
-      containerType: operationBase.containerType || "DRY_40",
+      containerSize: getContainerSize(operationBase.containerType) || "DRY_40",
       peso: operationBase.peso || "",
+      cargoDescription: operationBase.cargoDescription || "",
+      weight: operationBase.weight ?? "",
+      dimensions: operationBase.dimensions || "",
       sealNumber: operationBase.sealNumber || "",
       pinRetiro: operationBase.pinRetiro || "",
 
@@ -156,23 +192,39 @@ export const useOperationForm = (
       return;
     }
 
-    const commercialLocationId =
-      isImport || isExport ? selectedDescargueId : destinoId;
-
-    if (!commercialLocationId) {
+    const tariffContainerSize =
+      cargoFormat === "CONTENERIZADA" ? containerSize : undefined;
+    const tariffVehicleTypeId =
+      cargoFormat === "SUELTA" ? vehicleTypeId : undefined;
+    if (
+      !origenId ||
+      !destinoId ||
+      (cargoFormat === "CONTENERIZADA" && !tariffContainerSize) ||
+      (cargoFormat === "SUELTA" && !tariffVehicleTypeId)
+    ) {
       resetQuote();
       return;
     }
 
-    getLiveQuote(clientId, currentType, isAnticipada, commercialLocationId);
+    getLiveQuote(
+      clientId,
+      currentType,
+      isAnticipada,
+      origenId,
+      destinoId,
+      cargoFormat,
+      tariffContainerSize,
+      tariffVehicleTypeId,
+    );
   }, [
     clientId,
     currentType,
     isAnticipada,
-    selectedDescargueId,
+    origenId,
     destinoId,
-    isImport,
-    isExport,
+    cargoFormat,
+    containerSize,
+    vehicleTypeId,
     getLiveQuote,
     resetQuote,
   ]);
@@ -290,15 +342,6 @@ export const useOperationForm = (
       ...(!isEdit
         ? [
             {
-              name: "shippingLineId",
-              label: "Línea naviera",
-              type: "select" as const,
-              options: (shippingLinesQuery.data ?? []).map((line) => ({
-                value: line.id,
-                label: `${line.name} · NIT ${line.nit}`,
-              })),
-            },
-            {
               name: "requiresInspection",
               label: "La línea naviera exige inspección",
               type: "checkbox" as const,
@@ -403,33 +446,107 @@ export const useOperationForm = (
     const cargaFields: FormField[] = currentType
       ? [
           {
-            name: "containerNumber",
-            label: isExport || isImport ? "Número de Contenedor" : "Número de Contenedor (opcional)",
-            type: "text",
-            placeholder: "Ej: MSKU1234567",
+            name: "cargoFormat",
+            label: "Formato de mercancía *",
+            type: "radio",
+            options: [
+              { value: "CONTENERIZADA", label: "Contenerizada" },
+              { value: "SUELTA", label: "Carga suelta" },
+            ],
+            fullWidth: true,
           },
           {
-            name: "containerType",
-            label: isExport || isImport ? "Tipo Contenedor *" : "Tipo Contenedor (opcional)",
+            name: "containerNumber",
+            label: "Número de contenedor *",
+            type: "text",
+            placeholder: "Ej: MSKU1234567",
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+          },
+          {
+            name: "containerSize",
+            label: "Tamaño del contenedor *",
+            type: "select",
+            options: containerSizeValues.map((size) => ({
+              value: size,
+              label: size.replace("_", " "),
+            })),
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+          },
+          {
+            name: "vehicleTypeId",
+            label: "Capacidad del vehículo *",
             type: "select",
             options: [
-              { value: "DRY_20", label: "DRY 20" },
-              { value: "DRY_40", label: "DRY 40" },
-              { value: "HC_40", label: "High Cube 40" },
+              { value: "", label: "-- Seleccionar capacidad --" },
+              ...vehicleTypes.map((vehicleType) => ({
+                value: vehicleType.id,
+                label: vehicleType.name,
+              })),
             ],
+            visible: (formData) => formData.cargoFormat === "SUELTA",
           },
-          { name: "peso", label: "Peso (Kilos / Toneladas)", type: "number" },
+          {
+            name: "shippingLineId",
+            label: "Línea naviera *",
+            type: "select",
+            options: [
+              ...(operationBase?.shippingLine &&
+              !(shippingLinesQuery.data ?? []).some(
+                (line) => line.id === operationBase.shippingLineId,
+              )
+                ? [{
+                    value: operationBase.shippingLine.id,
+                    label: `${operationBase.shippingLine.name} · NIT ${operationBase.shippingLine.nit}`,
+                  }]
+                : []),
+              ...(shippingLinesQuery.data ?? []).map((line) => ({
+                value: line.id,
+                label: `${line.name} · NIT ${line.nit}`,
+              })),
+            ],
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+          },
+          {
+            name: "cargoDescription",
+            label: "Descripción de la carga *",
+            type: "textarea",
+            placeholder: "Describe la mercancía",
+            fullWidth: true,
+            visible: (formData) => formData.cargoFormat === "SUELTA",
+          },
+          {
+            name: "weight",
+            label: "Peso *",
+            type: "number",
+            placeholder: "Peso en kg",
+            visible: (formData) => formData.cargoFormat === "SUELTA",
+          },
+          {
+            name: "dimensions",
+            label: "Dimensiones *",
+            type: "text",
+            placeholder: "Ej: 2.4 x 1.8 x 1.5 m",
+            visible: (formData) => formData.cargoFormat === "SUELTA",
+          },
+          {
+            name: "peso",
+            label: "Peso del contenedor (Kilos / Toneladas)",
+            type: "number",
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+          },
           {
             name: "sealNumber",
             label: "Sello / Precinto",
             type: "text",
             placeholder: "Ej: 123456",
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
           },
           {
             name: "pinRetiro",
             label: "PIN de Retiro",
             type: "text",
             placeholder: "Opcional",
+            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
           },
           {
             name: "documentoTransporte",
@@ -461,6 +578,7 @@ export const useOperationForm = (
     exigeCitaDestino,
     clientOptions,
     shippingLinesQuery.data,
+    vehicleTypes,
     origenOptions,
     descargueOptions,
     destinoOptions,
@@ -479,6 +597,11 @@ export const useOperationForm = (
       resetQuote();
     }
     if (name === "isAnticipada") setIsAnticipada(Boolean(value));
+    if (name === "cargoFormat") setCargoFormat(String(value) as CargoFormat);
+    if (name === "containerSize")
+      setContainerSize(getContainerSize(String(value)));
+    if (name === "vehicleTypeId")
+      setVehicleTypeId(Number(value) || null);
     if (name === "programarDesvio") setProgramarDesvio(Boolean(value));
     if (name === "descargueId") setSelectedDescargueId(Number(value) || null);
     if (name === "origenId") setOrigenId(Number(value) || null);
@@ -498,14 +621,25 @@ export const useOperationForm = (
   const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     setErrors({});
     const localErrors: Record<string, string> = {};
+    const cargoValidation = operationCargoSchema.safeParse(formData);
+    if (!cargoValidation.success) {
+      for (const issue of cargoValidation.error.issues) {
+        const fieldName = String(issue.path[0] ?? "cargoFormat");
+        localErrors[fieldName] = issue.message;
+      }
+    }
 
     if (!formData.type && !isEdit) localErrors.type = "El tipo es obligatorio.";
     if (!formData.clientId && !isEdit)
       localErrors.clientId = "El cliente es obligatorio.";
     if (!formData.scheduledAt)
       localErrors.scheduledAt = "La fecha y hora son obligatorias.";
-    if ((isExport || isImport) && !formData.containerType)
-      localErrors.containerType = "El tipo de contenedor es obligatorio.";
+    if (
+      formData.cargoFormat === "SUELTA" &&
+      !formData.vehicleTypeId
+    ) {
+      localErrors.vehicleTypeId = "Selecciona la capacidad del vehículo.";
+    }
     if (
       isEdit &&
       operationBase?.containerStatus === "PENDIENTE_DEVOLUCION" &&
@@ -538,9 +672,6 @@ export const useOperationForm = (
       payload.type = String(formData.type);
       payload.clientId = Number(formData.clientId);
       payload.isAnticipada = isAnticipada;
-      payload.shippingLineId = formData.shippingLineId
-        ? Number(formData.shippingLineId)
-        : null;
       payload.requiresInspection = Boolean(formData.requiresInspection);
       if (isImport && Boolean(formData.programarDesvio)) {
         payload.programarDesvio = true;
@@ -551,16 +682,34 @@ export const useOperationForm = (
       }
     }
 
-    if (formData.containerType)
-      payload.containerType = String(formData.containerType);
+    payload.cargoFormat = String(formData.cargoFormat);
+    payload.vehicleTypeId =
+      formData.cargoFormat === "SUELTA"
+        ? Number(formData.vehicleTypeId)
+        : null;
+    payload.shippingLineId = formData.shippingLineId
+      ? Number(formData.shippingLineId)
+      : null;
+    if (formData.cargoFormat === "SUELTA") {
+      payload.containerNumber = null;
+      payload.containerSize = null;
+      payload.cargoDescription = String(formData.cargoDescription);
+      payload.weight = Number(formData.weight);
+      payload.dimensions = String(formData.dimensions);
+    } else {
+      payload.containerNumber = String(formData.containerNumber).toUpperCase();
+      payload.containerSize = String(formData.containerSize);
+      payload.cargoDescription = null;
+      payload.weight = null;
+      payload.dimensions = null;
+    }
+
     if (formData.scheduledAt)
       payload.scheduledAt = new Date(
         String(formData.scheduledAt),
       ).toISOString();
-    if (formData.containerNumber)
-      payload.containerNumber = String(formData.containerNumber).toUpperCase();
-
-    if (formData.peso) payload.peso = Number(formData.peso);
+    if (formData.cargoFormat === "CONTENERIZADA" && formData.peso)
+      payload.peso = Number(formData.peso);
     if (formData.sealNumber)
       payload.sealNumber = String(formData.sealNumber).toUpperCase();
     if (formData.pinRetiro) payload.pinRetiro = String(formData.pinRetiro);

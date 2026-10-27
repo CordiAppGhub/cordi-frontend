@@ -124,6 +124,8 @@ export interface OperationIssue {
 
 export type UpdateOperationPayload = Partial<{
   type: string;
+  cargoFormat: string;
+  vehicleTypeId: number | null;
   clientId: number;
   isAnticipada: boolean;
   origenId: number;
@@ -136,9 +138,13 @@ export type UpdateOperationPayload = Partial<{
   trailerId: number | null;
   fleteACobrar: number | null;
   fleteACobrarManual: number | null;
-  containerNumber: string;
-  containerType: string;
-  peso: number;
+  containerNumber: string | null;
+  containerSize: string | null;
+  containerType?: string | null;
+  peso: number | null;
+  cargoDescription: string | null;
+  weight: number | null;
+  dimensions: string | null;
   sealNumber: string;
   pinRetiro: string;
   documentoTransporte: string;

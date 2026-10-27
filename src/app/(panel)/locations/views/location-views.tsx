@@ -8,6 +8,7 @@ import PaginationTable from '@/components/organisms/pagination-table/pagination-
 import { LocationModal } from '../components/locationModal/locationModal';
 import { getLocationColumns, getClientSubColumns } from '../components/LocationColumns';
 import { TruckLoader } from '@/components/TruckLoader';
+import { PageHeader } from '@/components/molecules/page-header/page-header';
 import styles from '../locations.module.css';
 
 export const LocationsView: React.FC = () => {
@@ -45,15 +46,19 @@ export const LocationsView: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h2 className={styles.title}>Directorio de Empresas (Nodos)</h2>
-          <p className={styles.subtitle}>Gestión de ubicaciones físicas, puertos y plantas asociadas.</p>
-        </div>
-        <Button onClick={handleOpenCreate} variant="primary">
-          + Nueva Empresa
-        </Button>
-      </div>
+      <PageHeader
+        title="Directorio de Empresas (Nodos)"
+        description="Gestión de ubicaciones físicas, puertos y plantas asociadas."
+        titleLevel={2}
+        className={styles.header}
+        titleClassName={styles.title}
+        descriptionClassName={styles.subtitle}
+        actions={
+          <Button onClick={handleOpenCreate} variant="primary">
+            + Nueva Empresa
+          </Button>
+        }
+      />
 
       {isLoadingLocations ? (
         <TruckLoader variant="compact" message="Cargando ubicaciones..." />

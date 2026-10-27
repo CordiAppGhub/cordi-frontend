@@ -24,8 +24,6 @@ export const VehiclesTab = () => {
   const handleCreateVehicle = async (formData: CreateVehicleFormInput) => {
     const payload: CreateVehicleDto = {
       ...formData,
-      soatExpiration: null,
-      tecnoExpiration: null,
       adminDiscount: formData.adminDiscount ?? null,
     };
     return createVehicle(payload);
@@ -41,7 +39,7 @@ export const VehiclesTab = () => {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-          Directorio de Tractocamiones
+          Directorio de Vehículos
         </h2>
         <Button 
           variant="primary" 

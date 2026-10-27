@@ -7,9 +7,11 @@ import { useUserStore } from '@/store/userStore';
 import React, { useEffect, useMemo, useState } from 'react';
 import UserForm from './components/useFormUser';
 import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { TruckLoader } from '@/components/TruckLoader';
 import { User, Role } from '@/types/user-types';
 import { UserCheck, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react';
+import { showConfirm } from '@/utils/alerts';
 import styles from './user.module.css';
 
 const roleLabels: Record<Role, string> = {
@@ -26,12 +28,18 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const handleDisable = async (id: number) => {
-    if (confirm('¿Estás seguro de desactivar este usuario?')) {
-      try {
-        await disable(id);
-      } catch {
-        // La mutación presenta el error mediante una notificación.
-      }
+    const confirmed = await showConfirm({
+      title: '¿Desactivar usuario?',
+      text: 'El usuario ya no podrá acceder al sistema.',
+      confirmButtonText: 'Sí, desactivar',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await disable(id);
+    } catch {
+      // La mutación presenta el error mediante una notificación.
     }
   };
 
@@ -170,31 +178,33 @@ export default function UsersPage() {
           aria-label="Buscar usuarios"
           className={styles.search}
         />
-        <select
+        <Select
           value={roleFilter}
           onChange={(event) => { setRoleFilter(event.target.value as Role | 'ALL'); setPage(1); }}
           aria-label="Filtrar por rol"
           className={styles.filter}
+          wrapperClassName={styles.filterWrapper}
         >
           <option value="ALL">Todos los roles</option>
           <option value="ADMIN">{roleLabels.ADMIN}</option>
           <option value="JEFE_DE_FLOTA">{roleLabels.JEFE_DE_FLOTA}</option>
           <option value="ANALISTA">{roleLabels.ANALISTA}</option>
-        </select>
-        <select
+        </Select>
+        <Select
           value={statusFilter}
           onChange={(event) => { setStatusFilter(event.target.value as typeof statusFilter); setPage(1); }}
           aria-label="Filtrar por estado"
           className={styles.filter}
+          wrapperClassName={styles.filterWrapper}
         >
           <option value="ALL">Todos los estados</option>
           <option value="ACTIVE">Activos</option>
           <option value="INACTIVE">Inactivos</option>
-        </select>
+        </Select>
         {hasActiveFilters && (
-          <button type="button" className={styles.clearFilters} onClick={clearFilters}>
+          <Button type="button" variant="secondary" className={styles.clearFilters} onClick={clearFilters}>
             Limpiar filtros
-          </button>
+          </Button>
         )}
         <span className={styles.count}>
           {filteredUsers.length} de {users.length} usuarios

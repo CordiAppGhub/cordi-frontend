@@ -6,7 +6,7 @@ import{ AxiosError } from 'axios';
 
 import { tariffService, CreateSurchargeCatalogInput, CreateAffiliationTariffInput } from '@/services/tariff.service';
 import { showToast } from '@/utils/alerts';
-import { CreateClientTariffInput, CreateSurchargeOverrideInput, UpsertPatioTariffInput } from '@/types/tariff-ypes';
+import { CargoFormat, ContainerType, CreateClientTariffInput, CreateSurchargeOverrideInput, UpsertPatioTariffInput } from '@/types/tariff-ypes';
 
 interface BackendErrorResponse {
   message?: string;
@@ -42,6 +42,15 @@ export function useTariffs() {
   });
 
   const {
+    data: vehicleTypes = [],
+    isLoading: isLoadingVehicleTypes,
+  } = useQuery({
+    queryKey: ['cargo-vehicle-types'],
+    queryFn: tariffService.getCargoVehicleTypes,
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const {
     data: vehicleTariffs = [],
     isLoading: isLoadingVehicles,
     refetch: fetchVehicleTariffs, 
@@ -63,7 +72,10 @@ export function useTariffs() {
   });
 
   const isLoadingTariffs =
-    isLoadingClientTariffs || isLoadingSurcharges || isLoadingPatioTariffs;
+    isLoadingClientTariffs ||
+    isLoadingSurcharges ||
+    isLoadingPatioTariffs ||
+    isLoadingVehicleTypes;
   const error =
     clientTariffsError || patioTariffsError
       ? 'Error al cargar las tarifas o recargos'
@@ -81,6 +93,19 @@ export function useTariffs() {
       const message = err.response?.data?.message || 'No se pudo registrar la tarifa.';
       showToast.error(message);
     }
+  });
+
+  const updateTariffMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CreateClientTariffInput }) =>
+      tariffService.updateClientTariff(id, data),
+    onSuccess: () => {
+      showToast.success('La tarifa se actualizó correctamente.');
+      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] });
+    },
+    onError: (err: AxiosError<BackendErrorResponse>) => {
+      const message = err.response?.data?.message || 'No se pudo actualizar la tarifa.';
+      showToast.error(message);
+    },
   });
 
   const createSurchargeMutation = useMutation({
@@ -140,6 +165,18 @@ export function useTariffs() {
     } catch { return false; }
   }, [createTariffMutation]);
 
+  const updateTariff = useCallback(async (
+    id: number,
+    data: CreateClientTariffInput,
+  ): Promise<boolean> => {
+    try {
+      await updateTariffMutation.mutateAsync({ id, data });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [updateTariffMutation]);
+
   const createBaseSurcharge = useCallback(async (data: CreateSurchargeCatalogInput): Promise<boolean> => {
     try {
       await createSurchargeMutation.mutateAsync(data);
@@ -175,9 +212,21 @@ export function useTariffs() {
     clientId: number | null, 
     operationType: string | null, 
     isAnticipada: boolean = false,
-    locationId?: number | null
+    originLocationId?: number | null,
+    destinationLocationId?: number | null,
+    cargoFormat?: CargoFormat,
+    containerSize?: ContainerType | null,
+    vehicleTypeId?: number | null,
   ) => {
-    if (!clientId || !operationType) {
+    if (
+      !clientId ||
+      !operationType ||
+      !originLocationId ||
+      !destinationLocationId ||
+      !cargoFormat ||
+      (cargoFormat === 'CONTENERIZADA' && !containerSize) ||
+      (cargoFormat === 'SUELTA' && !vehicleTypeId)
+    ) {
       setSuggestedPrice(null);
       return;
     }
@@ -188,7 +237,13 @@ export function useTariffs() {
         clientId,
         operationType,
         isAnticipada,
-        locationId: locationId || undefined,
+        originLocationId,
+        destinationLocationId,
+        cargoFormat,
+        containerSize:
+          cargoFormat === 'CONTENERIZADA' ? containerSize ?? undefined : undefined,
+        vehicleTypeId:
+          cargoFormat === 'SUELTA' ? vehicleTypeId ?? undefined : undefined,
       });
       setSuggestedPrice(quote.price);
     } catch {
@@ -208,6 +263,7 @@ export function useTariffs() {
     isLoadingTariffs,
     error,
     createTariff,
+    updateTariff,
     refreshTariffs,
     
     createBaseSurcharge,
@@ -215,6 +271,7 @@ export function useTariffs() {
     refreshSurcharges,
 
     vehicleTariffs,
+    vehicleTypes,
     isLoadingVehicles,
     fetchVehicleTariffs,
     createVehicleTariff,

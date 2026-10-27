@@ -1,7 +1,9 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { driversService } from '@/services/driver.service';
 import { vehiclesService } from '@/services/vehicles.service';
 import { useAnalysts } from '@/hooks/useAnalysts';
@@ -14,6 +16,7 @@ import {
 } from '@/services/novedades.servies';
 import { showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
+import styles from './novedad-resource-form.module.css';
 
 interface Props {
   onSuccess: () => void;
@@ -89,10 +92,10 @@ export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
     BLOCKING_CATEGORIES[target].includes(category);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <label className="block space-y-1 text-sm font-medium">
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <label className={styles.field}>
         Tipo de novedad
-        <select
+        <Select
           value={target}
           onChange={(event) => {
             const next = event.target.value as ResourceTarget;
@@ -100,25 +103,23 @@ export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
             setTargetId('');
             setCategory(CATEGORIES_BY_TARGET[next][0]);
           }}
-          className="w-full rounded border px-3 py-2"
         >
           <option value="DRIVER">Conductor</option>
           <option value="VEHICLE">Vehículo</option>
           <option value="ANALYST">Analista</option>
-        </select>
+        </Select>
       </label>
-      <label className="block space-y-1 text-sm font-medium">
+      <label className={styles.field}>
         {target === 'DRIVER'
           ? 'Conductor afectado'
           : target === 'VEHICLE'
             ? 'Vehículo afectado'
             : 'Analista afectado'}
-        <select
+        <Select
           value={targetId}
           onChange={(event) => setTargetId(event.target.value)}
           disabled={resourcesLoading || resourcesError}
           required
-          className="w-full rounded border px-3 py-2"
         >
           <option value="">
             {resourcesLoading
@@ -148,50 +149,48 @@ export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
                   {analyst.name} · {analyst.email}
                 </option>
               ))}
-        </select>
+        </Select>
       </label>
       {resourcesError && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className={styles.error}>
           No se pudieron cargar los recursos. Vuelve a abrir el formulario para reintentar.
         </p>
       )}
-      <label className="block space-y-1 text-sm font-medium">
+      <label className={styles.field}>
         Motivo
-        <select
+        <Select
           value={category}
           onChange={(event) => setCategory(event.target.value as NovedadCategory)}
-          className="w-full rounded border px-3 py-2"
         >
           {CATEGORIES_BY_TARGET[target].map((item) => (
             <option key={item} value={item}>
               {NOVEDAD_CATEGORY_LABELS[item]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
-      <label className="block space-y-1 text-sm font-medium">
+      <label className={styles.field}>
         Fecha estimada de retorno (opcional)
         <input
           type="datetime-local"
           value={expectedReturnAt}
           onChange={(event) => setExpectedReturnAt(event.target.value)}
-          className="w-full rounded border px-3 py-2"
+          className={styles.input}
         />
       </label>
-      <label className="block space-y-1 text-sm font-medium">
+      <label className={styles.field}>
         Severidad
-        <select
+        <Select
           value={severity}
           onChange={(event) => setSeverity(event.target.value)}
-          className="w-full rounded border px-3 py-2"
         >
           <option value="LOW">Baja</option>
           <option value="MEDIUM">Media</option>
           <option value="HIGH">Alta</option>
           <option value="CRITICAL">Crítica</option>
-        </select>
+        </Select>
       </label>
-      <label className="block space-y-1 text-sm font-medium">
+      <label className={styles.field}>
         Descripción
         <textarea
           value={description}
@@ -199,36 +198,37 @@ export function NovedadResourceForm({ onSuccess, onCancel }: Props) {
           minLength={20}
           required
           rows={4}
-          className="w-full rounded border px-3 py-2"
+          className={styles.textarea}
           placeholder="Describe qué ocurrió, desde cuándo, impacto en el servicio y acciones requeridas."
         />
       </label>
       {(severity === 'HIGH' || severity === 'CRITICAL' || blocksAvailability) && (
-        <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">
+        <p className={styles.warning}>
           {target === 'ANALYST'
-            ? 'La novedad quedará registrada para seguimiento. No bloquea asignaciones al analista; la cobertura debe gestionarse desde Asignación de Clientes.'
+            ? 'La novedad quedará registrada para seguimiento y no bloqueará asignaciones. Si se requiere cobertura parcial, se podrá crear desde esta novedad.'
             : target === 'VEHICLE'
             ? 'El vehículo pasará a mantenimiento y su conductor quedará libre para reasignarse a otro vehículo disponible.'
             : 'El conductor quedará NO disponible y se liberará de su vehículo, que podrá asignarse a otro conductor disponible.'}
         </p>
       )}
       {target === 'ANALYST' && severity !== 'HIGH' && severity !== 'CRITICAL' && (
-        <p className="rounded bg-blue-50 p-3 text-sm text-blue-900">
+        <p className={styles.info}>
           La novedad quedará registrada para seguimiento. No bloquea las
-          asignaciones al analista.
+          asignaciones al analista. La cobertura parcial se gestiona desde la
+          novedad registrada.
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} disabled={isSaving} className="rounded border px-4 py-2 text-sm">
+      <div className={styles.actions}>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSaving || resourcesLoading || resourcesError || !targetId || description.trim().length < 20}
-          className="rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          isLoading={isSaving}
         >
           {isSaving ? 'Guardando...' : 'Registrar novedad'}
-        </button>
+        </Button>
       </div>
     </form>
   );

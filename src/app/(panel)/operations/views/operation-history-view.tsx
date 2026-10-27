@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Eye, Loader, Search, X } from "lucide-react";
+import { Button } from "@/components/atoms/button/button";
 import PaginationTable from "@/components/organisms/pagination-table/pagination-table";
 import type { ColumnDef } from "@/types/table";
 import type { Operation } from "@/types/operation-types";
@@ -111,7 +112,8 @@ function getHistoryColumns(
       header: "Detalle",
       type: "text",
       renderCell: (operation) => (
-        <button
+        <Button
+          variant="secondary"
           type="button"
           className={styles.detailsButton}
           onClick={() => onOpenOperation(operation.id)}
@@ -119,7 +121,7 @@ function getHistoryColumns(
         >
           <Eye size={16} />
           Ver detalle
-        </button>
+        </Button>
       ),
     },
   ];
@@ -274,11 +276,12 @@ export function OperationHistoryView({
           />
         </label>
         <div className={styles.filterActions}>
-          <button type="submit" className={styles.searchButton} disabled={isLoading}>
+          <Button type="submit" className={styles.searchButton} disabled={isLoading}>
             <Search size={16} />
             Buscar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             type="button"
             className={styles.clearButton}
             onClick={resetFilters}
@@ -286,7 +289,7 @@ export function OperationHistoryView({
           >
             <X size={16} />
             Limpiar
-          </button>
+          </Button>
         </div>
       </form>
 

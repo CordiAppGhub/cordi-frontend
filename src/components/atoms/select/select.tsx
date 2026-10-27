@@ -13,6 +13,7 @@ interface SelectProps
   }[];
 
   error?: string;
+  wrapperClassName?: string;
 
   onChange?: (
     e: React.ChangeEvent<HTMLSelectElement>,
@@ -23,6 +24,7 @@ interface SelectProps
 export const Select: React.FC<SelectProps> = ({
   options = [],
   error,
+  wrapperClassName = '',
   className = '',
   multiple = false,
   onChange,
@@ -43,7 +45,7 @@ export const Select: React.FC<SelectProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${wrapperClassName}`.trim()}>
       <select
         {...props}
         multiple={multiple}

@@ -21,6 +21,9 @@ export function useNovedades(initialTab = "PENDING", initialTarget = "TODAS") {
   useEffect(() => {
     const refreshNovedades = () => {
       void queryClient.invalidateQueries({ queryKey: ["novedades"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["analyst-delegations"],
+      });
     };
     socket.on("operation_alerts_updated", refreshNovedades);
     return () => {
@@ -55,6 +58,9 @@ export function useNovedades(initialTab = "PENDING", initialTarget = "TODAS") {
       queryClient.invalidateQueries({
         queryKey: ["dashboard", "operation-alerts"],
       });
+      queryClient.invalidateQueries({ queryKey: ["analyst-delegations"] });
+      queryClient.invalidateQueries({ queryKey: ["operations"] });
+      queryClient.invalidateQueries({ queryKey: ["trafico"] });
     },
     onError: (err: unknown) => {
       const axiosError = err as AxiosError<BackendErrorResponse>;

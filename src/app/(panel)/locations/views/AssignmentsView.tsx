@@ -14,7 +14,6 @@ import {
 } from '@/components/organisms/form/types/form.types';
 import { assignmentSchema } from '@/schemas/assignment.schema'; // 🚀 Importamos el esquema Zod
 import { useAssignments } from '../hooks/useAssignments';
-import { AnalystDelegationModal } from '../components/analyst-delegation-modal';
 import {
   getAnalystGroupColumns,
   getAssignedClientColumns,
@@ -25,22 +24,15 @@ import styles from '../locations.module.css';
 export const AssignmentsView: React.FC = () => {
   const {
     assignments,
-    delegations,
-    delegationsError,
     isLoadingAssignments,
-    isLoadingDelegations,
     createAssignment,
-    createDelegation,
-    revokeDelegation,
     removeAssignment,
     isAssigning,
-    isDelegating,
   } = useAssignments();
   const { clients, isLoadingClients } = useClients();
   const { analysts, isLoadingAnalysts } = useAnalysts();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -125,12 +117,6 @@ export const AssignmentsView: React.FC = () => {
         <Button onClick={handleOpenCreate} variant="primary">
           + Nueva Asignación
         </Button>
-        <Button
-          onClick={() => setIsDelegationModalOpen(true)}
-          variant="secondary"
-        >
-          Delegar cobertura parcial
-        </Button>
       </div>
 
       {isLoadingAssignments ? (
@@ -149,64 +135,6 @@ export const AssignmentsView: React.FC = () => {
           />
         </div>
       )}
-
-      <section style={{ marginTop: 28 }}>
-        <h3>Delegaciones activas</h3>
-        {isLoadingDelegations ? (
-          <TruckLoader variant="compact" message="Cargando coberturas..." />
-        ) : delegationsError ? (
-          <p role="alert">{delegationsError}</p>
-        ) : delegations.length === 0 ? (
-          <p>No hay coberturas parciales activas.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={delegationCellStyle}>Cliente / alcance</th>
-                  <th style={delegationCellStyle}>Titular → cobertura</th>
-                  <th style={delegationCellStyle}>Motivo</th>
-                  <th style={delegationCellStyle}>Fin previsto</th>
-                  <th style={delegationCellStyle}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {delegations.map((delegation) => {
-                  const scope = delegation.clientLocation
-                    ? `Ubicación: ${delegation.clientLocation.location.name}`
-                    : `Operación #${delegation.operation?.id ?? delegation.operationId}`;
-                  return (
-                    <tr key={delegation.id}>
-                      <td style={delegationCellStyle}>
-                        <strong>{delegation.client.razonSocial}</strong>
-                        <div>{scope}</div>
-                      </td>
-                      <td style={delegationCellStyle}>
-                        {delegation.principalAnalyst.name ?? 'Sin nombre'} →{' '}
-                        {delegation.delegateAnalyst.name ?? 'Sin nombre'}
-                      </td>
-                      <td style={delegationCellStyle}>{delegation.reason}</td>
-                      <td style={delegationCellStyle}>
-                        {delegation.endsAt
-                          ? new Date(delegation.endsAt).toLocaleString('es-CO')
-                          : 'Sin fecha'}
-                      </td>
-                      <td style={delegationCellStyle}>
-                        <button
-                          type="button"
-                          onClick={() => void revokeDelegation(delegation.id)}
-                        >
-                          Finalizar
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
 
       {isModalOpen && (
         <SuperModal
@@ -230,20 +158,6 @@ export const AssignmentsView: React.FC = () => {
           />
         </SuperModal>
       )}
-      {isDelegationModalOpen && (
-        <AnalystDelegationModal
-          onClose={() => setIsDelegationModalOpen(false)}
-          onCreate={createDelegation}
-          isSaving={isDelegating}
-        />
-      )}
     </div>
   );
-};
-
-const delegationCellStyle = {
-  padding: '10px 12px',
-  borderBottom: '1px solid #e2e8f0',
-  textAlign: 'left' as const,
-  verticalAlign: 'top' as const,
 };

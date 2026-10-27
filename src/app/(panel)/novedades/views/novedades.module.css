@@ -231,3 +231,54 @@
 .confirmResolveBtn:hover {
   background-color: #047857;
 }
+
+.delegationsSection {
+  display: grid;
+  gap: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-panel);
+  padding: 16px;
+}
+
+.delegationsHeader h2 {
+  margin: 0;
+  color: var(--color-brand-900);
+  font-size: 1rem;
+}
+
+.delegationsHeader p,
+.delegationsEmpty {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.delegationsTableWrap {
+  overflow-x: auto;
+}
+
+.delegationsTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.delegationsTable th,
+.delegationsTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.novedadCoverage {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.875rem;
+}

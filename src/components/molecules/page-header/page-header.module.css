@@ -1,0 +1,40 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alignCenter {
+  align-items: center;
+}
+
+.alignStart {
+  align-items: flex-start;
+}
+
+.alignEnd {
+  align-items: flex-end;
+}
+
+.content {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin-bottom: 3px;
+}
+
+.title {
+  margin: 0;
+}
+
+.description {
+  margin: 3px 0 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

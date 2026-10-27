@@ -224,85 +224,35 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   // ==========================================
   useEffect(() => {
     const handleGlobalUpdate = (data: OperationSocketPayload) => {
-      // Dependiendo de tu EventsGateway, el ID podría venir como data.id o data.operationId
       const opId = data.id ?? data.operationId;
 
-      if (!opId) return;
-
       if (data.deleted) {
-        queryClient.invalidateQueries({ queryKey: ['trafico'] });
-        queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
-        queryClient.invalidateQueries({ queryKey: ['operations'] });
-        queryClient.invalidateQueries({ queryKey: ['operation-history'] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
-        queryClient.removeQueries({ queryKey: ['trafico-detail', opId] });
-
-        if (currentOperationId === opId) {
-          setCurrentOperationId(null);
+        if (opId) {
+          queryClient.removeQueries({ queryKey: ['trafico-detail', opId] });
+          if (currentOperationId === opId) {
+            setCurrentOperationId(null);
+          }
         }
-
-        return;
       }
 
-      console.log(`🔄 [WebSocket] Tráfico actualizado para operación #${opId}`, data);
-      queryClient.setQueryData(['trafico', queryParams], (oldData: unknown) => {
-        if (!oldData) return oldData;
+      void queryClient.invalidateQueries({ queryKey: ['trafico'] });
+      void queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
+      void queryClient.invalidateQueries({ queryKey: ['operations'] });
+      void queryClient.invalidateQueries({ queryKey: ['operation-history'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
 
-        const currentData = oldData as
-          | Array<{ operations?: Array<{ id: number }> }>
-          | { data?: Array<{ operations?: Array<{ id: number }> }> };
-
-        // Soporta si oldData es Array o Paginated Object
-        const isArray = Array.isArray(currentData);
-        const list = isArray ? currentData : (currentData.data || []);
-        
-        // 🚀 SOLUCIÓN: Recorremos los grupos de clientes, no operaciones planas
-        const updatedList = list.map((group) => {
-          const operations = group.operations ?? [];
-          const hasChangedOp = operations.some((op) => op.id === opId);
-          
-          if (hasChangedOp) {
-            // Si está aquí, mutamos las operaciones de ESTE grupo
-            return {
-              ...group,
-              operations: operations.map((op) => 
-                op.id === opId 
-                  ? { ...op, ...data } // 👈 ¡Inyectamos los datos frescos del socket!
-                  : op
-              )
-            };
-          }
-          
-          return group;
-        });
-        queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
-
-        if (isArray) {
-          return updatedList;
-        }
-
-        return {
-          ...(currentData as Record<string, unknown>),
-          data: updatedList,
-        };
-      });
-
-      // Actualizamos también la vista de detalle si está abierta
-      queryClient.setQueryData(['trafico-detail', opId], (oldDetail: unknown) => {
-        if (!oldDetail) return oldDetail; // o return data, según prefieras
-        return {
-          ...(oldDetail as Record<string, unknown>),
-          ...data,
-        };
-      });
+      if (opId && !data.deleted) {
+        void queryClient.invalidateQueries({ queryKey: ['trafico-detail', opId] });
+      }
     };
 
     socket.on('global_operations_updated', handleGlobalUpdate);
+    socket.connect();
 
     return () => {
       socket.off('global_operations_updated', handleGlobalUpdate);
     };
-  }, [queryClient, queryParams, currentOperationId]);
+  }, [queryClient, currentOperationId]);
 
   return {
     operations,

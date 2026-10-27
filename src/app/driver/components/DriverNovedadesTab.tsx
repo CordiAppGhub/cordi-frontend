@@ -10,6 +10,8 @@ import {
 } from '@/services/novedades.servies';
 import { showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
+import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 
 const STATUS_LABELS = { PENDING: 'Pendiente', IN_REVIEW: 'En revisión', RESOLVED: 'Resuelta' } as const;
 
@@ -84,7 +86,7 @@ export function DriverNovedadesTab() {
         <div style={{ display: 'grid', gap: 12 }}>
           <label>
             ¿Qué ocurrió con…?
-            <select
+            <Select
               value={target}
               onChange={(event) => {
                 const next = event.target.value as 'DRIVER' | 'VEHICLE';
@@ -95,11 +97,11 @@ export function DriverNovedadesTab() {
             >
               <option value="DRIVER">Yo (conductor)</option>
               <option value="VEHICLE">Mi vehículo</option>
-            </select>
+            </Select>
           </label>
           <label>
             Motivo
-            <select
+            <Select
               value={category}
               onChange={(event) => setCategory(event.target.value as NovedadCategory)}
               style={fieldStyle}
@@ -109,7 +111,7 @@ export function DriverNovedadesTab() {
                   {NOVEDAD_CATEGORY_LABELS[item]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Fecha estimada de retorno (opcional)
@@ -132,13 +134,13 @@ export function DriverNovedadesTab() {
               placeholder="Describe qué pasó, dónde, desde cuándo y cómo afecta la operación."
             />
           </label>
-          <button
+          <Button
             type="submit"
             disabled={report.isPending || description.trim().length < 20}
-            style={{ padding: '12px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, opacity: report.isPending ? 0.6 : 1 }}
+            isLoading={report.isPending}
           >
             {report.isPending ? 'Enviando...' : 'Reportar novedad'}
-          </button>
+          </Button>
         </div>
       </form>
 

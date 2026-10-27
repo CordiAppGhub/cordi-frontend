@@ -161,21 +161,23 @@ export function ShippingLinesView() {
                   </td>
                   <td>
                     <div className={styles.shippingActions}>
-                      <button
+                      <Button
+                        variant="secondary"
                         type="button"
                         aria-label={`Editar ${line.name}`}
                         onClick={() => openEdit(line)}
                       >
                         <Pencil size={16} /> Editar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="secondary"
                         type="button"
                         aria-label={`Eliminar ${line.name}`}
                         disabled={deleteMutation.isPending}
                         onClick={() => void removeLine(line)}
                       >
                         <Trash2 size={16} /> Eliminar
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

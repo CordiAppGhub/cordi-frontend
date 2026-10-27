@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useClients } from '@/hooks/useClient'; 
 import { Locations } from '@/types/location.types';
 import { locationSchema } from '@/schemas/location.schema';
@@ -17,26 +17,30 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
   const { clients, isLoadingClients } = useClients();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const initialClientsData = locationToEdit?.clients
-    ? locationToEdit.clients.map((item: any) => ({
-        clientId: item.clientId,
-        isClient: item.isClient ?? true,
-        isDepot: item.isDepot ?? false,
-      }))
-    : [];
+  // 1. Memorizamos los valores por defecto para que no se recreen en cada render
+  const defaultValues = useMemo(() => {
+    const initialClientsData = locationToEdit?.clients
+      ? locationToEdit.clients.map((item: any) => ({
+          clientId: item.clientId,
+          isClient: item.isClient ?? true,
+          isDepot: item.isDepot ?? false,
+        }))
+      : [];
 
-  const defaultValues = {
-    name: locationToEdit?.name || '',
-    address: locationToEdit?.address || '',
-    isPort: locationToEdit?.isPort || false,
-    isDepot: locationToEdit?.isDepot || false,
-    isOrigin: locationToEdit?.isOrigin ?? true,
-    isDestination: locationToEdit?.isDestination ?? true,
-    exigeCita: locationToEdit?.exigeCita || false, 
-    clientsData: initialClientsData, 
-  };
+    return {
+      name: locationToEdit?.name || '',
+      address: locationToEdit?.address || '',
+      isPort: locationToEdit?.isPort || false,
+      isDepot: locationToEdit?.isDepot || false,
+      isOrigin: locationToEdit?.isOrigin ?? true,
+      isDestination: locationToEdit?.isDestination ?? true,
+      exigeCita: locationToEdit?.exigeCita || false, 
+      clientsData: initialClientsData, 
+    };
+  }, [locationToEdit]); // Solo cambia si editas una ubicación diferente
 
-  const formFields: FormField[] = [
+  // 2. Memorizamos la estructura del formulario
+  const formFields: FormField[] = useMemo(() => [
     { name: 'name', label: 'Nombre del Lugar / Parque *', type: 'text', placeholder: 'Ej: Parqueamérica / Patio Seco' },
     { name: 'address', label: 'Dirección (Opcional)', type: 'text', placeholder: 'Ej: Vía Mamonal' },
     
@@ -126,9 +130,10 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
         );
       }
     },
-  ];
+  ], [clients, isLoadingClients]); // Solo se recrea si cambia la lista de clientes
 
   const handleSubmit = async (formData: Record<string, any>) => {
+    // ... tu lógica de submit se mantiene exactamente igual ...
     const isPort = Boolean(formData.isPort);
     const isDepot = Boolean(formData.isDepot);
     let clientsData = Array.isArray(formData.clientsData) ? formData.clientsData : [];

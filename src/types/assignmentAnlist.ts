@@ -46,6 +46,7 @@ export interface DelegationResources {
 }
 
 export interface CreateDelegationInput {
+  novedadId: number;
   clientId: number;
   analystId: number;
   locationIds?: number[];
@@ -61,6 +62,7 @@ export interface AnalystDelegation {
   delegateAnalystId: number;
   clientLocationId: number | null;
   operationId: number | null;
+  novedadId: number | null;
   reason: string;
   startsAt: string;
   endsAt: string | null;
@@ -70,6 +72,12 @@ export interface AnalystDelegation {
   principalAnalyst: AnalystUser;
   delegateAnalyst: AnalystUser;
   clientLocation: { location: { id: number; name: string } } | null;
+  novedad: {
+    id: number;
+    category: string | null;
+    description: string;
+    status: string;
+  } | null;
   operation: {
     id: number;
     type: string;

@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { CalendarDays, LoaderCircle, Trash2, Truck } from 'lucide-react';
+import { Button } from '@/components/atoms/button/button';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useProgramacion } from '../hooks/useProgramacion';
+import { Select } from '@/components/atoms/select/select';
 import styles from './fleet-schedule.module.css';
 
 const getTomorrow = () => {
@@ -113,7 +115,7 @@ export default function FleetScheduleGrid() {
                     </td>
                     <td>
                       {pending ? (
-                        <select
+                        <Select
                           aria-label={`Vehículo para la operación ${operation.id}`}
                           value={selectedVehicle}
                           onChange={(event) =>
@@ -130,7 +132,7 @@ export default function FleetScheduleGrid() {
                               {vehicle.plate}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       ) : (
                         <span>
                           {operation.vehicle?.plate ||
@@ -142,19 +144,17 @@ export default function FleetScheduleGrid() {
                     </td>
                     <td>
                       {pending ? (
-                        <button
+                        <Button
+                          variant="primary"
+                          isLoading={isAssigningVehicle}
                           type="button"
                           className={styles.assignButton}
                           onClick={() => void handleAssign(operation.id)}
                           disabled={!selectedVehicle || isAssigningVehicle}
                         >
-                          {isAssigningVehicle ? (
-                            <LoaderCircle className={styles.spinner} size={15} />
-                          ) : (
-                            <Truck size={15} />
-                          )}
+                          {!isAssigningVehicle && <Truck size={15} />}
                           Asignar vehículo
-                        </button>
+                        </Button>
                       ) : (
                         operation.vehicleId ? (
                           <span className={styles.assignedStatus}>Vehículo asignado</span>
@@ -165,7 +165,8 @@ export default function FleetScheduleGrid() {
                       {operation.status !== 'CANCELADO' &&
                         operation.status !== 'FINALIZADO' &&
                         operation.status !== 'EN_CURSO' && (
-                          <button
+                          <Button
+                            variant="secondary"
                             type="button"
                             className={styles.cancelButton}
                             onClick={() => void handleCancel(operation.id)}
@@ -173,7 +174,7 @@ export default function FleetScheduleGrid() {
                           >
                             <Trash2 size={14} />
                             Cancelar
-                          </button>
+                          </Button>
                         )}
                     </td>
                   </tr>

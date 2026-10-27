@@ -1,0 +1,20 @@
+.content {
+  display: grid;
+  gap: 8px;
+}
+
+.typeField {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px 0;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.helpText {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
+}

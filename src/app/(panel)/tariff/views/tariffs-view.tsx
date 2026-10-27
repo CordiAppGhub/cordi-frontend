@@ -11,12 +11,13 @@ import { getSurchargeColumns } from '../components/surcharge-columns';
 
 // IMPORTACIONES PARA VEHÍCULOS
 
-import { AffiliationTariff } from '@/types/tariff-ypes';
+import { AffiliationTariff, ClientTariff } from '@/types/tariff-ypes';
 
 import { Tabs, TabOption } from '@/components/molecules/tabs/tabs';
 import { VehicleTariffModal } from '../components/ModalVehicleTariff';
 import { getVehicleTariffColumns } from '../components/Vehicle-Tariff-columns';
 import { TruckLoader } from '@/components/TruckLoader';
+import { PageHeader } from '@/components/molecules/page-header/page-header';
 import styles from '../tariffs.module.css';
 
 type TabState = 'BASE' | 'NOVEDADES' | 'VEHICULOS';
@@ -36,6 +37,7 @@ export const TariffsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabState>('BASE');
   
   const [isTariffModalOpen, setIsTariffModalOpen] = useState(false);
+  const [selectedClientTariff, setSelectedClientTariff] = useState<ClientTariff | null>(null);
   const [isSurchargeModalOpen, setIsSurchargeModalOpen] = useState(false);
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [selectedVehicleTariff, setSelectedVehicleTariff] = useState<AffiliationTariff | null>(null);
@@ -63,7 +65,10 @@ export const TariffsView: React.FC = () => {
   ], []);
 
  
-  const tariffColumns = useMemo(() => getTariffColumns(), []);
+  const tariffColumns = useMemo(() => getTariffColumns((tariff) => {
+    setSelectedClientTariff(tariff);
+    setIsTariffModalOpen(true);
+  }), []);
   const clientGroupColumns = useMemo(() => getClientGroupColumns(), []);
   const clientGroups = useMemo(() => groupTariffsByClient(clientTariffs || []), [clientTariffs]);
   const totalPagesBase = Math.ceil(clientGroups.length / itemsPerPage) || 1;
@@ -92,7 +97,10 @@ export const TariffsView: React.FC = () => {
 
   
   const handleOpenMainModal = () => {
-    if (activeTab === 'BASE') setIsTariffModalOpen(true);
+    if (activeTab === 'BASE') {
+      setSelectedClientTariff(null);
+      setIsTariffModalOpen(true);
+    }
     else if (activeTab === 'NOVEDADES') setIsSurchargeModalOpen(true);
     else if (activeTab === 'VEHICULOS') {
       setSelectedVehicleTariff(null);
@@ -103,18 +111,24 @@ export const TariffsView: React.FC = () => {
   return (
     <div className={styles.page}>
       
-      <div className={styles.header}>
-        <h1 className={styles.title}>
-          {activeTab === 'BASE' && 'Tarifario de Viajes (Base)'}
-          {activeTab === 'NOVEDADES' && 'Catálogo de Novedades y Recargos'}
-          {activeTab === 'VEHICULOS' && 'Configuración de Rentabilidad (Flotas)'}
-        </h1>
-        <Button onClick={handleOpenMainModal} variant="primary">
-          {activeTab === 'BASE' && '+ Nueva Tarifa Base'}
-          {activeTab === 'NOVEDADES' && '+ Nueva Novedad / Excepción'}
-          {activeTab === 'VEHICULOS' && '+ Nueva Tarifa de Flota'}
-        </Button>
-      </div>
+      <PageHeader
+        title={
+          activeTab === 'BASE'
+            ? 'Tarifario de Viajes (Base)'
+            : activeTab === 'NOVEDADES'
+              ? 'Catálogo de Novedades y Recargos'
+              : 'Configuración de Rentabilidad (Flotas)'
+        }
+        className={styles.header}
+        titleClassName={styles.title}
+        actions={
+          <Button onClick={handleOpenMainModal} variant="primary">
+            {activeTab === 'BASE' && '+ Nueva Tarifa Base'}
+            {activeTab === 'NOVEDADES' && '+ Nueva Novedad / Excepción'}
+            {activeTab === 'VEHICULOS' && '+ Nueva Tarifa de Flota'}
+          </Button>
+        }
+      />
 
       <div className={styles.tabs}>
         <Tabs 
@@ -156,7 +170,15 @@ export const TariffsView: React.FC = () => {
         </>
       )}
 
-      <RouteTariffModal isOpen={isTariffModalOpen} onClose={() => setIsTariffModalOpen(false)} />
+      <RouteTariffModal
+        key={selectedClientTariff?.id ?? 'new'}
+        isOpen={isTariffModalOpen}
+        initialData={selectedClientTariff}
+        onClose={() => {
+          setIsTariffModalOpen(false);
+          setSelectedClientTariff(null);
+        }}
+      />
 
       {isSurchargeModalOpen && (
         <div className={styles.surchargeOverlay}>

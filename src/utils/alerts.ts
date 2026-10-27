@@ -40,4 +40,43 @@ export const showToast = {
       confirmButtonColor: '#dc2626',
     });
   },
+
+  warning: (message: string) => {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Revisa la información',
+      text: message,
+      timer: 3000,
+      showConfirmButton: false,
+    });
+  },
 };
+
+interface ConfirmOptions {
+  title: string;
+  text: string;
+  confirmButtonText: string;
+  cancelButtonText?: string;
+  destructive?: boolean;
+}
+
+export async function showConfirm({
+  title,
+  text,
+  confirmButtonText,
+  cancelButtonText = 'Cancelar',
+  destructive = false,
+}: ConfirmOptions): Promise<boolean> {
+  const result = await Swal.fire({
+    title,
+    text,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: destructive ? '#dc2626' : '#1d4ed8',
+    cancelButtonColor: '#64748b',
+    confirmButtonText,
+    cancelButtonText,
+  });
+
+  return result.isConfirmed;
+}

@@ -2,18 +2,25 @@
 
 import React, { useState } from "react";
 import styles from "./novedades.module.css";
+import { Button } from "@/components/atoms/button/button";
+import { Select } from "@/components/atoms/select/select";
 import { Tabs } from "@/components/molecules/tabs/tabs";
 import { useNovedades } from "@/hooks/ueNovedades";
 import { TruckLoader } from "@/components/TruckLoader";
 import { LiveClock } from "@/components/atoms/liveClock/LiveClock";
-import { SuperModal } from "@/components/organisms/modal/modal";
-import { NovedadResourceForm } from "../components/novedad-resource-form";
+import { ResourceRegistrationModal } from "../components/resource-registration-modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocations } from "@/app/(panel)/locations/hooks/useLocation";
 import { operationService } from "@/services/operation.service";
 import { showToast } from "@/utils/alerts";
-import { NovedadItem, NOVEDAD_CATEGORY_LABELS } from "@/services/novedades.servies";
+import {
+  NOVEDAD_CATEGORY_LABELS,
+  type NovedadItem,
+} from "@/services/novedades.servies";
 import { ResourceAbsencesPanel } from "../components/resource-absences-panel";
+import { AnalystPartialDelegationModal } from "../components/analyst-partial-delegation-modal";
+import { useAnalystDelegations } from "@/app/(panel)/locations/hooks/useAssignments";
+import { useAuthStore } from "@/store/use-auth.store";
 
 // Definición de las Tabs con íconos
 const NOVEDADES_TABS = [
@@ -25,6 +32,17 @@ const NOVEDADES_TABS = [
 
 export function NovedadesPageView() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const canManageDelegations =
+    user?.role === "ADMIN" || user?.role === "JEFE_DE_FLOTA";
+  const {
+    delegations,
+    isLoading: isLoadingDelegations,
+    error: delegationsError,
+    createDelegation,
+    revokeDelegation,
+    isDelegating,
+  } = useAnalystDelegations(canManageDelegations);
   const { locations } = useLocations();
   const {
     novedades,
@@ -42,7 +60,9 @@ export function NovedadesPageView() {
     null,
   );
   const [resolutionNotes, setResolutionNotes] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+  const [selectedForDelegation, setSelectedForDelegation] =
+    useState<NovedadItem | null>(null);
   const [destinationDrafts, setDestinationDrafts] = useState<
     Record<number, string>
   >({});
@@ -108,14 +128,21 @@ export function NovedadesPageView() {
 
   const handleResolveSubmit = async (id: number) => {
     if (!resolutionNotes.trim()) {
-      alert("Debe ingresar las notas de resolución para liberar los recursos.");
+      showToast.warning(
+        "Ingresa las notas de resolución antes de cerrar la novedad.",
+      );
       return;
     }
     const success = await resolve(id, resolutionNotes);
     if (success) {
       setSelectedForResolve(null);
       setResolutionNotes("");
-      refresh();
+      await Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: ["analyst-delegations"] }),
+        queryClient.invalidateQueries({ queryKey: ["trafico"] }),
+        queryClient.invalidateQueries({ queryKey: ["operations"] }),
+      ]);
     }
   };
 
@@ -138,25 +165,96 @@ export function NovedadesPageView() {
             flexWrap: "wrap",
           }}
         >
-          <button
+          <Button
             type="button"
-            onClick={() => setIsCreateOpen(true)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: 0,
-              background: "#1d4ed8",
-              color: "white",
-              fontWeight: 700,
-            }}
+            onClick={() => setIsRegistrationOpen(true)}
           >
-            + Novedad de personal o vehículo
-          </button>
+            + Registrar novedad o ausencia
+          </Button>
           <LiveClock onRefresh={refresh} isRefetching={isLoading} />
         </div>
       </div>
 
       <ResourceAbsencesPanel />
+
+      {canManageDelegations && (
+        <section className={styles.delegationsSection}>
+          <div className={styles.delegationsHeader}>
+            <div>
+              <h2>Coberturas parciales por novedad</h2>
+              <p>
+                Las coberturas de analistas se crean desde una novedad de
+                persona y se cierran al resolverla.
+              </p>
+            </div>
+          </div>
+          {isLoadingDelegations ? (
+            <TruckLoader variant="compact" message="Cargando coberturas..." />
+          ) : delegationsError ? (
+            <div className={styles.errorAlert} role="alert">
+              {delegationsError}
+            </div>
+          ) : delegations.length === 0 ? (
+            <p className={styles.delegationsEmpty}>
+              No hay coberturas parciales activas.
+            </p>
+          ) : (
+            <div className={styles.delegationsTableWrap}>
+              <table className={styles.delegationsTable}>
+                <thead>
+                  <tr>
+                    <th>Cliente / alcance</th>
+                    <th>Novedad asociada</th>
+                    <th>Titular → cobertura</th>
+                    <th>Fin previsto</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {delegations.map((delegation) => {
+                    const scope = delegation.clientLocation
+                      ? `Ubicación: ${delegation.clientLocation.location.name}`
+                      : `Operación #${delegation.operation?.id ?? delegation.operationId}`;
+                    return (
+                      <tr key={delegation.id}>
+                        <td>
+                          <strong>{delegation.client.razonSocial}</strong>
+                          <div>{scope}</div>
+                        </td>
+                        <td>
+                          {delegation.novedad
+                            ? `#${delegation.novedad.id} · ${delegation.novedad.description}`
+                            : "Novedad no asociada (registro anterior)"}
+                        </td>
+                        <td>
+                          {delegation.principalAnalyst.name ?? "Sin nombre"} →{" "}
+                          {delegation.delegateAnalyst.name ?? "Sin nombre"}
+                        </td>
+                        <td>
+                          {delegation.endsAt
+                            ? new Date(delegation.endsAt).toLocaleString("es-CO")
+                            : "Al resolver la novedad"}
+                        </td>
+                        <td>
+                          <Button
+                            variant="secondary"
+                            type="button"
+                            onClick={() =>
+                              void revokeDelegation(delegation.id)
+                            }
+                          >
+                            Finalizar
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <Tabs
         tabs={NOVEDADES_TABS}
@@ -171,23 +269,18 @@ export function NovedadesPageView() {
         >
           Recurso:
         </label>
-        <select
+        <Select
           id="novedad-target"
           value={activeTarget}
           onChange={(event) => setActiveTarget(event.target.value)}
-          style={{
-            border: "1px solid #cbd5e1",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "white",
-          }}
+          style={{ width: "auto", padding: "8px 12px" }}
         >
           <option value="TODAS">Todos</option>
           <option value="OPERATION">Operación</option>
           <option value="DRIVER">Conductor</option>
           <option value="ANALYST">Analista</option>
           <option value="VEHICLE">Vehículo</option>
-        </select>
+        </Select>
       </div>
 
       {error && <div className={styles.errorAlert}>⚠️ {error}</div>}
@@ -280,6 +373,30 @@ export function NovedadesPageView() {
                 </div>
               </div>
 
+              {nov.target === "ANALYST" && nov.analyst && (
+                <div className={styles.novedadCoverage}>
+                  <strong>Cobertura parcial</strong>
+                  {nov.analystDelegations?.length ? (
+                    nov.analystDelegations.map((delegation) => (
+                      <span key={delegation.id}>
+                        Activa · {delegation.delegateAnalyst.name ?? "Sin nombre"}
+                      </span>
+                    ))
+                  ) : (
+                    <span>Sin cobertura asignada.</span>
+                  )}
+                  {canManageDelegations && nov.status !== "RESOLVED" && (
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => setSelectedForDelegation(nov)}
+                    >
+                      Delegar cobertura parcial
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {nov.operation?.containerStatus === "PENDIENTE_DEVOLUCION" && (
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
@@ -321,7 +438,8 @@ export function NovedadesPageView() {
                             </p>
                           )}
                           {nov.metadata.comodatoOcr.destino && (
-                            <button
+                            <Button
+                              variant="secondary"
                               type="button"
                               onClick={() => {
                                 const suggestedDestination =
@@ -335,7 +453,7 @@ export function NovedadesPageView() {
                               }}
                             >
                               Usar destino sugerido en el selector
-                            </button>
+                            </Button>
                           )}
                         </>
                       ) : (
@@ -360,7 +478,7 @@ export function NovedadesPageView() {
                   )}
                   <label>
                     Nuevo destino confirmado por naviera
-                    <select
+                    <Select
                       value={
                         destinationDrafts[nov.id] ??
                         String(nov.operation.nuevoDestinoId ?? "")
@@ -371,7 +489,7 @@ export function NovedadesPageView() {
                           [nov.id]: event.target.value,
                         }))
                       }
-                      style={{ display: "block", width: "100%", padding: 8 }}
+                      style={{ padding: 8 }}
                     >
                       <option value="">Seleccionar patio o puerto</option>
                       {locations
@@ -383,7 +501,7 @@ export function NovedadesPageView() {
                             {location.name}
                           </option>
                         ))}
-                    </select>
+                    </Select>
                   </label>
                   <label>
                     Fecha y hora de nueva cita
@@ -402,13 +520,14 @@ export function NovedadesPageView() {
                       style={{ display: "block", width: "100%", padding: 8 }}
                     />
                   </label>
-                  <button
+                  <Button
+                    variant="secondary"
                     type="button"
                     className={styles.resolveTriggerBtn}
                     onClick={() => void saveDeviationDestination(nov)}
                   >
                     Guardar destino y cita
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -430,12 +549,13 @@ export function NovedadesPageView() {
                   </p>
                 </div>
               ) : nov.status === "PENDING" ? (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => void markInReview(nov.id)}
                   className={styles.resolveTriggerBtn}
                 >
                   Tomar para revisión
-                </button>
+                </Button>
               ) : selectedForResolve === nov.id ? (
                 <div className={styles.resolveBox}>
                   <textarea
@@ -445,48 +565,60 @@ export function NovedadesPageView() {
                     className={styles.textarea}
                   />
                   <div className={styles.resolveActions}>
-                    <button
+                    <Button
+                      variant="secondary"
                       onClick={() => setSelectedForResolve(null)}
                       className={styles.cancelBtn}
                     >
                       Cancelar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
                       onClick={() => handleResolveSubmit(nov.id)}
                       className={styles.confirmResolveBtn}
                     >
                       Cerrar y Liberar Recursos
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => setSelectedForResolve(nov.id)}
                   className={styles.resolveTriggerBtn}
                 >
                   Resolver novedad 🔓
-                </button>
+                </Button>
               )}
             </div>
           ))}
         </div>
       )}
-      <SuperModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Registrar novedad de personal o vehículo"
-        width="600px"
-      >
-        <NovedadResourceForm
-          onCancel={() => setIsCreateOpen(false)}
-          onSuccess={() => {
-            setIsCreateOpen(false);
+      <ResourceRegistrationModal
+        isOpen={isRegistrationOpen}
+        onClose={() => setIsRegistrationOpen(false)}
+        onSuccess={(kind) => {
+          setIsRegistrationOpen(false);
+          if (kind === "NOVEDAD") {
             setActiveTab("PENDING");
             setActiveTarget("TODAS");
             void queryClient.invalidateQueries({ queryKey: ["novedades"] });
-          }}
+          } else {
+            void queryClient.invalidateQueries({
+              queryKey: ["resource-absences"],
+            });
+          }
+        }}
+      />
+      {selectedForDelegation && (
+        <AnalystPartialDelegationModal
+          isOpen
+          novedad={selectedForDelegation}
+          isSaving={isDelegating}
+          onClose={() => setSelectedForDelegation(null)}
+          onCreate={createDelegation}
         />
-      </SuperModal>
+      )}
     </div>
   );
 }

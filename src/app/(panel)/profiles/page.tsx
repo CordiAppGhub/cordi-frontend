@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Archive,
-  ClipboardList,
   FileSearch,
   Search,
   Ship,
@@ -375,12 +374,6 @@ function ProfileRecord({
             {PROFILE_TABS.find((tab) => tab.id === kind)?.label}
           </p>
           <h2>{String(name)}</h2>
-          <p>
-            {facts
-              .slice(0, 2)
-              .map(([label, value]) => `${label}: ${display(value)}`)
-              .join(" · ")}
-          </p>
         </div>
       </header>
 
@@ -400,61 +393,16 @@ function ProfileRecord({
         <Metric label="Activas" value={metrics.activeOperations} />
         <Metric label="Finalizadas" value={metrics.completedOperations} />
         <Metric label="Novedades" value={metrics.incidents} />
-        <Metric label="Evidencias" value={metrics.evidences} />
-        <Metric label="Inspecciones requeridas" value={metrics.inspections} />
-        <Metric label="Rechazos por mal estado" value={metrics.rejectedInspections} />
-        <Metric label="Desvíos registrados" value={metrics.deviations} />
       </div>
 
-      <section className={styles.breakdownSection}>
+      <section className={styles.operationsSection}>
         <div className={styles.sectionTitle}>
-          <ClipboardList size={18} />
-          <h3>Operaciones por estado</h3>
-        </div>
-        {metrics.operationsByStatus.length === 0 ? (
-          <p className={styles.message}>Aún no hay estados para mostrar.</p>
-        ) : (
-          <div className={styles.breakdownGrid}>
-            {metrics.operationsByStatus.map(({ status, count }) => (
-              <BreakdownMetric
-                key={status}
-                label={status.replaceAll("_", " ")}
-                value={count}
-                total={metrics.totalOperations}
-              />
-            ))}
+          <div>
+            <h3>Operaciones asociadas</h3>
+            <p>Resumen de actividad vinculada a este perfil.</p>
           </div>
-        )}
-      </section>
-
-      <section className={styles.breakdownSection}>
-        <div className={styles.sectionTitle}>
-          <ClipboardList size={18} />
-          <h3>Destinos de entrega</h3>
+          <span className={styles.sectionCount}>{meta.total}</span>
         </div>
-        {metrics.operationsByDestination.length === 0 ? (
-          <p className={styles.message}>No hay destinos registrados en las operaciones.</p>
-        ) : (
-          <div className={styles.breakdownGrid}>
-            {metrics.operationsByDestination.map(
-              ({ locationId, locationName, count }) => (
-                <BreakdownMetric
-                  key={locationId}
-                  label={locationName}
-                  value={count}
-                  total={metrics.totalOperations}
-                />
-              ),
-            )}
-          </div>
-        )}
-      </section>
-
-      <div className={styles.sectionTitle}>
-        <ClipboardList size={18} />
-        <h3>Operaciones y trazabilidad</h3>
-        <span>{meta.total}</span>
-      </div>
 
       {operations.length === 0 ? (
         <p className={styles.message}>
@@ -471,6 +419,7 @@ function ProfileRecord({
           ))}
         </div>
       )}
+      </section>
       {meta.total > meta.limit && (
         <div className={styles.pagination}>
           <button
@@ -496,36 +445,6 @@ function ProfileRecord({
   );
 }
 
-function BreakdownMetric({
-  label,
-  value,
-  total,
-}: {
-  label: string;
-  value: number;
-  total: number;
-}) {
-  const percentage = total > 0 ? Math.min(100, (value / total) * 100) : 0;
-  return (
-    <div className={styles.breakdownItem}>
-      <div className={styles.breakdownLabel}>
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-      <div
-        className={styles.breakdownTrack}
-        role="meter"
-        aria-label={`${label}: ${value} de ${total} operaciones`}
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={value}
-      >
-        <span style={{ width: `${percentage}%` }} />
-      </div>
-    </div>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className={styles.metric}>
@@ -542,130 +461,70 @@ function OperationRecord({
   kind: ProfileKind;
   operation: ProfileOperation;
 }) {
+  const route = [
+    operation.origen?.name,
+    operation.nuevoDestino?.name || operation.destino?.name,
+  ]
+    .filter(Boolean)
+    .join(" → ");
+  const primaryFacts: Array<[string, string | null | undefined]> = [];
+
+  if (operation.client?.razonSocial) {
+    primaryFacts.push(["Cliente", operation.client.razonSocial]);
+  }
+  if (kind === "containers" || kind === "shipping-lines") {
+    primaryFacts.push([
+      "Referencia",
+      operation.containerNumber ||
+        operation.numeroPedido ||
+        operation.documentoTransporte,
+    ]);
+  } else if (kind === "vehicles") {
+    primaryFacts.push([
+      "Conductor",
+      operation.driver?.name || operation.trailer?.plate,
+    ]);
+  } else if (kind === "drivers") {
+    primaryFacts.push([
+      "Vehículo",
+      operation.vehicle?.plate || operation.trailer?.plate,
+    ]);
+  } else if (kind === "analysts") {
+    primaryFacts.push([
+      "Referencia",
+      operation.numeroPedido ||
+        operation.documentoTransporte ||
+        operation.containerNumber,
+    ]);
+  }
+  if (route) primaryFacts.push(["Ruta", route]);
+  const visibleFacts = primaryFacts.filter(([, value]) => Boolean(value));
+
   return (
     <article className={styles.operation}>
       <header className={styles.operationHeader}>
         <div>
-          <strong>Operación #{operation.id}</strong>
-          <span>
-            {operation.type} · {operation.status}
-          </span>
+          <strong>#{operation.id}</strong>
+          <span>{operation.type.replaceAll("_", " ")}</span>
         </div>
-        <span>{display(operation.scheduledAt || operation.createdAt)}</span>
+        <div className={styles.operationMeta}>
+          <span className={styles.statusBadge}>
+            {operation.status.replaceAll("_", " ")}
+          </span>
+          <time>{display(operation.scheduledAt || operation.createdAt)}</time>
+        </div>
       </header>
 
-      <div className={styles.operationGrid}>
-        <Fact label="Estado operativo" value={operation.status.replaceAll("_", " ")} />
-        <Fact label="Cliente" value={operation.client?.razonSocial} />
-        <Fact label="Contenedor" value={operation.containerNumber} />
-        <Fact
-          label="Pedido / transporte"
-          value={operation.numeroPedido || operation.documentoTransporte}
-        />
-        <Fact
-          label="Ruta"
-          value={`${operation.origen?.name || "—"} → ${operation.nuevoDestino?.name || operation.destino?.name || "—"}`}
-        />
-        {kind !== "shipping-lines" && operation.shippingLine && (
-          <Fact label="Naviera" value={operation.shippingLine.name} />
-        )}
-        {operation.requiresInspection && (
-          <Fact
-            label="Inspección"
-            value={operation.inspectionStatus || "Pendiente"}
-          />
-        )}
-        {operation.deviations[0] && (
-          <>
-            <Fact
-              label="Patio reasignado"
-              value={operation.deviations[0].newLocation.name}
-            />
-            <Fact
-              label="Motivo del desvío"
-              value={operation.deviations[0].reason.replaceAll("_", " ")}
-            />
-          </>
-        )}
-        {kind === "shipping-lines" && (
-          <Fact
-            label="Destino asignado"
-            value={
-              operation.deviations[0]?.newLocation.name ||
-              operation.destino?.name
-            }
-          />
-        )}
-        <Fact
-          label="Vehículo / chasis"
-          value={`${operation.vehicle?.plate || "—"} / ${operation.trailer?.plate || "—"}`}
-        />
-        {kind !== "drivers" && (
-          <Fact label="Conductor" value={operation.driver?.name} />
-        )}
-        {kind !== "analysts" && (
-          <Fact label="Analista" value={operation.analyst?.name} />
-        )}
-      </div>
-
-      {operation.evidences.length > 0 && (
-        <section className={styles.auditSection}>
-          <h4>Evidencias ({operation.evidences.length})</h4>
-          <div className={styles.evidenceList}>
-            {operation.evidences.map((evidence) => (
-              <a
-                key={evidence.id}
-                href={evidence.url || undefined}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {evidence.type} · {display(evidence.createdAt)}
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {operation.historialNovedades.length > 0 && (
-        <section className={styles.auditSection}>
-          <h4>Novedades ({operation.historialNovedades.length})</h4>
-          {operation.historialNovedades.map((incident) => (
-            <p className={styles.auditEntry} key={incident.id}>
-              <strong>
-                {incident.severity} · {incident.status}
-              </strong>
-              <span>{incident.description}</span>
-              {incident.resolutionNotes && (
-                <small>{incident.resolutionNotes}</small>
-              )}
-            </p>
+      {visibleFacts.length > 0 && (
+        <dl className={styles.operationFacts}>
+          {visibleFacts.map(([label, value]) => (
+            <div className={styles.operationFact} key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
           ))}
-        </section>
-      )}
-
-      {operation.events.length > 0 && (
-        <section className={styles.auditSection}>
-          <h4>Actividad reciente</h4>
-          <ol className={styles.timeline}>
-            {operation.events.map((event) => (
-              <li key={event.id}>
-                <time>{display(event.createdAt)}</time>
-                <strong>{event.eventType}</strong>
-                <span>{event.description}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+        </dl>
       )}
     </article>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div className={styles.operationFact}>
-      <span>{label}</span>
-      <strong>{display(value)}</strong>
-    </div>
   );
 }

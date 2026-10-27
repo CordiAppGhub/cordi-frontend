@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, X, Filter } from 'lucide-react';
+import { Select } from '@/components/atoms/select/select';
 import { GetOperationsParams } from '@/services/operation.service';
 import styles from './OperationFilters.module.css';
 
@@ -78,7 +79,7 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
 
             <div className={styles.inputGroup}>
               <span className={styles.label}>Tipo Op.</span>
-              <select name="type" value={filters.type || ''} onChange={handleChange} className={styles.input}>
+              <Select name="type" value={filters.type || ''} onChange={handleChange} className={styles.input}>
                 <option value="">Todos</option>
                 <option value="IMPORTACION">Importación</option>
                 <option value="EXPORTACION">Exportación</option>
@@ -88,7 +89,7 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
                 <option value="CARGA_SUELTA_URBANA">Carga Suelta Urbana</option>
                 <option value="CARGA_SUELTA_NACIONAL">Carga Suelta Nacional</option>
                 <option value="MOVIMIENTO_INTERNO">Movimiento Interno</option>
-              </select>
+              </Select>
             </div>
           </div>
         )}
