@@ -7,21 +7,40 @@ import { SuperModal } from '@/components/organisms/modal/modal';
 import { Button } from '@/components/atoms/button/button';
 import { Input } from '@/components/atoms/input/input';
 import { Select } from '@/components/atoms/select/select';
-import { tariffService } from '@/services/tariff.service';
 import { vehiclesService } from '@/services/vehicles.service';
 import {
   createVehicleSchema,
   type CreateVehicleFormValues,
 } from '@/schemas/vehicle.schema';
-import type { CreateVehicleFormInput } from '@/types/vehicles';
 import { showToast } from '@/utils/alerts';
+import type { Locations } from '@/types/location.types';
+import type {
+  Trailer,
+  UpdateTrailerInput,
+  UpdateVehicleDto,
+  Vehicle,
+} from '@/types/vehicles';
 import styles from './CreateVehicleModal.module.css';
 
 interface CreateVehicleModalProps {
   isOpen: boolean;
+  assetType: 'vehicle' | 'trailer';
+  ownYards: Locations[];
+  isLoadingOwnYards: boolean;
+  ownYardsError: boolean;
+  editingVehicle?: Vehicle | null;
+  editingTrailer?: Trailer | null;
   onClose: () => void;
   onCreateVehicle: (
-    data: CreateVehicleFormInput,
+    data: CreateVehicleFormValues,
+  ) => Promise<boolean | void> | boolean | void;
+  onUpdateVehicle?: (
+    id: number,
+    data: UpdateVehicleDto,
+  ) => Promise<boolean | void> | boolean | void;
+  onUpdateTrailer?: (
+    id: string,
+    data: UpdateTrailerInput,
   ) => Promise<boolean | void> | boolean | void;
 }
 
@@ -31,20 +50,22 @@ const DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 
 export default function CreateVehicleModal({
   isOpen,
+  assetType,
+  ownYards,
+  isLoadingOwnYards,
+  ownYardsError,
+  editingVehicle = null,
+  editingTrailer = null,
   onClose,
   onCreateVehicle,
+  onUpdateVehicle,
+  onUpdateTrailer,
 }: CreateVehicleModalProps) {
+  const isEditing = Boolean(editingVehicle || editingTrailer);
   const [loading, setLoading] = useState(false);
   const [documentLoading, setDocumentLoading] = useState<
     Record<DocumentKind, boolean>
   >({ insurance: false, tecnomecanica: false });
-  const [affiliationOptions, setAffiliationOptions] = useState<
-    Array<{ value: string; label: string }>
-  >([
-    { value: 'TERCEROS', label: 'Terceros (Vehículos Externos)' },
-    { value: 'CORDIHUB', label: 'Cordihub (Fidelizados)' },
-    { value: 'CORDIVEHICULOS', label: 'Cordivehículos (Flota Propia)' },
-  ]);
   const requestIds = useRef<Record<DocumentKind, number>>({
     insurance: 0,
     tecnomecanica: 0,
@@ -60,14 +81,16 @@ export default function CreateVehicleModal({
     resolver: zodResolver(createVehicleSchema),
     defaultValues: {
       plate: '',
-      type: 'CAMION_SENCILLO',
+      type: assetType === 'trailer' ? 'TRAILER' : 'PATINETA',
       brand: '',
+      trailerType: undefined,
+      axles: undefined,
+      currentLocationId: undefined,
+      notes: '',
       modelYear: new Date().getFullYear(),
-      empresa: '',
+      affiliation: 'CORDIVEHICULOS',
       cargoCapacity: 0,
       status: 'AVAILABLE',
-      affiliation: 'TERCEROS',
-      adminDiscount: undefined,
       insuranceFileUrl: '',
       insuranceFile: undefined,
       insuranceExpiration: '',
@@ -76,48 +99,29 @@ export default function CreateVehicleModal({
       tecnomecanicaExpiration: '',
     },
   });
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    void tariffService
-      .getAllVehicleTariffs()
-      .then((tariffs) => {
-        if (tariffs.length > 0) {
-          setAffiliationOptions(
-            tariffs.map((tariff) => ({
-              value: tariff.affiliation,
-              label: `${tariff.affiliation} — Retención base: ${tariff.percentage}%`,
-            })),
-          );
-        }
-      })
-      .catch((error: unknown) => {
-        console.error('No se pudieron cargar las tarifas de flotas dinámicas:', error);
-      });
-  }, [isOpen]);
-
   useEffect(() => {
     if (isOpen) {
       reset({
-        plate: '',
-        type: 'CAMION_SENCILLO',
-        brand: '',
-        modelYear: new Date().getFullYear(),
-        empresa: '',
-        cargoCapacity: 0,
-        status: 'AVAILABLE',
-        affiliation: 'TERCEROS',
-        adminDiscount: undefined,
+        plate: editingVehicle?.plate ?? editingTrailer?.plate ?? '',
+        type: editingTrailer ? 'TRAILER' : editingVehicle?.type ?? (assetType === 'trailer' ? 'TRAILER' : 'PATINETA'),
+        brand: editingVehicle?.brand ?? editingTrailer?.brand ?? '',
+        trailerType: editingTrailer?.trailerType,
+        axles: editingTrailer?.axles,
+        currentLocationId: editingTrailer?.currentLocationId,
+        notes: editingTrailer?.notes ?? '',
+        modelYear: editingVehicle?.modelYear ?? new Date().getFullYear(),
+        affiliation: editingVehicle?.affiliation ?? 'CORDIVEHICULOS',
+        cargoCapacity: editingVehicle?.cargoCapacity ?? editingTrailer?.capacity ?? 0,
+        status: editingVehicle?.status ?? 'AVAILABLE',
         insuranceFileUrl: '',
         insuranceFile: undefined,
-        insuranceExpiration: '',
+        insuranceExpiration: editingVehicle?.insuranceExpiration?.slice(0, 10) ?? '',
         tecnomecanicaFileUrl: '',
         tecnomecanicaFile: undefined,
-        tecnomecanicaExpiration: '',
+        tecnomecanicaExpiration: editingVehicle?.tecnomecanicaExpiration?.slice(0, 10) ?? '',
       });
     }
-  }, [isOpen, reset]);
+  }, [assetType, editingTrailer, editingVehicle, isOpen, reset]);
 
   const handleCloseModal = () => {
     requestIds.current.insurance += 1;
@@ -191,16 +195,76 @@ export default function CreateVehicleModal({
   const submitVehicle = async (formValues: CreateVehicleFormValues) => {
     try {
       setLoading(true);
-      const payload: CreateVehicleFormInput = {
+      if (editingVehicle) {
+        if (!onUpdateVehicle) {
+          throw new Error('No está configurada la actualización del cabezote.');
+        }
+        if (formValues.type === 'TRAILER') {
+          throw new Error('El tipo seleccionado no es válido para un cabezote.');
+        }
+        const updated = await onUpdateVehicle(editingVehicle.id, {
+          plate: formValues.plate.trim().toUpperCase(),
+          type: formValues.type,
+          brand: formValues.brand?.trim() ?? '',
+          modelYear: formValues.modelYear,
+          affiliation: formValues.affiliation,
+          cargoCapacity: formValues.cargoCapacity,
+          status: formValues.status,
+          insuranceFileUrl: formValues.insuranceFileUrl || undefined,
+          insuranceExpiration: formValues.insuranceExpiration || null,
+          tecnomecanicaFileUrl: formValues.tecnomecanicaFileUrl || undefined,
+          tecnomecanicaExpiration:
+            formValues.tecnomecanicaExpiration || null,
+        });
+        if (updated !== false) onClose();
+        return;
+      }
+
+      if (editingTrailer) {
+        if (!onUpdateTrailer) {
+          throw new Error('No está configurada la actualización del tráiler.');
+        }
+        if (
+          (formValues.axles !== 2 && formValues.axles !== 3) ||
+          !formValues.trailerType ||
+          !formValues.currentLocationId
+        ) {
+          showToast.error('Completa el tipo, los ejes y el patio del tráiler.');
+          return;
+        }
+        const data: UpdateTrailerInput = {
+          plate: formValues.plate.trim().toUpperCase(),
+          trailerType: formValues.trailerType,
+          axles: formValues.axles,
+          brand: formValues.brand?.trim() ?? '',
+          notes: formValues.notes?.trim() ?? '',
+          capacity:
+            formValues.cargoCapacity && formValues.cargoCapacity > 0
+              ? formValues.cargoCapacity
+              : undefined,
+          ...(editingTrailer.status === 'AVAILABLE_IN_YARD'
+            ? { currentLocationId: formValues.currentLocationId }
+            : {}),
+        };
+        const updated = await onUpdateTrailer(editingTrailer.id, data);
+        if (updated !== false) onClose();
+        return;
+      }
+
+      const payload: CreateVehicleFormValues = {
         plate: formValues.plate.trim().toUpperCase(),
         type: formValues.type,
-        brand: formValues.brand.trim(),
+        brand: formValues.brand?.trim() ?? '',
+        trailerType: formValues.trailerType,
+        axles: formValues.axles,
+        currentLocationId: formValues.currentLocationId,
+        notes: formValues.notes,
         modelYear: formValues.modelYear,
-        empresa: formValues.empresa?.trim() ?? '',
+        affiliation: formValues.affiliation,
         cargoCapacity: formValues.cargoCapacity,
         status: formValues.status,
-        affiliation: formValues.affiliation,
-        adminDiscount: formValues.adminDiscount,
+        insuranceFile: formValues.insuranceFile,
+        tecnomecanicaFile: formValues.tecnomecanicaFile,
         insuranceFileUrl: formValues.insuranceFileUrl || undefined,
         insuranceExpiration: formValues.insuranceExpiration || undefined,
         tecnomecanicaFileUrl: formValues.tecnomecanicaFileUrl || undefined,
@@ -211,8 +275,12 @@ export default function CreateVehicleModal({
       const created = await onCreateVehicle(payload);
       if (created !== false) onClose();
     } catch (error: unknown) {
-      console.error('Error al registrar vehículo:', error);
-      showToast.error(error, 'No se pudo registrar el vehículo.');
+      showToast.error(
+        error,
+        isEditing
+          ? 'No se pudo actualizar el vehículo.'
+          : 'No se pudo registrar el vehículo.',
+      );
     } finally {
       setLoading(false);
     }
@@ -227,7 +295,15 @@ export default function CreateVehicleModal({
     <SuperModal
       isOpen={isOpen}
       onClose={handleCloseModal}
-      title="Registrar nuevo vehículo"
+      title={
+        isEditing
+          ? assetType === 'trailer'
+            ? `Editar tráiler ${editingTrailer?.plate ?? ''}`
+            : `Editar cabezote ${editingVehicle?.plate ?? ''}`
+          : assetType === 'trailer'
+            ? 'Registrar nuevo tráiler'
+            : 'Registrar nuevo cabezote'
+      }
       width="700px"
       maxHeight="90vh"
     >
@@ -243,18 +319,91 @@ export default function CreateVehicleModal({
           </label>
 
           <label className={styles.field}>
-            <span>Tipo de vehículo</span>
-            <Select
-              options={[
-                { value: 'CAMION_SENCILLO', label: 'Sencillo' },
-                { value: 'TRACTOMULA', label: 'Tractomula' },
-                { value: 'TURBO', label: 'Turbo' },
-                { value: 'PLANCHA', label: 'Plancha' },
-              ]}
-              {...register('type')}
-              error={inputError('type')}
-            />
+            {assetType === 'trailer' ? (
+              <>
+                <span>Tipo de tráiler</span>
+                <Select
+                  options={[
+                    { value: 'PLANCHA', label: 'Plancha' },
+                    { value: 'GRILLO', label: 'Grillo' },
+                    { value: 'TANQUE', label: 'Tanque' },
+                  ]}
+                  {...register('trailerType')}
+                  error={inputError('trailerType')}
+                  required
+                />
+              </>
+            ) : (
+              <>
+                <span>Tipo de cabezote</span>
+                <Select
+                  options={[
+                    { value: 'PATINETA', label: 'Patineta (2 ejes / C2)' },
+                    { value: 'MULA', label: 'Mula (3 ejes / C3)' },
+                  ]}
+                  {...register('type')}
+                  error={inputError('type')}
+                />
+              </>
+            )}
           </label>
+
+          {assetType === 'trailer' && (
+            <label className={styles.field}>
+              <span>Número de ejes</span>
+              <Select
+                options={[
+                  { value: '2', label: '2 ejes' },
+                  { value: '3', label: '3 ejes' },
+                ]}
+                {...register('axles', {
+                  setValueAs: (value: string) =>
+                    value === '' ? undefined : Number(value),
+                })}
+                error={inputError('axles')}
+                required
+              />
+            </label>
+          )}
+
+          {assetType === 'trailer' && (
+            <label className={styles.field}>
+              <span>Ubicación inicial (patio)</span>
+              {editingTrailer &&
+              editingTrailer.status !== 'AVAILABLE_IN_YARD' ? (
+                <span className={styles.helper}>
+                  {editingTrailer.currentLocation?.name ?? 'Ubicación sin registrar'}.
+                  El patio solo se puede cambiar cuando está disponible en patio.
+                </span>
+              ) : (
+                <Select
+                  options={ownYards.map((location) => ({
+                    value: location.id,
+                    label: location.name,
+                  }))}
+                  {...register('currentLocationId', {
+                    setValueAs: (value: string) =>
+                      value === '' ? undefined : Number(value),
+                  })}
+                  error={inputError('currentLocationId')}
+                  required
+                />
+              )}
+              {isLoadingOwnYards && (
+                <span className={styles.helper}>Cargando patios propios...</span>
+              )}
+              {ownYardsError && (
+                <span className={styles.helper} role="alert">
+                  No se pudieron cargar los patios propios. Inténtalo de nuevo.
+                </span>
+              )}
+              {!isLoadingOwnYards && !ownYardsError && !ownYards.length && (
+                <span className={styles.helper}>
+                  Registra o marca una ubicación como patio propio para crear el tráiler.
+                </span>
+              )}
+            </label>
+          )}
 
           <label className={styles.field}>
             <span>Marca</span>
@@ -265,7 +414,19 @@ export default function CreateVehicleModal({
             />
           </label>
 
-          <label className={styles.field}>
+          {assetType === 'trailer' && (
+            <label className={styles.field}>
+              <span>Observaciones operativas (opcional)</span>
+              <textarea
+                {...register('notes')}
+                maxLength={2000}
+                rows={3}
+                placeholder="Notas sobre el estado o características del tráiler."
+              />
+            </label>
+          )}
+
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Modelo (año)</span>
             <Input
               type="number"
@@ -274,18 +435,22 @@ export default function CreateVehicleModal({
               max={2100}
               error={inputError('modelYear')}
             />
-          </label>
+          </label>}
 
-          <label className={styles.field}>
-            <span>Empresa / propietario</span>
-            <Input
-              {...register('empresa')}
-              placeholder="Ej. Global Logistics"
-              error={inputError('empresa')}
+          {assetType === 'vehicle' && <label className={styles.field}>
+            <span>Afiliación / Propietario</span>
+            <Select
+              options={[
+                { value: 'CORDIVEHICULOS', label: 'Cordivehículos' },
+                { value: 'CORDIHUB', label: 'Cordihub' },
+                { value: 'TERCEROS', label: 'Terceros' },
+              ]}
+              {...register('affiliation')}
+              error={inputError('affiliation')}
             />
-          </label>
+          </label>}
 
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Capacidad de carga (kg o toneladas)</span>
             <Input
               type="number"
@@ -295,18 +460,9 @@ export default function CreateVehicleModal({
               placeholder="Ej. 34000"
               error={inputError('cargoCapacity')}
             />
-          </label>
+          </label>}
 
-          <label className={styles.field}>
-            <span>Afiliación</span>
-            <Select
-              options={affiliationOptions}
-              {...register('affiliation')}
-              error={inputError('affiliation')}
-            />
-          </label>
-
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Estado inicial</span>
             <Select
               options={[
@@ -318,24 +474,9 @@ export default function CreateVehicleModal({
               {...register('status')}
               error={inputError('status')}
             />
-          </label>
+          </label>}
 
-          <label className={styles.field}>
-            <span>Descuento personalizado (%) — opcional</span>
-            <Input
-              type="number"
-              {...register('adminDiscount', {
-                setValueAs: (value: string) =>
-                  value === '' ? undefined : Number(value),
-              })}
-              min="0"
-              step="any"
-              placeholder="Dejar vacío para usar la tarifa general"
-              error={inputError('adminDiscount')}
-            />
-          </label>
-
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Documento SOAT / seguro — opcional</span>
             <Input
               type="file"
@@ -352,18 +493,18 @@ export default function CreateVehicleModal({
             {documentLoading.insurance && (
               <span className={styles.helper}>Subiendo y leyendo documento…</span>
             )}
-          </label>
+          </label>}
 
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Vencimiento del SOAT — opcional</span>
             <Input
               type="date"
               {...register('insuranceExpiration')}
               error={inputError('insuranceExpiration')}
             />
-          </label>
+          </label>}
 
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Documento tecnomecánica — opcional</span>
             <Input
               type="file"
@@ -380,16 +521,16 @@ export default function CreateVehicleModal({
             {documentLoading.tecnomecanica && (
               <span className={styles.helper}>Subiendo y leyendo documento…</span>
             )}
-          </label>
+          </label>}
 
-          <label className={styles.field}>
+          {assetType === 'vehicle' && <label className={styles.field}>
             <span>Vencimiento de la tecnomecánica — opcional</span>
             <Input
               type="date"
               {...register('tecnomecanicaExpiration')}
               error={inputError('tecnomecanicaExpiration')}
             />
-          </label>
+          </label>}
         </div>
 
         <div className={styles.actions}>
@@ -405,9 +546,21 @@ export default function CreateVehicleModal({
             type="submit"
             variant="primary"
             isLoading={loading}
-            disabled={loading || isProcessingDocuments}
+            disabled={
+              loading ||
+              isProcessingDocuments ||
+              (assetType === 'trailer' &&
+                !isEditing &&
+                (isLoadingOwnYards || ownYardsError || !ownYards.length))
+            }
           >
-            Guardar vehículo
+            {isEditing
+              ? assetType === 'trailer'
+                ? 'Guardar cambios del tráiler'
+                : 'Guardar cambios del cabezote'
+              : assetType === 'trailer'
+                ? 'Guardar tráiler'
+                : 'Guardar cabezote'}
           </Button>
         </div>
       </form>

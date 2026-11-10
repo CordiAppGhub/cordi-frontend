@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@/services/auth.services';
+import { useAuthStore } from '@/store/use-auth.store';
 import { showToast } from '@/utils/alerts';
 
 export function useAuthLogin() {
@@ -33,10 +34,22 @@ export function useAuthLogin() {
   // ==========================================
   const verifyMutation = useMutation({
     mutationFn: () => authService.verifyTwoFactor(email, code),
-    onSuccess: () => {
+    onSuccess: (data) => {
       showToast.success('¡Autenticación de doble factor exitosa!');
-      // Fuerza una navegación completa para que el proxy detecte la cookie HttpOnly
-      window.location.assign('/dashboard');
+      useAuthStore.getState().setUser(data.user);
+
+      let destination = '/dashboard';
+      if (data.user.mustChangePassword) {
+        destination = '/change-password';
+      } else {
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirectUrl = searchParams.get('redirect');
+        if (redirectUrl && redirectUrl.startsWith('/')) {
+          destination = redirectUrl;
+        }
+      }
+
+      window.location.replace(destination);
     },
     onError: (err: unknown) => {
       showToast.error(err, 'El código no es válido o ya venció. Solicita uno nuevo.');

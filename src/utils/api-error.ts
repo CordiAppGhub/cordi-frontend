@@ -55,6 +55,11 @@ export function getUserFriendlyErrorMessage(
   }
 
   if (status && status >= 500) {
+    const ocrDiagnostic = readableMessage(error.response?.data?.message);
+    if (ocrDiagnostic?.startsWith('Error procesando imagen OCR:')) {
+      return ocrDiagnostic;
+    }
+
     return 'Tuvimos un problema en el servidor y no pudimos completar la solicitud. Inténtalo de nuevo en unos minutos; si el problema continúa, contacta a soporte.';
   }
 

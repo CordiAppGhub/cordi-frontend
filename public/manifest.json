@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Cordibot | Corditrans",
-  "short_name": "Cordibot",
+  "name": "Corditrans TMS",
+  "short_name": "Corditrans TMS",
   "description": "Plataforma logística para conductores y personal administrativo",
   "start_url": "/",
   "scope": "/",

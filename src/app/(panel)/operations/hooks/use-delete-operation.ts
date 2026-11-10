@@ -12,13 +12,15 @@ export function useDeleteOperation() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["trafico"] }),
+        queryClient.invalidateQueries({ queryKey: ["trafico-client-operations"] }),
         queryClient.invalidateQueries({ queryKey: ["operations"] }),
         queryClient.invalidateQueries({ queryKey: ["operation-history"] }),
+        queryClient.invalidateQueries({ queryKey: ["driver-portal-profile"] }),
         queryClient.invalidateQueries({
-          queryKey: ["dashboard", "operation-alerts"],
+          queryKey: ["dashboard"],
         }),
       ]);
-      showToast.success("Operación eliminada correctamente.");
+      showToast.success("Operación eliminada permanentemente.");
     },
     onError: (error: unknown) => {
       showToast.error(error, "No se pudo eliminar la operación.");

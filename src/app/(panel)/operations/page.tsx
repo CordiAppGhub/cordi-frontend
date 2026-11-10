@@ -1,4 +1,4 @@
-import { OperationsView } from "./views/operation-views";
+import { OperationsView } from "./views/operations-view";
 
 export const metadata = {
   title: 'Operaciones | Corditrans TMS',

@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import styles from './TraceabilityDrawer.module.css';
-import { OperationTraceability } from '@/app/(panel)/operations/components/details/OperationTraceability';
+import { OperationTraceability } from '@/app/(panel)/operations/components/details/operation-traceability';
 
 interface TraceabilityDrawerProps {
   isOpen: boolean;

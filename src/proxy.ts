@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const PROTECTED_ROUTES = [
+  '/change-password',
   '/dashboard',
   '/profiles',
   '/operations',
@@ -19,9 +20,16 @@ const PROTECTED_ROUTES = [
 
 const RESTRICTED_FOR_ANALYST = ['/fleet', '/locations', '/programacion'];
 
-function decodeJwtRole(token: string): string | null {
+interface SessionClaims {
+  role: string;
+  mustChangePassword: boolean;
+}
+
+function decodeJwtClaims(token: string): SessionClaims | null {
   try {
-    const base64UrlPayload = token.split('.')[1];
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64UrlPayload = parts[1];
     const base64 = base64UrlPayload.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -29,8 +37,30 @@ function decodeJwtRole(token: string): string | null {
         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
-    const payload = JSON.parse(jsonPayload);
-    return payload.role || null;
+    const payload: unknown = JSON.parse(jsonPayload);
+    if (
+      typeof payload !== 'object' ||
+      payload === null ||
+      !('role' in payload) ||
+      typeof payload.role !== 'string'
+    ) {
+      return null;
+    }
+
+    // Si el token incluye expiración (exp en segundos), validar que siga vigente
+    if ('exp' in payload && typeof payload.exp === 'number') {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (payload.exp < nowSeconds) {
+        return null;
+      }
+    }
+
+    return {
+      role: payload.role,
+      mustChangePassword:
+        'mustChangePassword' in payload &&
+        payload.mustChangePassword === true,
+    };
   } catch {
     return null;
   }
@@ -39,7 +69,10 @@ function decodeJwtRole(token: string): string | null {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get('corditrans_session')?.value;
-  const userRole = sessionToken ? decodeJwtRole(sessionToken) : null;
+  const sessionClaims = sessionToken ? decodeJwtClaims(sessionToken) : null;
+  const userRole = sessionClaims?.role ?? null;
+  const mustChangePassword = sessionClaims?.mustChangePassword ?? false;
+  const hasValidSession = Boolean(sessionToken && sessionClaims);
 
   if (
     pathname.startsWith('/_next') ||
@@ -53,8 +86,10 @@ export function proxy(request: NextRequest) {
     const installEntry = request.cookies.get('cordibot_pwa_entry')?.value;
     return NextResponse.redirect(
       new URL(
-        sessionToken
-          ? userRole === 'CONDUCTOR'
+        hasValidSession
+          ? mustChangePassword
+            ? '/change-password'
+            : userRole === 'CONDUCTOR'
             ? '/driver'
             : '/dashboard'
           : installEntry === 'driver'
@@ -66,9 +101,16 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname === '/login') {
-    if (sessionToken) {
+    if (hasValidSession) {
       return NextResponse.redirect(
-        new URL(userRole === 'CONDUCTOR' ? '/driver' : '/dashboard', request.url),
+        new URL(
+          mustChangePassword
+            ? '/change-password'
+            : userRole === 'CONDUCTOR'
+              ? '/driver'
+              : '/dashboard',
+          request.url,
+        ),
       );
     }
     return NextResponse.next();
@@ -78,24 +120,38 @@ export function proxy(request: NextRequest) {
     pathname === '/driver' || pathname.startsWith('/driver/');
   const isConductorProfileRoute =
     pathname === '/profiles' || pathname.startsWith('/profiles/');
-  if (userRole === 'CONDUCTOR' && !isDriverRoute && !isConductorProfileRoute) {
+
+  if (hasValidSession && userRole === 'CONDUCTOR' && !isDriverRoute && !isConductorProfileRoute) {
     return NextResponse.redirect(new URL('/driver', request.url));
   }
-  if (sessionToken && isDriverRoute && userRole !== 'CONDUCTOR') {
+  if (hasValidSession && isDriverRoute && userRole !== 'CONDUCTOR') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (
+    hasValidSession &&
+    mustChangePassword &&
+    pathname !== '/change-password'
+  ) {
+    return NextResponse.redirect(new URL('/change-password', request.url));
   }
 
   const isProtectedRoute = PROTECTED_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  if (isProtectedRoute && !sessionToken) {
+  if (isProtectedRoute && !hasValidSession) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    if (sessionToken && !userRole) {
+      // Limpia cookie vencida
+      redirectResponse.cookies.delete('corditrans_session');
+    }
+    return redirectResponse;
   }
 
-  if (sessionToken) {
+  if (hasValidSession) {
     const isRestrictedRoute = RESTRICTED_FOR_ANALYST.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
     );

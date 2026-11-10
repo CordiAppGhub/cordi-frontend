@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { AxiosError } from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { driversService } from '@/services/driver.service';
 import { useDriversStore } from '@/store/use-driver.store';
@@ -17,6 +18,7 @@ interface BackendErrorResponse {
 }
 
 export const useDrivers = () => {
+  const queryClient = useQueryClient();
   const drivers = useDriversStore((state) => state.drivers);
   const isLoading = useDriversStore((state) => state.isLoading);
 
@@ -47,6 +49,7 @@ export const useDrivers = () => {
       try {
         const newDriver = await driversService.create(data);
         addDriver(newDriver);
+        await queryClient.invalidateQueries({ queryKey: ['drivers', 'paginated'] });
         showToast.success('Conductor registrado con éxito');
         return true;
       } catch (err: unknown) {
@@ -59,7 +62,7 @@ export const useDrivers = () => {
         setIsLoading(false);
       }
     },
-    [addDriver, setIsLoading]
+    [addDriver, queryClient, setIsLoading]
   );
 
   const editDriver = useCallback(
@@ -68,6 +71,7 @@ export const useDrivers = () => {
       try {
         const updatedDriver = await driversService.update(id, data);
         updateDriverInStore(id, updatedDriver);
+        await queryClient.invalidateQueries({ queryKey: ['drivers', 'paginated'] });
         showToast.success('Conductor modificado con éxito');
         return true;
       } catch (err: unknown) {
@@ -80,7 +84,7 @@ export const useDrivers = () => {
         setIsLoading(false);
       }
     },
-    [setIsLoading, updateDriverInStore]
+    [queryClient, setIsLoading, updateDriverInStore]
   );
 
   const disableDriver = useCallback(
@@ -138,6 +142,7 @@ export const useDrivers = () => {
       try {
         const res = await driversService.delete(id);
         removeDriverFromStore(id);
+        await queryClient.invalidateQueries({ queryKey: ['drivers', 'paginated'] });
         showToast.success(res.message || 'El conductor fue eliminado correctamente.');
         return true;
       } catch (err: unknown) {
@@ -151,13 +156,18 @@ export const useDrivers = () => {
         setIsLoading(false);
       }
     },
-    [removeDriverFromStore, setIsLoading]
+    [queryClient, removeDriverFromStore, setIsLoading]
   );
 
   const uploadExcel = useCallback(async (file: File) => {
     try {
       const result = await driversService.importExcel(file);
-      showToast.success('Carga masiva completada con éxito');
+      await queryClient.invalidateQueries({ queryKey: ['drivers', 'paginated'] });
+      if (result.success) {
+        showToast.success(result.message);
+      } else {
+        showToast.error(result.message);
+      }
       return result;
     } catch (err: unknown) {
       console.error('Error al subir Excel de conductores:', err);
@@ -166,7 +176,7 @@ export const useDrivers = () => {
       showToast.error(message);
       throw err;
     }
-  }, []);
+  }, [queryClient]);
 
   return {
     drivers,

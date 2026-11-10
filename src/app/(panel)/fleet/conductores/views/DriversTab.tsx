@@ -1,33 +1,68 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/atoms/button/button';
+import { Input } from '@/components/atoms/input/input';
 import { TruckLoader } from '@/components/TruckLoader';
 import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
+import { driversService } from '@/services/driver.service';
 import CreateDriverModal from '../components/CreateDriverModal';
 
 import { DriverCard } from '../../components/DriverCard'; 
 import styles from '../../components/fleet-cards.module.css';
 
 import { Driver } from '@/types/drivers';
+import UploadExcel from '@/components/organisms/fleet/UploadExcel';
 
 export const DriversTab = () => {
   const router = useRouter();
-  const { drivers, isLoading, loadDrivers, createDriver, editDriver, deleteDriver } = useDrivers();
+  const {
+    createDriver,
+    editDriver,
+    deleteDriver,
+    uploadExcel,
+  } = useDrivers();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);
-  const isInitialized = useRef(false);
+  const [driverSearch, setDriverSearch] = useState('');
+  const [debouncedDriverSearch, setDebouncedDriverSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   useEffect(() => {
-    if (!isInitialized.current) {
-      loadDrivers();
-      isInitialized.current = true;
-    }
-  }, [loadDrivers]);
+    const timeoutId = window.setTimeout(
+      () => setDebouncedDriverSearch(driverSearch.trim()),
+      250,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [driverSearch]);
 
+  const driversQuery = useQuery({
+    queryKey: [
+      'drivers',
+      'paginated',
+      currentPage,
+      pageSize,
+      debouncedDriverSearch,
+    ],
+    queryFn: () =>
+      driversService.getPaginated(
+        currentPage,
+        pageSize,
+        debouncedDriverSearch,
+      ),
+    placeholderData: keepPreviousData,
+  });
+
+  const drivers = driversQuery.data?.data ?? [];
+  const totalDrivers = driversQuery.data?.total ?? 0;
+  const totalPages = driversQuery.data?.totalPages ?? 1;
+
+  const displayedPage = driversQuery.data?.page ?? currentPage;
   const handleOpenCreate = () => {
     setDriverToEdit(null);
     setIsModalOpen(true);
@@ -59,11 +94,57 @@ export const DriversTab = () => {
         </Button>
       </div>
 
-      {isLoading && drivers.length === 0 ? (
+      <UploadExcel
+        title="Importación masiva de conductores"
+        description={
+          <>
+            Carga un archivo Excel (.xlsx o .xls). La primera fila debe contener
+            encabezados CONDUCTOR, CEDULA, TELEFONO y AFILIACION. Para
+            AFILIACION usa CORDIVEHICULOS, CORDIHUB o TERCEROS. Los registros
+            existentes se actualizarán por cédula; también se repararán
+            registros cruzados por la importación anterior cuando la
+            coincidencia sea única.
+            Máximo 250 conductores por archivo.
+          </>
+        }
+        onUpload={uploadExcel}
+      />
+
+      <label className={styles.plateSearch}>
+        <span>
+          <Search size={16} aria-hidden="true" />
+          Buscar conductor por nombre o cédula
+        </span>
+        <div className={styles.plateSearchInput}>
+          <Input
+            type="search"
+            value={driverSearch}
+            onChange={(event) => {
+              setDriverSearch(event.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Nombre o número de cédula"
+            aria-label="Buscar conductor por nombre o cédula"
+          />
+        </div>
+      </label>
+
+      {driversQuery.isLoading ? (
         <TruckLoader variant="compact" message="Sincronizando personal operativo..." />
-      ) : drivers.length === 0 ? (
+      ) : driversQuery.isError ? (
+        <div className={styles.searchEmptyState} role="alert">
+          No se pudieron cargar los conductores.{' '}
+          <button type="button" onClick={() => void driversQuery.refetch()}>
+            Reintentar
+          </button>
+        </div>
+      ) : totalDrivers === 0 && !debouncedDriverSearch ? (
         <div style={{ background: 'white', borderRadius: '12px', padding: '60px', textAlign: 'center', color: '#64748b', border: '1px dashed #cbd5e1' }}>
           No hay conductores registrados.
+        </div>
+      ) : totalDrivers === 0 ? (
+        <div className={styles.searchEmptyState}>
+          No se encontraron conductores para “{driverSearch}”.
         </div>
       ) : (
         <div className={styles.cardsGrid}>
@@ -76,6 +157,37 @@ export const DriversTab = () => {
               onDelete={deleteDriver}
             />
           ))}
+        </div>
+      )}
+
+      {totalDrivers > 0 && (
+        <div className={styles.cardPagination}>
+          <span className={styles.cardPaginationSummary}>
+            {totalDrivers} conductor(es)
+            {debouncedDriverSearch && ` para “${debouncedDriverSearch}”`}
+            {driversQuery.isFetching && ' · Actualizando…'}
+          </span>
+          <div className={styles.cardPaginationControls}>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.max(1, displayedPage - 1))}
+              disabled={displayedPage <= 1 || driversQuery.isFetching}
+            >
+              Anterior
+            </button>
+            <span>
+              Página {displayedPage} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, displayedPage + 1))
+              }
+              disabled={displayedPage >= totalPages || driversQuery.isFetching}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       )}
 

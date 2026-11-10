@@ -46,6 +46,14 @@ export const vehiclesService = {
     await api.delete(`/vehicles/${id}`);
   },
 
+  coupleTrailer: async (vehicleId: number, trailerId: string): Promise<void> => {
+    await api.patch(`/vehicles/${vehicleId}/couple-trailer`, { trailerId });
+  },
+
+  uncoupleTrailer: async (vehicleId: number, locationId: number): Promise<void> => {
+    await api.patch(`/vehicles/${vehicleId}/uncouple-trailer`, { locationId });
+  },
+
   importExcel: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

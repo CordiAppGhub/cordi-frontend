@@ -8,12 +8,8 @@ const TYPE_LABELS: Record<string, string> = {
   EXPORTACION: 'Exportación',
   IMPORTACION: 'Importación',
   RETIRO_VACIO: 'Retiro de vacío',
-  DEVOLUCION: 'Devolución',
-  DESVIO: 'Desvíos',
-  INSPECCION: 'Inspecciones',
+  DEVOLUCION_VACIO: 'Devolución de vacío',
   NACIONAL: 'Nacional',
-  CARGA_SUELTA_URBANA: 'Carga suelta urbana',
-  CARGA_SUELTA_NACIONAL: 'Carga suelta nacional',
   MOVIMIENTO_INTERNO: 'Movimiento interno',
 };
 

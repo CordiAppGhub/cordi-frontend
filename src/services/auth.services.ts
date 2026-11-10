@@ -1,4 +1,4 @@
-import { LoginResponse, AuthUser } from '@/types/auth-types';
+import { AuthUser } from '@/types/auth-types';
 import { api } from './api.service';
 
 export const authService = {
@@ -15,9 +15,33 @@ export const authService = {
     return response.data;
   },
 
-  getMe: async (): Promise<AuthUser> => {
-    const response = await api.get<AuthUser>('/users/me');
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ user: AuthUser; message: string }> => {
+    const response = await api.patch('/auth/change-password', data);
     return response.data;
+  },
+
+  requestPasswordReset: async (
+    email: string,
+  ): Promise<{ message: string }> => {
+    const response = await api.post('/auth/password/forgot', { email });
+    return response.data;
+  },
+
+  resetPassword: async (data: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }): Promise<{ message: string }> => {
+    const response = await api.post('/auth/password/reset', data);
+    return response.data;
+  },
+
+  getMe: async (): Promise<AuthUser> => {
+    const response = await api.post<{ user: AuthUser }>('/auth/session/refresh');
+    return response.data.user;
   },
 
   logout: async (): Promise<void> => {

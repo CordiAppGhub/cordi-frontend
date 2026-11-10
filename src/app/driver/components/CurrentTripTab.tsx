@@ -8,8 +8,11 @@ import {
   DriverPortalData,
   Operation,
   OperationContainerStatus,
+  CargoStatus,
+  TrailerDestinationType,
   Vehicle,
 } from "@/types/driver-portal.types";
+import { generateDriverOperationRoute } from "@/utils/driver-operation-route";
 
 interface CurrentTripTabProps {
   driver: DriverPortalData;
@@ -24,8 +27,18 @@ interface CurrentTripTabProps {
     containerStatus: OperationContainerStatus,
     issueDescription?: string,
   ) => Promise<void>;
+  onUpdateCargoStatus: (
+    operationId: number,
+    cargoStatus: CargoStatus,
+  ) => Promise<void>;
+  onCompleteStop: (operationId: number, stopId: number) => Promise<void>;
+  onUpdateSealNumber: (
+    operationId: number,
+    sealNumber: string,
+  ) => Promise<void>;
   onReportDeviation: () => void;
   onOpenOcrModal: () => void;
+  onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
     operationId: number,
     evidenceTypes: string[],
@@ -33,6 +46,11 @@ interface CurrentTripTabProps {
   ) => void;
   onOpenClosingModal: () => void;
   onOpenDetailsModal: () => void;
+  onReportTrailerLocation: (
+    operationId: number,
+    destinationType: TrailerDestinationType,
+  ) => void;
+  isUncouplingTrailer: boolean;
 }
 
 export function CurrentTripTab({
@@ -44,23 +62,35 @@ export function CurrentTripTab({
   processingState,
   onUpdateState,
   onUpdateContainerStatus,
+  onUpdateCargoStatus,
+  onCompleteStop,
+  onUpdateSealNumber,
   onReportDeviation,
   onOpenOcrModal,
+  onOpenPlateVerification,
   onOpenEvidenceModal,
   onOpenClosingModal,
   onOpenDetailsModal,
+  onReportTrailerLocation,
+  isUncouplingTrailer,
 }: CurrentTripTabProps) {
   const deviationOcr =
     activeOperation?.historialNovedades?.[0]?.metadata?.comodatoOcr;
+  const isAmparoImportBlocked = (operation: Operation) =>
+    operation.type === "IMPORTACION" &&
+    Boolean(operation.amparoExportOperationId) &&
+    operation.amparoExportFinished !== true;
   const blockingOperations = activeOperation
     ? assignedOperations.filter(
         (operation) =>
           operation.id !== activeOperation.id &&
-          operation.status === "EN_CURSO",
+          operation.isActive &&
+          operation.status === "EN_CURSO" &&
+          !isAmparoImportBlocked(operation),
       )
     : [];
-  // Con triangulación, la Impo amparada se abre sola al finalizar la Expo en puerto.
-  // Mientras haya otra operación EN_CURSO, bloquear el inicio de un viaje ASIGNADO.
+  // Una impo amparada que espera el cierre de su expo no debe bloquear el inicio de esa expo.
+  // Las demás operaciones en curso sí bloquean viajes asignados.
   const blockingOperationId = blockingOperations[0]?.id;
 
   return (
@@ -104,19 +134,21 @@ export function CurrentTripTab({
                       "ASIGNADO"}
                   </span>
                   <span>
-                    {operation.cargoFormat === "SUELTA"
+                    {operation.isContainerized === false
                       ? "Carga suelta"
                       : `Contenedor: ${(operation.containerStatus || "PENDIENTE").replace(/_/g, " ")}`}
                   </span>
                 </span>
                 <span
                   className={`${styles.operationAccessBadge} ${
-                    operation.isActive
+                    operation.isActive && !isAmparoImportBlocked(operation)
                       ? styles.operationAccessEnabled
                       : styles.operationAccessDisabled
                   }`}
                 >
-                  {operation.isActive ? "Habilitada" : "Deshabilitada"}
+                  {isAmparoImportBlocked(operation)
+                    ? "Esperando exportación"
+                    : operation.isActive ? "Habilitada" : "Deshabilitada"}
                 </span>
               </button>
             ))}
@@ -138,12 +170,14 @@ export function CurrentTripTab({
           {activeOperation && (
             <span
               className={
-                activeOperation.isActive
+                activeOperation.isActive && !isAmparoImportBlocked(activeOperation)
                   ? styles.statusBadgeGreen
                   : styles.statusBadgeRed
               }
             >
-              {activeOperation.isActive ? "Habilitada" : "Deshabilitada"}
+              {isAmparoImportBlocked(activeOperation)
+                ? "Esperando exportación"
+                : activeOperation.isActive ? "Habilitada" : "Deshabilitada"}
             </span>
           )}
         </div>
@@ -164,26 +198,15 @@ export function CurrentTripTab({
             <div className={styles.tripDataGrid}>
               <span className={styles.label}>Cliente</span>
               <span className={styles.value}>
-                {activeOperation.clientName || "Gamalog"} (
+                {activeOperation.customer?.name ||
+                  activeOperation.clientName ||
+                  "Gamalog"} (
                 {activeOperation.clientLocationName || "Sede"})
               </span>
 
               <span className={styles.label}>Ruta</span>
               <span className={styles.value}>
-                {activeOperation.containerStatus ===
-                "PENDIENTE_DEVOLUCION" ? (
-                  <>
-                    {activeOperation.destinoName || "Patio"} ➡️{" "}
-                    {activeOperation.nuevoDestino?.name ||
-                      "Pendiente de confirmación del analista"}
-                  </>
-                ) : (
-                  <>
-                    {activeOperation.origenName || "Origen"} ➡️{" "}
-                    {activeOperation.clientName || "Cliente"} ➡️{" "}
-                    {activeOperation.destinoName || "Patio"}
-                  </>
-                )}
+                {generateDriverOperationRoute(activeOperation)}
               </span>
               {activeOperation.fechaCitaDesvio && (
                 <>
@@ -220,8 +243,8 @@ export function CurrentTripTab({
                     <>
                       {deviationOcr.destino && (
                         <p>
-                          Destino que aparece en el comodato (sugerencia IA,
-                          por confirmar): {deviationOcr.destino}
+                          Destino que aparece en el comodato (sugerencia IA, por
+                          confirmar): {deviationOcr.destino}
                         </p>
                       )}
                       {deviationOcr.fechaCita && (
@@ -231,12 +254,12 @@ export function CurrentTripTab({
                         </p>
                       )}
                       {deviationOcr.numeroContenedor && (
-                        <p>
-                          Contenedor leído: {deviationOcr.numeroContenedor}
-                        </p>
+                        <p>Contenedor leído: {deviationOcr.numeroContenedor}</p>
                       )}
                       {deviationOcr.referencia && (
-                        <p>Referencia del comodato: {deviationOcr.referencia}</p>
+                        <p>
+                          Referencia del comodato: {deviationOcr.referencia}
+                        </p>
                       )}
                     </>
                   ) : (
@@ -257,7 +280,9 @@ export function CurrentTripTab({
                 }}
               >
                 $
-                {Number(activeOperation.fleteAPagar || 0).toLocaleString("es-CO")}
+                {Number(activeOperation.fleteAPagar || 0).toLocaleString(
+                  "es-CO",
+                )}
               </span>
             </div>
           ) : (
@@ -268,30 +293,95 @@ export function CurrentTripTab({
         </div>
 
         {activeOperation && (
-          <a
-            href="#"
-            className={styles.linkDetails}
-            onClick={(e) => {
-              e.preventDefault();
-              onOpenDetailsModal();
-            }}
-          >
-            Ver detalles &gt;
-          </a>
+          <>
+            <a
+              href="#"
+              className={styles.linkDetails}
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenDetailsModal();
+              }}
+            >
+              Ver detalles &gt;
+            </a>
+            {activeOperation.isActive &&
+              !isAmparoImportBlocked(activeOperation) &&
+              activeOperation.trailer &&
+              activeOperation.vehicle?.currentTrailerId ===
+                activeOperation.trailer.id && (
+                <>
+                  <div className={styles.trailerLocationActions}>
+                    <button
+                      type="button"
+                      className={`${styles.uncoupleTrailerButton} ${styles.trailerClientButton}`}
+                      onClick={() =>
+                        onReportTrailerLocation(activeOperation.id, "CLIENT")
+                      }
+                      disabled={
+                        isUncouplingTrailer ||
+                        !activeOperation.trailerClientLocation ||
+                        !activeOperation.clientId
+                      }
+                    >
+                      Desenganchar en Cliente
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.uncoupleTrailerButton} ${styles.trailerYardButton}`}
+                      onClick={() =>
+                        onReportTrailerLocation(activeOperation.id, "OWN_YARD")
+                      }
+                      disabled={
+                        isUncouplingTrailer ||
+                        !activeOperation.trailerOwnYards?.length
+                      }
+                    >
+                      Dejar en Patio Propio
+                    </button>
+                  </div>
+                  {isUncouplingTrailer && (
+                    <p className={styles.trailerLocationStatus}>
+                      Reportando ubicación del tráiler…
+                    </p>
+                  )}
+                </>
+              )}
+          </>
         )}
       </div>
 
       <div className={styles.sequenceCard}>
-        {activeOperation?.isActive ? (
+        {activeOperation && isAmparoImportBlocked(activeOperation) ? (
+          <div className={styles.emptyWorkflow} role="status">
+            <p>
+              La importación está bloqueada hasta finalizar el descargue de la
+              exportación amparada #{activeOperation.amparoExportOperationId} en
+              puerto. Las fotos de placas se compartirán automáticamente.
+            </p>
+          </div>
+        ) : activeOperation?.type === "IMPORTACION" &&
+          activeOperation.amparoExportOperationId &&
+          activeOperation.status === "ASIGNADO" ? (
+          <div className={styles.emptyWorkflow} role="status">
+            <p>
+              La importación amparada debe habilitarse en puerto al cerrar la
+              exportación. Contacta al analista para revisar su estado.
+            </p>
+          </div>
+        ) : activeOperation?.isActive ? (
           <OperationWorkflow
-            key={`${activeOperation.id}-${activeOperation.containerStatus || "PENDIENTE"}`}
+            key={`${activeOperation.id}-${activeOperation.containerStatus || "PENDIENTE"}-${activeOperation.cargoStatus || "PENDIENTE"}-${activeOperation.sealNumber || ""}`}
             operation={activeOperation}
             isLoading={processingState}
             blockingOperationId={blockingOperationId}
             onUpdateState={onUpdateState}
             onUpdateContainerStatus={onUpdateContainerStatus}
+            onUpdateCargoStatus={onUpdateCargoStatus}
+            onCompleteStop={onCompleteStop}
+            onUpdateSealNumber={onUpdateSealNumber}
             onReportDeviation={onReportDeviation}
             onOpenOcrModal={onOpenOcrModal}
+            onOpenPlateVerification={onOpenPlateVerification}
             onOpenEvidenceModal={onOpenEvidenceModal}
             onOpenClosingModal={onOpenClosingModal}
           />

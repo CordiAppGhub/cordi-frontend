@@ -1,9 +1,13 @@
 import { Locations } from "./location.types";
 
 export interface ClientLocationRelation {
+  id: number;
   clientId: number;
   locationId: number;
   location: Locations;
+  name: string;
+  isClient: boolean;
+  isDepot: boolean;
 }
 
 export interface Client {

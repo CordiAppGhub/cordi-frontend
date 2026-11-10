@@ -1,15 +1,32 @@
 import { SuperModal } from '@/components/organisms/modal/modal';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { Driver } from '@/types/drivers';
+import type { CreateDriverDto, UpdateDriverDto } from '@/types/drivers';
+import type { VehicleAffiliation } from '@/types/vehicles';
 
 interface CreateDriverModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateDriver?: (data: { cedula: string; name?: string; telefono?: string }) => Promise<boolean>;
-  onEditDriver?: (id: number, data: { cedula?: string; name?: string; telefono?: string }) => Promise<boolean>;
-  driverToEdit?: Driver | null;
+  onCreateDriver?: (data: CreateDriverDto) => Promise<boolean>;
+  onEditDriver?: (id: number, data: UpdateDriverDto) => Promise<boolean>;
+  driverToEdit?: Pick<
+    Driver,
+    'id' | 'cedula' | 'name' | 'telefono' | 'affiliation'
+  > | null;
 }
+
+const affiliationOptions: { value: VehicleAffiliation; label: string }[] = [
+  { value: 'CORDIVEHICULOS', label: 'Cordivehículos' },
+  { value: 'CORDIHUB', label: 'Cordihub' },
+  { value: 'TERCEROS', label: 'Terceros' },
+];
+
+const isVehicleAffiliation = (
+  value: string,
+): value is VehicleAffiliation =>
+  affiliationOptions.some((option) => option.value === value);
 
 export default function CreateDriverModal({
   isOpen,
@@ -18,26 +35,19 @@ export default function CreateDriverModal({
   onEditDriver,
   driverToEdit,
 }: CreateDriverModalProps) {
-  const [cedula, setCedula] = useState('');
-  const [name, setName] = useState('');
-  const [telefono, setTelefono] = useState('');
+  const [cedula, setCedula] = useState(driverToEdit?.cedula ?? '');
+  const [name, setName] = useState(driverToEdit?.name ?? '');
+  const [telefono, setTelefono] = useState(driverToEdit?.telefono ?? '');
+  const [affiliation, setAffiliation] = useState<VehicleAffiliation | ''>(
+    driverToEdit?.affiliation ?? '',
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (driverToEdit) {
-      setCedula(driverToEdit.cedula || '');
-      setName(driverToEdit.name || '');
-      setTelefono(driverToEdit.telefono || '');
-    } else {
-      setCedula('');
-      setName('');
-      setTelefono('');
-    }
-  }, [driverToEdit, isOpen]);
+  const isEditing = Boolean(driverToEdit);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cedula) return;
+    if (!cedula || !affiliation || (!isEditing && !name.trim())) return;
 
     setIsSubmitting(true);
     try {
@@ -47,12 +57,14 @@ export default function CreateDriverModal({
           cedula,
           name: name ? name.toUpperCase() : undefined,
           telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
+          affiliation,
         });
       } else if (onCreateDriver) {
         success = await onCreateDriver({
           cedula,
-          name: name ? name.toUpperCase() : undefined,
+          name: name.trim().toUpperCase(),
           telefono: telefono ? telefono.replace(/\s+/g, '') : undefined,
+          affiliation,
         });
       }
 
@@ -63,8 +75,6 @@ export default function CreateDriverModal({
       setIsSubmitting(false);
     }
   };
-
-  const isEditing = Boolean(driverToEdit);
 
   return (
     <SuperModal 
@@ -97,13 +107,14 @@ export default function CreateDriverModal({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
-            Nombre Completo
+            Nombre Completo{!isEditing && ' *'}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: DANIEL FLOREZ"
+            required={!isEditing}
             style={{
               padding: '10px 12px',
               borderRadius: '6px',
@@ -133,6 +144,26 @@ export default function CreateDriverModal({
           />
         </div>
 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
+            Empresa de afiliación *
+          </label>
+          <Select
+            value={affiliation}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === '') {
+                setAffiliation('');
+              } else if (isVehicleAffiliation(value)) {
+                setAffiliation(value);
+              }
+            }}
+            options={affiliationOptions}
+            required
+            aria-label="Empresa de afiliación del conductor"
+          />
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
           <Button
             variant="secondary"
@@ -155,7 +186,7 @@ export default function CreateDriverModal({
           <Button
             type="submit"
             isLoading={isSubmitting}
-            disabled={!cedula}
+            disabled={!cedula || !affiliation || (!isEditing && !name.trim())}
             style={{
               width: 'auto',
               minHeight: 'auto',

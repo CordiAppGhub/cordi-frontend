@@ -26,11 +26,21 @@ export const useAssignments = () => {
     staleTime: 1000 * 60 * 2,
   });
 
+  const invalidateOperationQueries = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
+      queryClient.invalidateQueries({ queryKey: ['operations'] }),
+    ]);
+
   const assignMutation = useMutation({
     mutationFn: (data: CreateAssignmentDto) => assignmentsService.assign(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('Vehículo asignado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['active-assignments'] }),
+        invalidateOperationQueries(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo realizar la asignación';
@@ -41,8 +51,11 @@ export const useAssignments = () => {
 
   const unassignMutation = useMutation({
     mutationFn: (vehicleId: number) => assignmentsService.unassign(vehicleId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['active-assignments'] }),
+        invalidateOperationQueries(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo liberar el vehículo';

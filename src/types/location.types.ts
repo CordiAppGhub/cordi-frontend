@@ -1,19 +1,32 @@
 // src/types/location.types.ts
 
 export interface ClientLocationRelation {
+  id: number;
   clientId: number;
+  locationId: number;
+  name: string;
   isClient: boolean;
   isDepot: boolean;
   razonSocial?: string;
   nit?: string;        
 }
 
+export type LocationCategory =
+  | 'OWN_YARD'
+  | 'EMPTY_YARD'
+  | 'PORT'
+  | 'CLIENT_SITE';
+
 export interface Locations {
   id: number;
   name: string;
   address?: string | null;
+  city?: string | null;
+  category: LocationCategory;
+  hasClientYard: boolean;
   isPort: boolean;
   isDepot: boolean;
+  isOwnYard: boolean;
   isOrigin: boolean;
   isDestination: boolean;
   exigeCita: boolean;
@@ -23,7 +36,11 @@ export interface Locations {
 export interface CreateLocationInput {
   name: string;
   address?: string;
+  city?: string;
+  hasClientYard: boolean;
   isPort: boolean;
+  isDepot: boolean;
+  isOwnYard: boolean;
   isOrigin: boolean;
   isDestination: boolean;
   exigeCita: boolean;
@@ -37,7 +54,11 @@ export interface CreateLocationInput {
 export interface UpdateLocationInput {
   name?: string;
   address?: string;
+  city?: string;
+  hasClientYard?: boolean;
   isPort?: boolean;
+  isDepot?: boolean;
+  isOwnYard?: boolean;
   isOrigin?: boolean;
   isDestination?: boolean;
   exigeCita?: boolean;

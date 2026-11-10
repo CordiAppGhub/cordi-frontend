@@ -80,10 +80,8 @@ export const DashboardFiltersPanel: React.FC<Props> = ({
               { value: 'IMPORTACION', label: 'Importación' },
               { value: 'EXPORTACION', label: 'Exportación' },
               { value: 'RETIRO_VACIO', label: 'Retiro Vacío' },
-              { value: 'DEVOLUCION', label: 'Devolución' },
+              { value: 'DEVOLUCION_VACIO', label: 'Devolución de Vacío' },
               { value: 'NACIONAL', label: 'Nacional' },
-              { value: 'CARGA_SUELTA_URBANA', label: 'Carga Suelta Urbana' },
-              { value: 'CARGA_SUELTA_NACIONAL', label: 'Carga Suelta Nacional' },
               { value: 'MOVIMIENTO_INTERNO', label: 'Movimiento Interno' },
             ]}
           />

@@ -1,0 +1,122 @@
+.detailsCard {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  color: #0f172a;
+}
+
+.routeCard,
+.locationCard,
+.cargoCard,
+.customerCard {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.routeCard {
+  display: grid;
+  gap: 6px;
+  background: #f8fafc;
+}
+
+.customerCard {
+  display: grid;
+  gap: 6px;
+}
+
+.customerCard h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.customerCard p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.customerCard a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sectionLabel,
+.cargoGrid dt {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.routeCard strong {
+  font-size: 0.92rem;
+}
+
+.locationGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.locationCard h3,
+.cargoCard h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.locationCard h4 {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+
+.locationCard p,
+.cargoDescription {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.longText,
+.locationCard,
+.cargoDescription {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cargoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+}
+
+.cargoGrid dd {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cargoDescription {
+  white-space: pre-wrap;
+}
+
+@media (min-width: 640px) {
+  .detailsCard {
+    gap: 16px;
+  }
+
+  .locationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .locationGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

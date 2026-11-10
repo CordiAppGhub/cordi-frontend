@@ -8,6 +8,7 @@ export interface TabOption {
   label: string;
   icon?: React.ReactNode;
   badge?: number | string;
+  hasError?: boolean;
 }
 
 interface TabsProps {
@@ -31,8 +32,9 @@ export function Tabs({ tabs, activeTab, onChange, fullWidth = false }: TabsProps
             type="button"
             role="tab"
             aria-selected={isActive}
+            aria-label={`${tab.label}${tab.hasError ? ", contiene errores" : ""}`}
             onClick={() => onChange(tab.id)}
-            className={`${styles.tabBtn} ${isActive ? styles.activeTab : ''}`}
+            className={`${styles.tabBtn} ${isActive ? styles.activeTab : ''} ${tab.hasError ? styles.tabError : ''}`}
           >
             {tab.icon && <span className={styles.iconWrapper}>{tab.icon}</span>}
             <span className={styles.label}>{tab.label}</span>

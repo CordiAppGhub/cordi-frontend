@@ -3,6 +3,7 @@ export interface AuthUser {
   email: string;
   name?: string | null;
   role: string;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {

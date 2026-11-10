@@ -6,13 +6,17 @@ import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { Button } from '@/components/atoms/button/button';
 import { ColumnDef } from '@/types/table';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
-import { Pencil, Trash2 } from 'lucide-react';
+import { KeyRound, Pencil, Trash2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 import styles from './driver-details.module.css';
 import { useDriverDetail } from '../../hooks/use-driver-details';
 import { useDrivers } from '../../hooks/use-drivers';
 import CreateDriverModal from '../../components/CreateDriverModal';
 import { TruckLoader } from '@/components/TruckLoader';
+import { useAuthStore } from '@/store/use-auth.store';
+import { driverAuthService } from '@/services/driverPortal.service';
+import { showToast } from '@/utils/alerts';
 
 export function DriverDetailView() {
   const router = useRouter();
@@ -21,6 +25,7 @@ export function DriverDetailView() {
 
   const { details, isLoading, error, loadDriverDetails } = useDriverDetail();
   const { editDriver, deleteDriver } = useDrivers();
+  const userRole = useAuthStore((state) => state.user?.role);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +79,36 @@ export function DriverDetailView() {
     return details.assignedOperations.slice(startIndex, startIndex + itemsPerPage);
   }, [details, currentPage]);
 
+  const handleManualRecoveryCode = async () => {
+    if (!details.cedula) {
+      showToast.error('El conductor no tiene una cédula registrada.');
+      return;
+    }
+
+    const confirmation = await Swal.fire({
+      title: 'Verifica la identidad del conductor',
+      text: 'Generarás un código de un solo uso, válido por 5 minutos. Comunícalo únicamente después de verificar la identidad del conductor.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Generar código',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+      const { code, expiresAt } =
+        await driverAuthService.issueManualRecoveryCode(details.cedula);
+      await Swal.fire({
+        title: 'Código temporal generado',
+        text: `${code} — vence a las ${new Date(expiresAt).toLocaleTimeString()}. Entrégalo al conductor de forma segura.`,
+        icon: 'success',
+        confirmButtonText: 'Cerrar',
+      });
+    } catch (error: unknown) {
+      showToast.error(error, 'No se pudo generar el código temporal.');
+    }
+  };
+
   if (isLoading) {
     return <TruckLoader variant="section" message="Cargando perfil del conductor..." />;
   }
@@ -105,6 +140,15 @@ export function DriverDetailView() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          {userRole === 'ADMIN' && (
+            <Button
+              variant="secondary"
+              onClick={handleManualRecoveryCode}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px' }}
+            >
+              <KeyRound size={15} /> Recuperación de acceso
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => setIsEditModalOpen(true)}
@@ -149,6 +193,10 @@ export function DriverDetailView() {
               <span className={styles.infoLabel}>Teléfono Móvil</span>
               <span className={styles.infoValue}>{details.telefono || 'No registrado'}</span>
             </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Empresa de afiliación</span>
+              <span className={styles.infoValue}>{details.affiliation}</span>
+            </div>
           </div>
         </div>
 
@@ -161,7 +209,7 @@ export function DriverDetailView() {
                   <div key={v.id} className={styles.vehicleBox}>
                     <span className={styles.vehiclePlate}>{v.plate}</span>
                     <span className={styles.vehicleBrand}>{v.brand || 'Marca N/A'}</span>
-                    <span className={styles.vehicleCompany}>{v.empresa || 'Sin empresa'}</span>
+                    <span className={styles.vehicleCompany}>{v.affiliation || 'Sin afiliación'}</span>
                   </div>
                 ))}
               </div>
@@ -207,7 +255,8 @@ export function DriverDetailView() {
             cedula: details.cedula,
             name: details.name,
             telefono: details.telefono,
-          } as any}
+            affiliation: details.affiliation,
+          }}
         />
       )}
     </div>

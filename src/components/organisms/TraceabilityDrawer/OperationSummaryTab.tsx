@@ -6,6 +6,7 @@ import { AlertTriangle, MapPin, Clock, Truck, FileText } from 'lucide-react';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge'; // Ajusta la ruta a tu badge
 import styles from './OperationSummaryTab.module.css'; // 👈 Importamos el CSS Module
 import { TruckLoader } from '@/components/TruckLoader';
+import { formatAppointmentLocationLabel } from '@/utils/appointment-label';
 
 interface OperationSummaryTabProps {
   operation: Operation | null;
@@ -27,7 +28,7 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
     const missing = [];
     if (!operation.vehicleId) missing.push('Flota sin asignar');
     if (!operation.containerNumber && (operation.type === 'IMPORTACION' || operation.type === 'EXPORTACION')) missing.push('Falta el número de contenedor');
-    if (!operation.documentoTransporte) missing.push('Falta Documento de Transporte / BL');
+    if (!operation.documentoTransporte) missing.push('Falta manifiesto / documento de transporte');
     if (operation.destino && !operation.fechaCitaDestino) missing.push('Destino asignado sin fecha de cita');
     return missing;
   };
@@ -84,14 +85,24 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
             <span className={styles.label}>Origen</span>
             <p className={styles.value} style={{ margin: '4px 0' }}>{operation.origen?.name || '---'}</p>
             <p className={styles.dateSub}>
-              <Clock size={12}/> Cita: {formatDate(operation.fechaCitaOrigen)}
+              <Clock size={12}/>{' '}
+              {formatAppointmentLocationLabel(
+                'Cita de origen',
+                operation.origen?.name,
+              )}
+              : {formatDate(operation.fechaCitaOrigen)}
             </p>
           </div>
           <div className={styles.infoBlock} style={{ flex: 1 }}>
             <span className={styles.label}>Destino</span>
             <p className={styles.value} style={{ margin: '4px 0' }}>{operation.destino?.name || operation.descargue?.name || '---'}</p>
             <p className={styles.dateSub}>
-               <Clock size={12}/> Cita: {formatDate(operation.fechaCitaDestino)}
+               <Clock size={12}/>{' '}
+               {formatAppointmentLocationLabel(
+                 'Cita de destino',
+                 operation.destino?.name || operation.descargue?.name,
+               )}
+               : {formatDate(operation.fechaCitaDestino)}
             </p>
           </div>
         </div>
@@ -140,7 +151,7 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
         
         <div className={styles.gridAuto}>
           <div className={styles.infoBlock}>
-            <span className={styles.label}>Documento Trans. / BL</span>
+            <span className={styles.label}>Manifiesto / DO</span>
             <strong className={styles.value}>{operation.documentoTransporte || '---'}</strong>
           </div>
           <div className={styles.infoBlock}>
@@ -150,12 +161,6 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
           <div className={styles.infoBlock}>
             <span className={styles.label}>Precinto (Seal)</span>
             <strong className={styles.value}>{operation.sealNumber || '---'}</strong>
-          </div>
-          <div className={styles.infoBlock}>
-             <span className={styles.label}>Límite Devolución</span>
-             <strong className={`${styles.value} ${styles.valueHighlight}`}>
-               {formatDate(operation.fechaLimiteDevolucion)}
-             </strong>
           </div>
         </div>
       </div>

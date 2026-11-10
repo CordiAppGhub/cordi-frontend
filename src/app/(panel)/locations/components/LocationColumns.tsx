@@ -2,11 +2,15 @@
 
 import React from 'react';
 import { ColumnDef } from '@/types/table';
-import { ClientLocationRelation, Locations } from '@/types/location.types';
+import {
+  ClientLocationRelation,
+  Locations,
+} from '@/types/location.types';
 
 export const getLocationColumns = (
   handleOpenEdit: (location: Locations) => void,
   deleteLocation: (id: number) => void,
+  showClientYardBadge: boolean,
 ): ColumnDef<Locations>[] => [
   {
     id: 'name',
@@ -15,24 +19,56 @@ export const getLocationColumns = (
     renderCell: (row) => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px 0' }}>
         <span style={{ fontWeight: 600, color: '#0f172a' }}>{row.name}</span>
-        {row.address && (
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📍 {row.address}</span>
-        )}
       </div>
     ),
   },
   {
-    id: 'type',
-    header: 'Tipo de Instalación',
+    id: 'address',
+    header: 'Dirección',
+    type: 'text',
+    renderCell: (row) => row.address || '—',
+  },
+  {
+    id: 'city',
+    header: 'Ciudad',
+    type: 'text',
+    renderCell: (row) => row.city || '—',
+  },
+  {
+    id: 'badges',
+    header: 'Categoría',
     type: 'text',
     renderCell: (loc) => {
       const hasClients = loc.clients && loc.clients.length > 0;
+
       return (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {loc.isPort && <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>Puerto</span>}
-          {loc.isDepot && <span style={{ padding: '2px 8px', backgroundColor: '#fef3c7', color: '#b45309', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>Patio</span>}
+          {loc.isOwnYard && (
+            <span style={{ padding: '3px 9px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+              Patio Propio
+            </span>
+          )}
+          {loc.isPort && (
+            <span style={{ padding: '3px 9px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+              Puerto
+            </span>
+          )}
+          {loc.isDepot && (
+            <span style={{ padding: '3px 9px', backgroundColor: '#fef3c7', color: '#b45309', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+              Patio de Vacíos
+            </span>
+          )}
+          {!loc.isOwnYard && !loc.isPort && !loc.isDepot && (
+            <span style={{ padding: '3px 9px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+              Bodega / Sede Cliente
+            </span>
+          )}
+          {showClientYardBadge && loc.hasClientYard && (
+            <span style={{ padding: '3px 9px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+              Incluye Patio
+            </span>
+          )}
           {hasClients && <span style={{ padding: '2px 8px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>{loc.clients && loc.clients.length} Cliente(s)</span>}
-          {!loc.isPort && !loc.isDepot && !hasClients && <span style={{ fontSize: '11px', color: '#64748b' }}>Zona Neutra</span>}
         </div>
       );
     },

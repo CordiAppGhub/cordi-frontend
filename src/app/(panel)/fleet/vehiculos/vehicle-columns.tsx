@@ -10,34 +10,23 @@ export const getVehicleColumns = (
 ): ColumnDef<Vehicle>[] => [
   { id: 'plate', header: 'Placa', type: 'text', renderCell: (row: Vehicle) => <strong style={{ color: '#0f172a' }}>{row.plate}</strong> },
   
-  { 
-    id: 'affiliation', 
-    header: 'Afiliación', 
+  {
+    id: 'ownershipType',
+    header: 'Tipo de flota',
     type: 'text', 
-
     renderCell: (row: Vehicle) => {
-      const affiliationLabels: Record<string, string> = {
-        CORDIVEHICULO: 'Propio (2%)',
-        CORDIHUB: 'Afiliado (10%)',
-        EXTERNAL: 'Externo'
-      };
-      
-      const label = affiliationLabels[row.affiliation || 'EXTERNAL'];
-      const colorMap: Record<string, string> = {
-        CORDIVEHICULO: '#16a34a', 
-        CORDIHUB: '#2563eb',
-        EXTERNAL: '#64748b' 
-      };
-      
+      const isOwn = row.ownershipType === 'PROPIO';
+      const label = isOwn ? 'Propia' : 'Externa';
+      const color = isOwn ? '#16a34a' : '#64748b';
       return (
-        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: colorMap[row.affiliation || 'EXTERNAL'], background: `${colorMap[row.affiliation || 'EXTERNAL']}15`, padding: '4px 8px', borderRadius: '4px' }}>
+        <span style={{ fontSize: '0.8rem', fontWeight: 600, color, background: `${color}15`, padding: '4px 8px', borderRadius: '4px' }}>
           {label}
         </span>
       );
     } 
   },
 
-  { id: 'empresa', header: 'Empresa', type: 'text', renderCell: (row: Vehicle) => row.empresa || '--' },
+  { id: 'affiliation', header: 'Afiliación / Propietario', type: 'text', renderCell: (row: Vehicle) => row.affiliation || '--' },
   { id: 'brand', header: 'Marca', type: 'text', renderCell: (row: Vehicle) => row.brand || '--' },
   { id: 'cargoCapacity', header: 'Capacidad', type: 'text', renderCell: (row: Vehicle) => row.cargoCapacity || '--' },
   { id: 'status', header: 'Estado', type: 'text', renderCell: (row: Vehicle) => <StatusBadge status={row.status} /> },

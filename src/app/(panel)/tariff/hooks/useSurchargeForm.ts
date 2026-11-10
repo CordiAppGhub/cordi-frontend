@@ -14,11 +14,13 @@ export const useSurchargeForm = (onClose: () => void) => {
   const catalogFormFields: FormField[] = useMemo(() => [
     { name: 'code', label: 'Código Técnico', type: 'text', placeholder: 'Ej: RECARGO_NOCTURNO' },
     { name: 'name', label: 'Nombre del Concepto', type: 'text', placeholder: 'Ej: Recargo Nocturno' },
-    { name: 'applicableTo', label: 'Aplica para', type: 'select', options: [
-      { value: 'IMPORTACION', label: 'Importación' },
-      { value: 'EXPORTACION', label: 'Exportación' },
-      { value: 'AMBOS', label: 'Ambos' },
-    ]},
+    {
+      name: 'applicableTo', label: 'Aplica para', type: 'select', options: [
+        { value: 'IMPORTACION', label: 'Importación' },
+        { value: 'EXPORTACION', label: 'Exportación' },
+        { value: 'AMBOS', label: 'Ambos' },
+      ]
+    },
     { name: 'description', label: 'Descripción (Opcional)', type: 'text', placeholder: 'Detalles del concepto' },
   ], []);
 

@@ -42,7 +42,7 @@ para que `next-pwa` genere el service worker y los recursos de caché; estos
 archivos se regeneran y no se editan manualmente. La aplicación debe servirse
 por HTTPS (excepto en localhost).
 
-El botón **Instalar Cordibot** solicita primero el perfil de uso:
+El botón **Instalar Corditrans TMS** solicita primero el perfil de uso:
 
 - **Conductor** abre el portal `/driver`.
 - **Jefe de flota**, **Analista** y **Administrador** abren el acceso

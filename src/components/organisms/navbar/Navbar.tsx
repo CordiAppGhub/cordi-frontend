@@ -1,10 +1,10 @@
 // src/components/organisms/navbar/Navbar.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/use-auth.store';
 import { 
   LayoutDashboard, 
@@ -13,7 +13,7 @@ import {
   ClipboardList,
   BarChart3,
   ContactRound,
-  LogOut,
+  LogOut, 
   UsersRound,
   Bell,
   AlertTriangle,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { showToast } from '@/utils/alerts';
 import { dashboardService, OperationAlert } from '@/services/dashboard.service';
+import { operationService } from '@/services/operation.service';
+import { socket } from '@/lib/socket';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import styles from './navbar.module.css';
 
@@ -43,13 +45,16 @@ interface OperationAlertGroup {
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { user, logout, isAuthenticated } = useAuthStore();
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] =
     useState<OperationAlertGroup | null>(null);
   const userRole = user?.role;
   const canViewOperationAlerts =
-    isAuthenticated && userRole !== 'CONDUCTOR' && userRole !== undefined;
+    isAuthenticated && userRole !== undefined;
+  const canViewFleetRequests =
+    isAuthenticated && (userRole === 'ADMIN' || userRole === 'JEFE_DE_FLOTA');
   const alertsQuery = useQuery({
     queryKey: ['dashboard', 'operation-alerts'],
     queryFn: dashboardService.getOperationAlerts,
@@ -57,6 +62,31 @@ export const Navbar: React.FC = () => {
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+  const pendingCountQuery = useQuery({
+    queryKey: ['operations', 'pending-count'],
+    queryFn: operationService.getPendingCount,
+    enabled: canViewFleetRequests,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+  const pendingCount = pendingCountQuery.data ?? 0;
+
+  useEffect(() => {
+    const refreshNavbarAlerts = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['operations', 'pending-count'],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'operation-alerts'],
+      });
+    };
+
+    socket.on('global_operations_updated', refreshNavbarAlerts);
+    return () => {
+      socket.off('global_operations_updated', refreshNavbarAlerts);
+    };
+  }, [queryClient]);
+
   const groupedAlerts = useMemo(() => {
     const groups = new Map<number, OperationAlertGroup>();
 
@@ -289,9 +319,19 @@ export const Navbar: React.FC = () => {
                 key={tab.path} 
                 href={tab.path} 
                 className={`${styles.tabItem} ${isActive ? styles.tabActive : ''}`}
+                aria-label={
+                  tab.path === '/programacion' && pendingCount > 0
+                    ? `${tab.label}: ${pendingCount} operaciones requieren acción`
+                    : undefined
+                }
               >
                 {tab.icon}
                 <span>{tab.label}</span>
+                {tab.path === '/programacion' && pendingCount > 0 && (
+                  <span className={styles.tabBadge} aria-hidden="true">
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                )}
               </Link>
             );
           })}

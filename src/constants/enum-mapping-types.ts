@@ -14,8 +14,11 @@ export const VehicleStatusLabels: Record<string, string> = {
 
 export const OperationStatusLabels: Record<string, string> = {
   CREADO: "Creado",
+  PENDIENTE_CARGUE: "Pendiente de cargue",
+  LISTA_PARA_CARGUE: "Lista para cargue",
   ASIGNADO: "Asignado",
   EN_CURSO: "En Curso",
+  CIERRE_FISICO: "Cierre físico pendiente de revisión documental",
   FINALIZADO: "Finalizado",
   CANCELADO: "Cancelado",
 };
@@ -31,6 +34,8 @@ export const TripMicroStateLabels: Record<string, string> = {
 
 export const ContainerStatusLabels: Record<string, string> = {
   PENDIENTE: "Pendiente",
+  PENDIENTE_CARGUE: "Pendiente de cargue",
+  RESERVADO_ANTICIPADO: "Reservado por retiro anticipado",
   EN_PISO: "En piso",
   PENDIENTE_DEVOLUCION: "Pendiente de devolución",
   EN_INSPECCION: "En inspección",
@@ -39,6 +44,7 @@ export const ContainerStatusLabels: Record<string, string> = {
   CARGADO: "Cargado",
   EN_DESCARGUE: "En descargue",
   DESCARGADO: "Descargado",
+  DEVUELTO_VACIO: "Devuelto vacío",
 };
 
 // 🚀 Definimos el tipo explícito para permitir el semáforo
@@ -78,6 +84,24 @@ export const StatusConfig: Record<string, StatusConfigType> = {
     dot: "#3b82f6",
     description: "Estado Técnico: PROGRAMADO. Operación con cita programada.",
   },
+  PENDIENTE_CARGUE: {
+    label: "PENDIENTE DE CARGUE",
+    bg: "#fff7ed",
+    color: "#c2410c",
+    border: "#fdba74",
+    dot: "#f97316",
+    description:
+      "La exportación está esperando que se complete el retiro anticipado del contenedor vacío.",
+  },
+  LISTA_PARA_CARGUE: {
+    label: "LISTA PARA CARGUE",
+    bg: "#dcfce7",
+    color: "#15803d",
+    border: "#86efac",
+    dot: "#22c55e",
+    description:
+      "El contenedor vacío ya fue entregado y la exportación puede asignarse para iniciar el cargue.",
+  },
   PENDIENTE: {
     label: "PENDIENTE",
     bg: "#fef2f2",
@@ -94,6 +118,15 @@ export const StatusConfig: Record<string, StatusConfigType> = {
     dot: "#f59e0b",
     description:
       "Estado Técnico: EN_CURSO. Contenedor cargado en vehículo o descargando (IMPO, EXPO, Devoluciones, Puerto o Cliente).",
+  },
+  CIERRE_FISICO: {
+    label: "CIERRE FÍSICO",
+    bg: "#fff7ed",
+    color: "#c2410c",
+    border: "#fdba74",
+    dot: "#f97316",
+    description:
+      "El conductor terminó el trabajo en campo; el cierre documental está pendiente de aprobación.",
   },
   FINALIZADO: {
     label: "FINALIZADA",
@@ -150,4 +183,14 @@ export const StatusConfig: Record<string, StatusConfigType> = {
 
   IN_YARD: { label: "En Patio", bg: "#f1f5f9", color: "#475569" },
   DISPATCHED: { label: "Despachado", bg: "#e0f2fe", color: "#0369a1" },
+  AVAILABLE_IN_YARD: {
+    label: "Disponible en patio",
+    bg: "#dcfce7",
+    color: "#15803d",
+  },
+  RESERVED_FOR_BOOKING: {
+    label: "Reservado para exportación",
+    bg: "#f3e8ff",
+    color: "#7e22ce",
+  },
 };

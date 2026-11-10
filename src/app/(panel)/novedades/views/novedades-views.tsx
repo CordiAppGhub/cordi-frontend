@@ -21,6 +21,7 @@ import { ResourceAbsencesPanel } from "../components/resource-absences-panel";
 import { AnalystPartialDelegationModal } from "../components/analyst-partial-delegation-modal";
 import { useAnalystDelegations } from "@/app/(panel)/locations/hooks/useAssignments";
 import { useAuthStore } from "@/store/use-auth.store";
+import { EvidenceViewer } from "@/components/organisms/evidence-viewer/evidence-viewer";
 
 // Definición de las Tabs con íconos
 const NOVEDADES_TABS = [
@@ -464,18 +465,9 @@ export function NovedadesPageView() {
                       )}
                     </div>
                   )}
-                  {nov.operation.evidences?.map((evidence) =>
-                    evidence.url ? (
-                      <a
-                        key={evidence.id}
-                        href={evidence.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Ver comodato del conductor
-                      </a>
-                    ) : null,
-                  )}
+                  {nov.operation.evidences?.map((evidence) => (
+                    <EvidenceViewer key={evidence.id} evidence={evidence} />
+                  ))}
                   <label>
                     Nuevo destino confirmado por naviera
                     <Select

@@ -117,6 +117,14 @@
   padding: 20px;
 }
 
+.urgentRow { background: #fff3dc; }
+
+.drawerSummary {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
 .requestHeader {
   display: flex;
   align-items: flex-start;
@@ -135,6 +143,123 @@
   margin: 6px 0 0;
   color: var(--color-text-muted);
   font-size: 0.85rem;
+}
+
+.filtersBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: #fff;
+}
+
+.actionFilter {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid #e6b95c;
+  border-radius: 999px;
+  background: #fff9e8;
+  color: #825b00;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.actionFilterActive {
+  border-color: #b94a28;
+  background: #fff0eb;
+  color: #96381f;
+  box-shadow: 0 0 0 2px rgba(185, 74, 40, 0.1);
+}
+
+.actionFilterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.onlyPending {
+  padding-left: 8px;
+  border-left: 1px solid currentColor;
+  font-size: 0.68rem;
+}
+
+.filterField {
+  display: grid;
+  min-width: 135px;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.filterField > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.filterField input,
+.filterField select,
+.searchField input {
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.filterField input:disabled {
+  background: #f1f5f7;
+  color: #8a9aa3;
+  cursor: not-allowed;
+}
+
+.searchField {
+  display: flex;
+  min-width: min(250px, 100%);
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 7px;
+  padding-left: 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+}
+
+.resetFilters {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+  color: var(--color-brand-800);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.resetFilters:hover {
+  background: var(--color-surface-muted);
 }
 
 .dateFilter {
@@ -219,6 +344,27 @@
   opacity: 0.55;
 }
 
+.unassignButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 1px solid #f0caca;
+  border-radius: var(--radius-control);
+  background: #fff7f7;
+  color: #a33b3b;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.unassignButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .cancelButton {
   display: inline-flex;
   align-items: center;
@@ -242,6 +388,12 @@
 
 .assignedStatus {
   color: #167044;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.pendingStatus {
+  color: #9a6700;
   font-size: 0.75rem;
   font-weight: 650;
 }

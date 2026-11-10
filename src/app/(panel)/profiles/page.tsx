@@ -14,6 +14,7 @@ import {
 import {
   ProfileKind,
   ProfileOperation,
+  ProfileRecordData,
   ProfileSummary,
   profilesService,
 } from "@/services/profiles.service";
@@ -28,6 +29,7 @@ const PROFILE_TABS: Array<{
 }> = [
   { id: "containers", label: "Contenedores", icon: Archive },
   { id: "vehicles", label: "Vehículos", icon: Truck },
+  { id: "trailers", label: "Tráilers / Chasises", icon: Truck },
   { id: "drivers", label: "Conductores", icon: Users },
   { id: "analysts", label: "Analistas", icon: ShieldCheck },
   { id: "shipping-lines", label: "Navieras", icon: Ship },
@@ -92,6 +94,21 @@ function profileFacts(
       [
         "Analista asignado",
         relatedValue(relatedValue(profile, "analyst"), "name"),
+      ],
+    ]);
+  }
+
+  if (kind === "trailers") {
+    return visibleFacts([
+      ["Placa", profile.plate],
+      ["Tipo", profile.trailerType],
+      ["Ejes", profile.axles],
+      ["Marca", profile.brand],
+      ["Capacidad", profile.capacity],
+      ["Estado", profile.status],
+      [
+        "Cabezote acoplado",
+        relatedValue(relatedValue(profile, "coupledVehicle"), "plate"),
       ],
     ]);
   }
@@ -229,6 +246,8 @@ export default function ProfilesPage() {
                     <span className={styles.profileIcon}>
                       {kind === "vehicles" ? (
                         <Truck size={18} />
+                      ) : kind === "trailers" ? (
+                        <Truck size={18} />
                       ) : kind === "shipping-lines" ? (
                         <Ship size={18} />
                       ) : kind === "drivers" || kind === "analysts" ? (
@@ -242,6 +261,8 @@ export default function ProfilesPage() {
                       <small>
                         {kind === "shipping-lines"
                           ? `NIT ${profile.nit ?? "—"}`
+                          : kind === "trailers"
+                            ? `${profile.axles ?? "—"} ejes · ${String(profile.status ?? "Estado no registrado").replaceAll("_", " ")}`
                           : String(
                               profile.status ??
                                 profile.type ??
@@ -308,6 +329,9 @@ export default function ProfilesPage() {
               kind={kind}
               item={selected}
               profile={detailQuery.data.profile}
+              trailerCouplingHistory={
+                detailQuery.data.profile.couplingHistory ?? []
+              }
               metrics={detailQuery.data.metrics}
               operations={detailQuery.data.operations}
               meta={detailQuery.data.meta}
@@ -324,6 +348,7 @@ function ProfileRecord({
   kind,
   item,
   profile,
+  trailerCouplingHistory,
   metrics,
   operations,
   meta,
@@ -331,7 +356,8 @@ function ProfileRecord({
 }: {
   kind: ProfileKind;
   item: ProfileSummary;
-  profile: Record<string, unknown>;
+  profile: ProfileRecordData;
+  trailerCouplingHistory: NonNullable<ProfileRecordData["couplingHistory"]>;
   metrics: {
     totalOperations: number;
     activeOperations: number;
@@ -341,6 +367,10 @@ function ProfileRecord({
     inspections: number;
     rejectedInspections: number;
     deviations: number;
+    lastReportedLocation?: {
+      locationName: string;
+      reportedAt: string;
+    } | null;
     operationsByStatus: Array<{ status: string; count: number }>;
     operationsByDestination: Array<{
       locationId: number;
@@ -360,6 +390,8 @@ function ProfileRecord({
       <header className={styles.recordHeader}>
         <div className={styles.recordMark}>
           {kind === "vehicles" ? (
+            <Truck />
+          ) : kind === "trailers" ? (
             <Truck />
           ) : kind === "containers" ? (
             <Archive />
@@ -388,12 +420,91 @@ function ProfileRecord({
         </div>
       )}
 
-      <div className={styles.metrics}>
+      <div
+        className={`${styles.metrics} ${
+          metrics.lastReportedLocation !== undefined ? styles.trailerMetrics : ""
+        }`}
+      >
         <Metric label="Operaciones" value={metrics.totalOperations} />
-        <Metric label="Activas" value={metrics.activeOperations} />
-        <Metric label="Finalizadas" value={metrics.completedOperations} />
-        <Metric label="Novedades" value={metrics.incidents} />
+        {metrics.lastReportedLocation !== undefined ? (
+          <>
+            <Metric label="Operaciones finalizadas" value={metrics.completedOperations} />
+            <Metric
+              label="Última ubicación reportada por conductor"
+              value={
+                metrics.lastReportedLocation
+                  ? `${metrics.lastReportedLocation.locationName} · ${display(metrics.lastReportedLocation.reportedAt)}`
+                  : "Sin reporte manual"
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Metric label="Activas" value={metrics.activeOperations} />
+            <Metric label="Finalizadas" value={metrics.completedOperations} />
+            <Metric label="Novedades" value={metrics.incidents} />
+          </>
+        )}
       </div>
+
+      {kind === "trailers" && (
+        <section className={styles.couplingHistorySection}>
+          <div className={styles.sectionTitle}>
+            <div>
+              <h3>Historial de enganches</h3>
+              <p>Vehículos acoplados y fechas registradas de enganche y desenganche.</p>
+            </div>
+            <span className={styles.sectionCount}>
+              {trailerCouplingHistory.length}
+            </span>
+          </div>
+          {trailerCouplingHistory.length ? (
+            <ol className={styles.couplingHistoryList}>
+              {trailerCouplingHistory.map((coupling) => (
+                <li className={styles.couplingHistoryItem} key={coupling.id}>
+                  <div className={styles.couplingHistoryHeader}>
+                    <strong>Cabezote {coupling.vehiclePlate}</strong>
+                    {!coupling.uncoupledAt && (
+                      <span className={styles.currentCouplingBadge}>
+                        Acoplado actualmente
+                      </span>
+                    )}
+                  </div>
+                  <dl className={styles.couplingHistoryTimes}>
+                    <div>
+                      <dt>Enganchado</dt>
+                      <dd>
+                        {coupling.coupledAt
+                          ? display(coupling.coupledAt)
+                          : "Fecha no disponible (acople anterior al historial)"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Desenganchado</dt>
+                      <dd>
+                        {coupling.uncoupledAt
+                          ? display(coupling.uncoupledAt)
+                          : "Pendiente"}
+                      </dd>
+                    </div>
+                    {coupling.uncoupledLocation && (
+                      <div>
+                        <dt>Ubicación al desenganche</dt>
+                        <dd>{coupling.uncoupledLocation.name}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className={styles.message}>
+              No hay historial de enganches registrado todavía. El historial se
+              recopila desde que se habilitó el registro.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className={styles.operationsSection}>
         <div className={styles.sectionTitle}>
@@ -484,6 +595,11 @@ function OperationRecord({
       "Conductor",
       operation.driver?.name || operation.trailer?.plate,
     ]);
+  } else if (kind === "trailers") {
+    primaryFacts.push([
+      "Cabezote",
+      operation.vehicle?.plate || operation.trailer?.plate,
+    ]);
   } else if (kind === "drivers") {
     primaryFacts.push([
       "Vehículo",
@@ -499,7 +615,22 @@ function OperationRecord({
   }
   if (route) primaryFacts.push(["Ruta", route]);
   const visibleFacts = primaryFacts.filter(([, value]) => Boolean(value));
-
+  const baseFreight = Number(
+    operation.fleteACobrarManual ?? operation.fleteACobrar ?? 0,
+  );
+  const hasBaseFreight =
+    operation.fleteACobrarManual != null || operation.fleteACobrar != null;
+  const surchargeTotal = (operation.surcharges ?? []).reduce(
+    (total, surcharge) => total + Number(surcharge.totalPrice),
+    0,
+  );
+  const patioCharge = Number(operation.patioCobro ?? 0);
+  const totalBilling = baseFreight + patioCharge + surchargeTotal;
+  const hasFinancialData =
+    operation.fleteACobrarManual != null ||
+    operation.fleteACobrar != null ||
+    patioCharge > 0 ||
+    surchargeTotal > 0;
   return (
     <article className={styles.operation}>
       <header className={styles.operationHeader}>
@@ -525,6 +656,55 @@ function OperationRecord({
           ))}
         </dl>
       )}
+      {kind === "shipping-lines" && operation.depositoDevolucion && (
+        <div className={styles.returnDetails}>
+          <span>
+            Depósito de devolución:{" "}
+            <strong>{operation.depositoDevolucion.name}</strong>
+          </span>
+        </div>
+      )}
+
+      {hasFinancialData && (
+        <div className={styles.operationFinancial}>
+          <strong>Desglose financiero</strong>
+          <div className={styles.financialRow}>
+            <span>Flete base</span>
+            <span>
+              {hasBaseFreight
+                ? `$${baseFreight.toLocaleString("es-CO")}`
+                : "Pendiente"}
+            </span>
+          </div>
+          {patioCharge > 0 && (
+            <div className={styles.financialRow}>
+              <span>Recargo de patio</span>
+              <span>${patioCharge.toLocaleString("es-CO")}</span>
+            </div>
+          )}
+          {(operation.surcharges ?? []).map((surcharge) => (
+            <div className={styles.financialRow} key={surcharge.id}>
+              <span>
+                {surcharge.surcharge?.name ?? surcharge.surchargeCode}
+                {surcharge.quantity > 1 ? ` · ${surcharge.quantity} unid.` : ""}
+                {surcharge.novedad
+                  ? ` · Novedad #${surcharge.novedad.id}`
+                  : ""}
+              </span>
+              <span>${Number(surcharge.totalPrice).toLocaleString("es-CO")}</span>
+            </div>
+          ))}
+          <div className={`${styles.financialRow} ${styles.financialTotal}`}>
+            <strong>Total cobro cliente</strong>
+            <strong>
+              {hasBaseFreight
+                ? `$${totalBilling.toLocaleString("es-CO")}`
+                : "Pendiente de tarifa base"}
+            </strong>
+          </div>
+        </div>
+      )}
+
     </article>
   );
 }

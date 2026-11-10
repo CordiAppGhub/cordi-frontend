@@ -22,6 +22,9 @@ export function useNovedades(initialTab = "PENDING", initialTarget = "TODAS") {
     const refreshNovedades = () => {
       void queryClient.invalidateQueries({ queryKey: ["novedades"] });
       void queryClient.invalidateQueries({
+        queryKey: ["maintenance-orders"],
+      });
+      void queryClient.invalidateQueries({
         queryKey: ["analyst-delegations"],
       });
     };

@@ -61,7 +61,13 @@ export function DriverProfile({ driver }: { driver: DriverPortalData }) {
             {vehicles.map((vehicle) => (
               <li key={vehicle.id}>
                 <strong>{vehicle.plate}</strong>
-                <span>{vehicle.type?.replace(/_/g, ' ') || 'Vehículo asignado'}</span>
+                <span>
+                  {vehicle.type === 'PATINETA'
+                    ? 'Patineta (C2)'
+                    : vehicle.type === 'MULA'
+                      ? 'Mula (C3)'
+                      : 'Vehículo asignado'}
+                </span>
               </li>
             ))}
           </ul>

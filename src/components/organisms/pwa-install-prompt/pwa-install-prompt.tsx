@@ -9,13 +9,13 @@ import {
 import { Download, X } from 'lucide-react';
 import styles from './pwa-install-prompt.module.css';
 
-type InstallRole = 'driver' | 'fleet-manager' | 'analyst' | 'admin';
-type AdministrativeRole = Exclude<InstallRole, 'driver'>;
+type InstallRole = 'DRIVER' | 'JEFE_DE_FLOTA' | 'ANALISTA' | 'ADMIN';
+type AdministrativeRole = Exclude<InstallRole, 'DRIVER'>;
 
 const administrativeRoles: { value: AdministrativeRole; label: string }[] = [
-  { value: 'fleet-manager', label: 'Jefe de flota' },
-  { value: 'analyst', label: 'Analista' },
-  { value: 'admin', label: 'Administrador' },
+  { value: 'JEFE_DE_FLOTA', label: 'Jefe de flota' },
+  { value: 'ANALISTA', label: 'Analista' },
+  { value: 'ADMIN', label: 'Administrador' },
 ];
 
 interface BeforeInstallPromptEvent extends Event {
@@ -94,9 +94,9 @@ export function PwaInstallPrompt() {
       if (choice.outcome === 'accepted') setAppInstalled(true);
       setIsDialogOpen(false);
     } catch (error: unknown) {
-      console.error('No se pudo abrir la instalación de Cordibot.', error);
+      console.error('No se pudo abrir la instalación de Corditrans TMS.', error);
       setInstallError(
-        'No fue posible abrir la instalación. Intenta instalar Cordibot desde el menú de tu navegador.',
+        'No fue posible abrir la instalación. Intenta instalar Corditrans TMS desde el menú de tu navegador.',
       );
     }
   };
@@ -105,7 +105,7 @@ export function PwaInstallPrompt() {
 
   return (
     <>
-      <button
+      {/* <button
         className={styles.installButton}
         type="button"
         onClick={() => {
@@ -115,8 +115,8 @@ export function PwaInstallPrompt() {
         }}
       >
         <Download aria-hidden="true" size={18} />
-        Instalar Cordibot
-      </button>
+        Instalar Corditrans TMS
+      </button> */}
 
       {isDialogOpen && (
         <div
@@ -146,7 +146,7 @@ export function PwaInstallPrompt() {
                 <p>
                   Para terminar, abre el menú de tu navegador y selecciona
                   “Instalar aplicación” o “Agregar a pantalla de inicio”.
-                  Cordibot abrirá el portal correspondiente a tu perfil.
+                  Corditrans TMS abrirá el portal correspondiente a tu perfil.
                 </p>
                 <button
                   className={styles.primaryButton}
@@ -160,7 +160,7 @@ export function PwaInstallPrompt() {
               <>
                 <h2 id="pwa-install-title">¿Quién usará esta aplicación?</h2>
                 <p>
-                  Selecciona el perfil para que Cordibot abra el portal adecuado
+                  Selecciona el perfil para que Corditrans TMS abra el portal adecuado
                   al iniciar.
                 </p>
 
@@ -169,11 +169,11 @@ export function PwaInstallPrompt() {
                     <legend>Conductor</legend>
                     <label className={styles.roleOption}>
                       <input
-                        checked={selectedRole === 'driver'}
+                        checked={selectedRole === 'DRIVER'}
                         name="pwa-role"
-                        onChange={() => setSelectedRole('driver')}
+                        onChange={() => setSelectedRole('DRIVER')}
                         type="radio"
-                        value="driver"
+                        value="DRIVER"
                       />
                       <span>Portal del conductor</span>
                     </label>

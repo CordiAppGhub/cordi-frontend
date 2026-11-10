@@ -281,6 +281,7 @@ export default function DashboardPage() {
   const isAnalyst = role === 'ANALISTA';
   const isFleetManager = role === 'JEFE_DE_FLOTA';
   const isAdministrator = role === 'ADMIN';
+  const canViewBusinessOverview = isFleetManager || isAdministrator;
   const showFleet = isFleetManager || isAdministrator;
 
   const roleTitle = isAnalyst
@@ -529,7 +530,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        {isAdministrator && (
+        {canViewBusinessOverview && (
           <>
             <MetricCard
               title="Analistas activos"
@@ -593,7 +594,7 @@ export default function DashboardPage() {
 
       <AnalyticsCharts data={data} showFleet={showFleet} />
 
-      {isAdministrator && (
+      {canViewBusinessOverview && (
         <section className={styles.administratorOverview}>
           <AnalystLeaderboard analysts={analytics.analystPerformance} />
           <CriticalAlerts data={data} />

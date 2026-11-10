@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import styles from './upload-excel.module.css';
+import type { BulkImportResult } from '@/types/bulk-import';
+import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 
 interface UploadExcelProps {
   title: string;
   description: React.ReactNode;
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File) => Promise<BulkImportResult | void>;
   onSuccess?: () => void;
 }
 
@@ -17,7 +19,11 @@ export default function UploadExcel({
   onSuccess 
 }: UploadExcelProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: 'success' | 'error';
+    details: string[];
+  } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,9 +41,12 @@ export default function UploadExcel({
 
     try {
      
-      await onUpload(file);
-      
-      setMessage({ text: '¡Importación exitosa!', type: 'success' });
+      const result = await onUpload(file);
+      setMessage({
+        text: result?.message || '¡Importación exitosa!',
+        type: result?.success === false ? 'error' : 'success',
+        details: result?.errors ?? [],
+      });
       setFile(null); 
 
      
@@ -47,7 +56,14 @@ export default function UploadExcel({
 
     } catch (error) {
       console.error('Error al importar el Excel:', error);
-      setMessage({ text: 'Error al procesar el archivo. Verifica las columnas.', type: 'error' });
+      setMessage({
+        text: getUserFriendlyErrorMessage(
+          error,
+          'Error al procesar el archivo. Verifica las columnas.',
+        ),
+        type: 'error',
+        details: [],
+      });
     } finally {
       setIsUploading(false);
     }
@@ -59,8 +75,21 @@ export default function UploadExcel({
       <p className={styles.description}>{description}</p>
 
       {message && (
-        <div className={message.type === 'success' ? styles.alertSuccess : styles.alertError}>
-          {message.text}
+        <div
+          role="alert"
+          className={message.type === 'success' ? styles.alertSuccess : styles.alertError}
+        >
+          <p>{message.text}</p>
+          {message.details.length > 0 && (
+            <ul>
+              {message.details.slice(0, 5).map((detail) => (
+                <li key={detail}>{detail}</li>
+              ))}
+              {message.details.length > 5 && (
+                <li>Y {message.details.length - 5} error(es) adicional(es).</li>
+              )}
+            </ul>
+          )}
         </div>
       )}
 

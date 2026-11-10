@@ -1,10 +1,22 @@
 export interface Evidence {
   id: number;
-  url: string;
+  invalidated?: boolean;
+  url: string | null;
   type: string;
+  photosUrl?: string[];
+  anomalyPhotosUrl?: string[];
+  deliveryDocsUrl?: string[];
+  tirillaEirUrl?: string | null;
+  ocrResult?: {
+    kind: "plate" | "trailer" | "container";
+    codigo: string | null;
+    legible: boolean;
+    esperado: string | null;
+    coincide: boolean | null;
+  } | null;
   createdAt?: string;
   etapa?: string;
-  estadoRevision: 'PENDIENTE' | 'APROBADO' | 'DEVUELTO';
+  estadoRevision: "PENDIENTE" | "APROBADO" | "DEVUELTO";
   notaAnalista?: string;
   formato?: string;
 }
@@ -13,6 +25,7 @@ export interface NovedadHistorial {
   id: number;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   description: string;
+  category?: string | null;
   status?: string;
   createdAt?: string;
   metadata?: {
@@ -29,13 +42,31 @@ export interface NovedadHistorial {
 export interface Vehicle {
   id: number;
   plate: string;
+  type?: string;
   status?: string;
+  affiliation?: string;
+  ownershipType?: "PROPIO" | "TERCERO";
+}
+
+export interface Trailer {
+  id: string;
+  plate: string;
+  trailerType?: "PLANCHA" | "GRILLO" | "TANQUE";
+  axles?: 2 | 3 | null;
+  capacity?: number | null;
+  status?: string;
+  currentLocation?: {
+    id: number;
+    name: string;
+    address?: string | null;
+  } | null;
 }
 
 export interface LogisticNode {
   id: number;
   name: string;
   address?: string | null;
+  isDepot?: boolean;
   client?: ClientNode | null;
 }
 
@@ -43,6 +74,8 @@ export interface UserDriver {
   id: number;
   name: string | null;
   chatId: string;
+  cedula?: string | null;
+  telefono?: string | null;
 }
 
 export interface ClientNode {
@@ -75,6 +108,12 @@ export interface OperationSurcharge {
   totalPrice: number;
   observations?: string;
   createdAt?: string | Date;
+  novedadId?: number | null;
+  novedad?: {
+    id: number;
+    category?: string | null;
+    description: string;
+  } | null;
 
   surcharge?: {
     code: string;
@@ -88,27 +127,68 @@ export interface OperationSurcharge {
 export interface Operation {
   id: number;
   type: string;
-  cargoFormat?: "CONTENERIZADA" | "SUELTA";
-  vehicleTypeId?: number | null;
+  relatedOperationId?: number | null;
+  isContainerized: boolean;
+  tipoCarga?: "CONTENERIZADA" | "SUELTA";
+  vehicleCapacityId?: number | null;
   vehicleType?: { id: number; code: string; name: string } | null;
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
   status:
     | "CREADO"
     | "PROGRAMADO"
+    | "PENDIENTE_CARGUE"
+    | "LISTA_PARA_CARGUE"
     | "ASIGNADO"
     | "PENDIENTE"
     | "EN_CURSO"
+    | "CIERRE_FISICO"
     | "FINALIZADO"
     | "PAUSADA"
     | "CANCELADO"
     | "DESVIO_REPORTADO";
 
   isActive: boolean;
+  amparosExportacion?: Array<{ id: number }>;
   isAnticipada?: boolean;
   requiresInspection?: boolean;
   inspectionStatus?: "APROBADO" | "RECHAZADO_MAL_ESTADO" | null;
   shippingLineId?: number | null;
-  shippingLine?: { id: number; name: string; nit: string } | null;
+  shippingLine?: {
+    id: number;
+    name: string;
+    nit: string;
+  } | null;
+  depositoDevolucionId?: number | null;
+  depositoDevolucion?: LogisticNode | null;
+  routeScope?: "URBANO" | "NACIONAL" | null;
+  stops?: Array<{
+    id?: number;
+    clientId: number;
+    clientLocationId?: number | null;
+    locationId: number | null;
+    isCustomAddress?: boolean;
+    address?: string | null;
+    contactName?: string | null;
+    contactPhone?: string | null;
+    observations?: string | null;
+    stopType: "CARGUE" | "DESCARGUE";
+    stopOrder: number;
+    cargoDescription?: string | null;
+    weightKg?: number | null;
+    status?: string;
+    client?: { id: number; razonSocial: string };
+    clientLocation?: {
+      id: number;
+      name: string;
+      address?: string | null;
+      cityId?: number | null;
+      department?: string | null;
+      indications?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+    } | null;
+    location?: { id: number; name: string; address?: string | null } | null;
+  }>;
   deviations?: Array<{
     id: number;
     reason: string;
@@ -126,12 +206,15 @@ export interface Operation {
   cargoDescription?: string | null;
   weight?: number | null;
   dimensions?: string | null;
+  packageType?: string | null;
+  packageCount?: number | null;
+  volumeM3?: number | null;
   sealNumber?: string | null; // Sello/Precinto
   pinRetiro?: string | null; // PIN del puerto
 
   numeroPedido?: string | null;
   arin?: string | null;
-  documentoTransporte?: string | null; // Usado para Manifiesto / DO / BL
+  documentoTransporte?: string | null; // Usado para manifiesto o DO
   radicado?: string | null;
   cumplido?: string | null;
   novedades?: string | null;
@@ -140,6 +223,8 @@ export interface Operation {
   estadoViaje?: string | null;
   containerStatus?:
     | "PENDIENTE"
+    | "PENDIENTE_CARGUE"
+    | "RESERVADO_ANTICIPADO"
     | "EN_PISO"
     | "PENDIENTE_DEVOLUCION"
     | "EN_INSPECCION"
@@ -147,7 +232,8 @@ export interface Operation {
     | "EN_CARGUE"
     | "CARGADO"
     | "EN_DESCARGUE"
-    | "DESCARGADO";
+    | "DESCARGADO"
+    | "DEVUELTO_VACIO";
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;
   loadingStartedAt?: string | null;
@@ -162,14 +248,14 @@ export interface Operation {
   // 🚀 IDs DE LOS ACTORES
   driverId?: number | null;
   vehicleId?: number | null;
-  trailerId?: number | null; // NUEVO: Remolque/Chasis
+  trailerId?: string | null;
   analystId?: number | null;
 
   // OBJETOS RELACIONADOS
   driver?: UserDriver | null;
   analyst?: { id: number; name: string | null } | null;
   vehicle?: Vehicle | null;
-  trailer?: Vehicle | null; // NUEVO: Objeto Remolque
+  trailer?: Trailer | null;
   evidences?: Evidence[];
   placaIA?: string | null;
 
@@ -196,7 +282,6 @@ export interface Operation {
   fechaCitaDestino?: string | null;
   fechaCitaDesvio?: string | null;
   fechaRetiro?: string | null;
-  fechaLimiteDevolucion?: string | null;
   fechaAsignacion?: string | null;
   fechaCierreFisico?: string | null;
   fechaCierreDocumental?: string | null;
@@ -213,6 +298,7 @@ export interface Operation {
   fleteACobrar?: number | null;
   fleteACobrarManual?: number | null; // Flete manual/excepción
   fleteAPagar?: number | null;
+  agreedFreight?: number | null;
   retencionFlotaPorcentaje?: number | null;
   patioId?: number | null;
   patioCosto?: number | null;

@@ -5,31 +5,17 @@ export interface DriverInfo {
   cedula: string;
 }
 
+export type VehicleOwnershipType = 'PROPIO' | 'TERCERO';
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';
 export type VehicleStatus = 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
-export type VehicleType =
-  | 'CABEZOTE'
-  | 'REMOLQUE'
-  | 'CAMION_SENCILLO'
-  | 'TRACTOMULA'
-  | 'TURBO'
-  | 'PLANCHA';
-
-export interface CreateVehicleFormInput {
-  plate: string;
-  type: VehicleType;
-  brand: string;
-  modelYear: number;
-  empresa: string;
-  cargoCapacity: number;
-  status: VehicleStatus;
-  affiliation: VehicleAffiliation;
-  adminDiscount?: number;
-  insuranceFileUrl?: string;
-  insuranceExpiration?: string;
-  tecnomecanicaFileUrl?: string;
-  tecnomecanicaExpiration?: string;
-}
+export type VehicleType = 'PATINETA' | 'MULA';
+export type FleetAssetType = VehicleType | 'TRAILER';
+export type TrailerStatus =
+  | 'COUPLED'
+  | 'AVAILABLE_IN_YARD'
+  | 'AT_CLIENT_SITE'
+  | 'IN_MAINTENANCE';
+export type TrailerType = 'PLANCHA' | 'GRILLO' | 'TANQUE';
 
 export interface Vehicle {
   id: number;
@@ -41,7 +27,7 @@ export interface Vehicle {
   status: VehicleStatus; 
 
   affiliation: VehicleAffiliation;
-  adminDiscount: number | null;
+  ownershipType: VehicleOwnershipType;
 
   soatExpiration: string | null;
   tecnoExpiration: string | null;
@@ -49,17 +35,47 @@ export interface Vehicle {
   insuranceExpiration: string | null;
   tecnomecanicaFileUrl: string | null;
   tecnomecanicaExpiration: string | null;
-  empresa: string | null;
   driverId?: number | null;
   analystId?: number | null;
   driver?: DriverInfo | null;
   analyst?: string | null;
+  currentTrailerId?: string | null;
+  currentTrailer?: Trailer | null;
 }
+
+export interface Trailer {
+  id: string;
+  plate: string;
+  trailerType: TrailerType;
+  axles: 2 | 3;
+  brand: string | null;
+  capacity: number | null;
+  status: TrailerStatus;
+  currentLocationId: number;
+  notes: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  currentLocation: { id: number; name: string; address?: string | null };
+  coupledVehicle?: { id: number; plate: string; type: VehicleType } | null;
+}
+
+export interface CreateTrailerInput {
+  plate: string;
+  trailerType: TrailerType;
+  axles: 2 | 3;
+  currentLocationId: number;
+  notes?: string;
+  brand?: string;
+  capacity?: number;
+}
+
+export type UpdateTrailerInput = Partial<CreateTrailerInput>;
 
 export type CreateVehicleDto = Omit<
   Vehicle,
   | 'id'
   | 'status'
+  | 'ownershipType'
   | 'driver'
   | 'analyst'
   | 'driverId'

@@ -90,19 +90,21 @@ export default function PaginationTable<
             </tr>
           </thead>
           <tbody>
-            {safeData.length === 0 ? (
+           {safeData.length === 0 ? (
               <tr>
                 <td colSpan={isCollapsible ? columns.length + 1 : columns.length} className={styles.emptyState}>
                   No hay datos para mostrar
                 </td>
               </tr>
             ) : (
-              safeData.map((row) => {
+              safeData.map((row, index) => {
                 const isExpanded = expandedRows.has(row.id);
                 const subRows = getSubRows ? getSubRows(row) : [];
+                // Se garantiza un key único combinando el ID (si existe) con el índice de la iteración
+                const rowKey = row.id !== undefined && row.id !== null ? `${row.id}-${index}` : `row-${index}`;
 
                 return (
-                  <React.Fragment key={row.id}>
+                  <React.Fragment key={rowKey}>
                     {/* FILA PADRE */}
                     <tr 
                       className={`${styles.row} ${isCollapsible ? styles.clickableRow : ''}`}

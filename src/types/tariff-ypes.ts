@@ -2,17 +2,22 @@ export type OperationType =
   | 'EXPORTACION'
   | 'IMPORTACION'
   | 'RETIRO_VACIO'
-  | 'DEVOLUCION'
-  | 'INGRESO_EXPORTACION'
-  | 'RETIRO_IMPORTACION'
-  | 'INSPECCION'
+  | 'DEVOLUCION_VACIO'
   | 'NACIONAL'
-  | 'CARGA_SUELTA_URBANA'
-  | 'CARGA_SUELTA_NACIONAL'
   | 'MOVIMIENTO_INTERNO';
 
-export type ContainerType = 'DRY_20' | 'DRY_40' | 'HC_40' | 'REEFER_40' | 'FLAT_RACK' | 'OPEN_TOP';
-export type CargoFormat = 'CONTENERIZADA' | 'SUELTA';
+export type ContainerType =
+  | 'DRY_20'
+  | 'DRY_40'
+  | 'HC_40'
+  | 'REEFER_20'
+  | 'REEFER_40_HC'
+  | 'OPEN_TOP_20'
+  | 'OPEN_TOP_40'
+  | 'FLAT_RACK_20'
+  | 'FLAT_RACK_40'
+  | 'ISO_TANK_20';
+export type RouteScope = 'URBANO' | 'NACIONAL';
 
 export interface CargoVehicleType {
   id: number;
@@ -25,36 +30,22 @@ export interface ClientTariff {
   id: number;
   clientId: number;
   operationType: OperationType;
-  isAnticipada: boolean;
-  cargoFormat: CargoFormat;
-  originLocationId?: number | null;
-  destinationLocationId?: number | null;
-  originLocation?: { id: number; name: string } | null;
-  destinationLocation?: { id: number; name: string } | null;
-  containerSize?: ContainerType | null;
-  vehicleTypeId?: number | null;
-  vehicleType?: CargoVehicleType | null;
-  locationId?: number | null;
+  routeScope: RouteScope | null;
+  isContainerized: boolean;
+  locationId: number | null;
   price: number;
   client?: { id: number; razonSocial: string };
-  location?: { id: number; name: string };
+  location?: { id: number; name: string } | null;
 }
 
-interface CreateClientTariffBase {
+export interface CreateClientTariffInput {
   clientId: number;
   operationType: OperationType;
-  isAnticipada?: boolean;
-  cargoFormat: CargoFormat;
-  originLocationId: number;
-  destinationLocationId: number;
+  routeScope: RouteScope;
+  isContainerized: boolean;
+  locationId: number;
   price: number;
 }
-
-export type CreateClientTariffInput = CreateClientTariffBase &
-  (
-    | { cargoFormat: 'CONTENERIZADA'; containerSize: ContainerType; vehicleTypeId?: never }
-    | { cargoFormat: 'SUELTA'; vehicleTypeId: number; containerSize?: never }
-  );
 
 export interface PatioTariff {
   id: number;
@@ -98,12 +89,9 @@ export interface QuoteResponse {
 export interface ClientQuoteParams {
   clientId: number;
   operationType: string;
-  isAnticipada: boolean;
-  cargoFormat: CargoFormat;
-  originLocationId: number;
-  destinationLocationId: number;
-  containerSize?: ContainerType;
-  vehicleTypeId?: number;
+  routeScope: RouteScope;
+  locationId: number;
+  isContainerized?: boolean;
 }
 
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';

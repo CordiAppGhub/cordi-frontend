@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms/button/button';
 import { useAuthLogin } from '@/hooks/useAuth';
@@ -103,6 +104,9 @@ export default function LoginPage() {
             >
               Continuar con 2FA
             </Button>
+            <Link className={styles.forgotLink} href="/forgot-password">
+              ¿Olvidaste tu contraseña?
+            </Link>
           </form>
         ) : (
    

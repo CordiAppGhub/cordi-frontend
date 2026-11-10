@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
 import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { SuperModal } from '../../../../../components/organisms/modal/modal';
 
 interface AssignDriverModalProps {
@@ -35,14 +36,12 @@ export default function AssignDriverModal({
   }, [isOpen, loadDrivers]);
 
   const vehicleOptions = vehicles.filter(
-    (v) => String(v.id) === vehicleId || (v.status === 'AVAILABLE' && !v.driverId),
+    (v) =>
+      v.ownershipType === 'PROPIO' &&
+      (String(v.id) === vehicleId || (v.status === 'AVAILABLE' && !v.driverId)),
   );
-  const driverOptions = drivers.filter(
-    (d) =>
-      d.isActive &&
-      d.conductorStatus !== 'BLOCKED_BY_NOVEDAD' &&
-      (d.drivenVehicles ?? []).every((v) => v.status === 'MAINTENANCE' || v.status === 'OUT_OF_SERVICE'),
-  );
+  const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === vehicleId);
+  const driverOptions = drivers.filter((driver) => driver.isActive);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,63 +73,98 @@ export default function AssignDriverModal({
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
-            Seleccionar Vehículo
+            {initialVehicleId === undefined ? 'Seleccionar Vehículo' : 'Vehículo'}
           </label>
-          <select
-            value={vehicleId}
-            onChange={(e) => setVehicleId(e.target.value)}
-            disabled={loadingVehicles}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-              backgroundColor: '#f9fafb',
-              fontSize: '0.95rem',
-            }}
-            required
-          >
-            <option value="" disabled>
-              {loadingVehicles ? 'Cargando flota...' : '-- Selecciona una placa --'}
-            </option>
-            {vehicleOptions.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.plate} {v.empresa ? `- ${v.empresa}` : ''}
+          {initialVehicleId !== undefined ? (
+            <input
+              type="text"
+              value={
+                selectedVehicle
+                  ? `${selectedVehicle.plate}${selectedVehicle.affiliation ? ` - ${selectedVehicle.affiliation}` : ''}`
+                  : loadingVehicles
+                    ? 'Cargando cabezote...'
+                    : `Cabezote #${vehicleId}`
+              }
+              readOnly
+              aria-readonly="true"
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #d1d5db',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                fontSize: '0.95rem',
+                cursor: 'not-allowed',
+              }}
+            />
+          ) : (
+            <select
+              value={vehicleId}
+              onChange={(e) => {
+                setVehicleId(e.target.value);
+                setDriverId('');
+              }}
+              disabled={loadingVehicles}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #d1d5db',
+                backgroundColor: '#f9fafb',
+                fontSize: '0.95rem',
+              }}
+              required
+            >
+              <option value="" disabled>
+                {loadingVehicles ? 'Cargando flota...' : '-- Selecciona una placa --'}
               </option>
-            ))}
-          </select>
+              {vehicleOptions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.plate} {v.affiliation ? `- ${v.affiliation}` : ''}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Seleccionar Conductor
           </label>
-          <select
+          <Select
+            searchable
             value={driverId}
-            onChange={(e) => setDriverId(e.target.value)}
+            onValueChange={setDriverId}
             disabled={loadingDrivers}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-              backgroundColor: '#f9fafb',
-              fontSize: '0.95rem',
-            }}
+            searchPlaceholder={
+              loadingDrivers ? 'Cargando conductores...' : 'Buscar conductor...'
+            }
             required
-          >
-            <option value="" disabled>
-              {loadingDrivers ? 'Cargando personal...' : '-- Selecciona un conductor --'}
-            </option>
-            {driverOptions.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name} (C.C. {d.cedula})
-              </option>
-            ))}
-          </select>
+            options={driverOptions.map((driver) => {
+              const assignedVehicleElsewhere = driver.drivenVehicles?.find(
+                (vehicle) => String(vehicle.id) !== vehicleId,
+              );
+              const assignedVehiclePlate =
+                assignedVehicleElsewhere?.plate ?? driver.assignedVehiclePlate;
+
+              return {
+                value: driver.id,
+                label: `${driver.name} (C.C. ${driver.cedula})${
+                  assignedVehiclePlate
+                    ? ` (Ocupado: ${assignedVehiclePlate})`
+                    : !driver.isAvailable
+                      ? ' (No disponible)'
+                      : ''
+                }`,
+                disabled:
+                  assignedVehicleElsewhere !== undefined || !driver.isAvailable,
+              };
+            })}
+          />
         </div>
 
         <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
-          Solo se listan vehículos disponibles sin conductor y conductores disponibles sin vehículo
-          (o cuyo vehículo está en mantenimiento).
+          Los conductores vinculados a otra placa aparecen deshabilitados. Libera su asignación
+          actual antes de vincularlos a un vehículo diferente.
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>

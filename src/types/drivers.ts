@@ -1,4 +1,4 @@
-import type { VehicleStatus } from './vehicles';
+import type { VehicleAffiliation, VehicleStatus } from './vehicles';
 
 export interface Driver {
   id: number;
@@ -6,8 +6,16 @@ export interface Driver {
   cedula: string | null;
   telefono: string | null;
   chatId: string | null;
+  affiliation: VehicleAffiliation;
   isActive: boolean;
-  drivenVehicles?: { plate: string; status?: VehicleStatus }[];
+  drivenVehicles?: {
+    id: number;
+    plate: string;
+    status?: VehicleStatus;
+    affiliation?: string | null;
+  }[];
+  isAssigned?: boolean;
+  assignedVehiclePlate?: string | null;
   portalLink: string | null;
   isAvailable: boolean;
   conductorStatus?:
@@ -22,10 +30,19 @@ export interface Driver {
   } | null;
 }
 
+export interface PaginatedDrivers {
+  data: Driver[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export type CreateDriverDto = {
   cedula: string;
-  name?: string;
+  name: string;
   telefono?: string;
+  affiliation: VehicleAffiliation;
 };
 
 export type UpdateDriverDto = Partial<CreateDriverDto> & { isActive?: boolean };

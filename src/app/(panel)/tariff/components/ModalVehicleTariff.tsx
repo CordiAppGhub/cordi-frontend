@@ -12,6 +12,15 @@ interface VehicleTariffModalProps {
   initialData?: AffiliationTariff | null;
 }
 
+const affiliationLabels: Record<VehicleAffiliation, string> = {
+  CORDIVEHICULOS: 'Cordivehículos',
+  CORDIHUB: 'Cordihub',
+  TERCEROS: 'Terceros',
+};
+
+const isVehicleAffiliation = (value: FormFieldValue | undefined): value is VehicleAffiliation =>
+  typeof value === 'string' && Object.hasOwn(affiliationLabels, value);
+
 export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -32,9 +41,7 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
       type: 'select',
       options: [
         { value: '', label: '-- Seleccionar Tipo --' },
-        { value: 'CORDIVEHICULOS', label: 'Cordivehículos (Flota Propia)' },
-        { value: 'CORDIHUB', label: 'Cordihub (Fidelizados)' },
-        { value: 'TERCEROS', label: 'Terceros (Vehículos Externos)' }
+        ...Object.entries(affiliationLabels).map(([value, label]) => ({ value, label })),
       ],
       disabled: !!initialData, 
     },
@@ -61,7 +68,8 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
   const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     const localErrors: Record<string, string> = {};
 
-    if (!formData.affiliation) localErrors.affiliation = 'Seleccione el tipo de flota';
+    const affiliation = formData.affiliation;
+    if (!isVehicleAffiliation(affiliation)) localErrors.affiliation = 'Seleccione el tipo de flota';
     if (
       formData.percentage === undefined ||
       formData.percentage === '' ||
@@ -71,13 +79,13 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
       localErrors.percentage = 'Ingrese una retención entre 0 % y 100 %';
     }
 
-    if (Object.keys(localErrors).length > 0) {
+    if (Object.keys(localErrors).length > 0 || !isVehicleAffiliation(affiliation)) {
       setErrors(localErrors);
       return;
     }
 
     const payload: CreateAffiliationTariffInput = {
-      affiliation: String(formData.affiliation) as VehicleAffiliation,
+      affiliation,
       percentage: Number(formData.percentage),
       description: formData.description ? String(formData.description) : undefined,
     };
@@ -104,6 +112,10 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
           {initialData ? "Editar Tarifa de Flota" : "Nueva Tarifa de Flota"}
         </h2>
+        <p style={{ marginBottom: '16px', color: '#475569', fontSize: '14px' }}>
+          En operaciones con flota externa, el pago conserva el flete negociado;
+          la retención configurada no se descuenta automáticamente.
+        </p>
         
         <SuperForm
           key={isOpen ? `open-${initialData?.id || 'new'}` : 'closed'} 

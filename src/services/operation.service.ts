@@ -1,5 +1,22 @@
 import { api } from "./api.service";
-import { Operation, OperationsClientGroup, Evidence } from "@/types/operation-types";
+import {
+  Operation,
+  OperationsClientGroup,
+  Evidence,
+} from "@/types/operation-types";
+import type { CargoStatus, OperationContainerStatus } from "@/types/driver-portal.types";
+
+export async function correctContainerState(
+  id: number,
+  payload: {
+    expectedStatus: OperationContainerStatus;
+    targetStatus: OperationContainerStatus;
+    cargoStatus: CargoStatus;
+    reason: string;
+  },
+): Promise<void> {
+  await api.patch(`/operations/${id}/container-state-correction`, payload);
+}
 
 // ==========================================
 // INTERFACES Y PAYLOADS
@@ -51,6 +68,15 @@ export interface GetHistoricalOperationsParams {
   conductor?: string;
 }
 
+export interface ScheduleOperationsFilters {
+  fechaInicio?: string;
+  fechaFin?: string;
+  estado?: string;
+  busqueda?: string;
+  requiereAccion?: boolean;
+  analystId?: number;
+}
+
 export type HistoricalFilterOptionKind = "manifest";
 
 export interface HistoricalFilterOption {
@@ -89,12 +115,14 @@ export interface AmparoSuggestionOperation {
 export interface AmparoSuggestion {
   exportOperation: AmparoSuggestionOperation;
   importOperation: AmparoSuggestionOperation;
+  hasAssignedDriver: boolean;
+  conflictingDrivers: boolean;
 }
 
 export interface ConfirmAmparoPayload {
   exportOperationId: number;
   importOperationId: number;
-  driverId: number;
+  driverId?: number;
   vehicleId: number;
 }
 
@@ -124,20 +152,36 @@ export interface OperationIssue {
 
 export type UpdateOperationPayload = Partial<{
   type: string;
-  cargoFormat: string;
-  vehicleTypeId: number | null;
+  routeScope: "URBANO" | "NACIONAL" | null;
+  stops: Array<{
+    clientId: number;
+    clientLocationId?: number | null;
+    locationId: number | null;
+    isCustomAddress?: boolean;
+    address?: string;
+    contactName?: string;
+    contactPhone?: string;
+    observations?: string;
+    stopType: "CARGUE" | "DESCARGUE";
+    stopOrder: number;
+    cargoDescription?: string;
+    weightKg?: number;
+  }>;
+  isContainerized: boolean;
+  vehicleCapacityId: number | null;
   clientId: number;
   isAnticipada: boolean;
-  origenId: number;
+  origenId: number | null;
   cargueId: number;
   descargueId: number;
-  destinoId: number;
+  destinoId: number | null;
   scheduledAt: string;
   driverId: number | null;
   vehicleId: number | null;
-  trailerId: number | null;
+  trailerId: string | null;
   fleteACobrar: number | null;
   fleteACobrarManual: number | null;
+  agreedFreight: number;
   containerNumber: string | null;
   containerSize: string | null;
   containerType?: string | null;
@@ -145,6 +189,9 @@ export type UpdateOperationPayload = Partial<{
   cargoDescription: string | null;
   weight: number | null;
   dimensions: string | null;
+  packageType: string | null;
+  packageCount: number | null;
+  volumeM3: number | null;
   sealNumber: string;
   pinRetiro: string;
   documentoTransporte: string;
@@ -155,11 +202,50 @@ export type UpdateOperationPayload = Partial<{
   nuevoDestinoId: number;
   fechaCitaDesvio: string;
   fechaRetiro: string;
-  fechaLimiteDevolucion: string;
+  depositoDevolucionId: number | null;
   programarDesvio: boolean;
   shippingLineId: number | null;
+  relatedOperationId: number;
   requiresInspection: boolean;
 }>;
+
+export interface AssignExternalResourcesPayload {
+  plate: string;
+  driverName: string;
+  driverCedula: string;
+  driverPhone: string;
+  agreedFreight: number;
+}
+
+export interface ExternalEvidenceOcrResult {
+  kind: "plate" | "trailer" | "container";
+  codigo: string | null;
+  legible: boolean;
+  esperado: string;
+  coincide: boolean;
+  mensaje: string | null;
+}
+
+export interface ExternalEvidenceUploadResponse {
+  evidences: Evidence[];
+  ocrResults: ExternalEvidenceOcrResult[];
+  cierreFisico: boolean;
+  motivo?: string;
+  operation?: ExternalEvidenceClosedOperation;
+}
+
+export type ExternalEvidenceClosedOperation = Pick<
+  Operation,
+  "id" | "type" | "status" | "isActive" | "isContainerized"
+>;
+
+export interface ExternalEvidenceUploads {
+  cabezotePhoto: File;
+  trailerPhoto: File;
+  containerPhoto?: File;
+  arinFile?: File;
+  comodatoFile?: File;
+}
 
 // ==========================================
 // SERVICIO PRINCIPAL UNIFICADO
@@ -204,28 +290,85 @@ export const operationService = {
     return response.data;
   },
 
-  getOperationsByDate: async (date: string): Promise<Operation[]> => {
-    const response = await api.get<Operation[]>(
-      `/operations/by-date?date=${date}`,
-    );
+  getOperationsByDate: async (
+    filters: ScheduleOperationsFilters,
+  ): Promise<Operation[]> => {
+    const response = await api.get<Operation[]>("/operations/by-date", {
+      params: filters,
+    });
     return response.data;
+  },
+
+  getPendingCount: async (): Promise<number> => {
+    const response = await api.get<{ count: number }>(
+      "/operations/pending-count",
+    );
+    return response.data.count;
   },
 
   cancelOperation: async (id: number): Promise<void> => {
     await api.patch(`/operations/${id}/cancel`);
   },
 
-  deleteOperation: async (id: number): Promise<Operation> => {
-    const response = await api.delete<Operation>(`/operations/${id}`);
+  deleteOperation: async (id: number): Promise<{ deletedIds: number[] }> => {
+    const response = await api.delete<{ deletedIds: number[] }>(`/operations/${id}`);
     return response.data;
   },
 
-  assignVehicle: async (id: number, vehicleId: number): Promise<Operation> => {
+  assignVehicle: async (
+    id: number,
+    vehicleId: number,
+    force?: boolean,
+  ): Promise<Operation> => {
     const response = await api.patch<Operation>(
       `/operations/${id}/assign-vehicle`,
       {
         vehicleId,
+        ...(force && { force: true }),
       },
+    );
+    return response.data;
+  },
+
+  unassignVehicle: async (id: number): Promise<Operation> => {
+    const response = await api.patch<Operation>(
+      `/operations/${id}/unassign-fleet`,
+    );
+    return response.data;
+  },
+
+  assignExternalResources: async (
+    id: number,
+    payload: AssignExternalResourcesPayload,
+  ): Promise<Operation> => {
+    const response = await api.post<Operation>(
+      `/operations/${id}/assign-external`,
+      payload,
+    );
+    return response.data;
+  },
+
+  uploadExternalEvidence: async (
+    operationId: number,
+    uploads: ExternalEvidenceUploads,
+  ): Promise<ExternalEvidenceUploadResponse> => {
+    const formData = new FormData();
+    for (const [field, file] of Object.entries(uploads)) {
+      if (file) formData.append(field, file);
+    }
+    const response = await api.post<ExternalEvidenceUploadResponse>(
+      `/operations/${operationId}/external-evidence`,
+      formData,
+      { timeout: 180_000 },
+    );
+    return response.data;
+  },
+
+  closeExternalEvidence: async (
+    operationId: number,
+  ): Promise<ExternalEvidenceClosedOperation> => {
+    const response = await api.post<ExternalEvidenceClosedOperation>(
+      `/operations/${operationId}/external-evidence/close`,
     );
     return response.data;
   },
@@ -277,6 +420,13 @@ export const operationService = {
 
   getOperationById: async (id: number): Promise<Operation> => {
     const response = await api.get<Operation>(`/operations/${id}`);
+    return response.data;
+  },
+
+  closeDocumentally: async (operationId: number): Promise<Operation> => {
+    const response = await api.patch<Operation>(
+      `/operations/${operationId}/cierre-documental`,
+    );
     return response.data;
   },
 
@@ -351,3 +501,4 @@ export const operationService = {
 
 export const reviewEvidence = operationService.reviewEvidence;
 export const updatePatioManual = operationService.updatePatioManual;
+export const closeDocumentally = operationService.closeDocumentally;

@@ -3,8 +3,16 @@ import { useClients } from '@/hooks/useClient';
 import { Locations } from '@/types/location.types';
 import { locationSchema } from '@/schemas/location.schema';
 import { FormField } from '@/components/organisms/form/types/form.types';
+import type { FormFieldValue } from '@/components/organisms/form/types/form.types';
+import type { ClientLocationRelation } from '@/types/location.types';
 import styles from '../components/locationModal/LocationModal.module.css';
 import { useLocations } from './useLocation';
+
+interface ClientAssignmentFormValue {
+  clientId: number;
+  isClient: boolean;
+  isDepot: boolean;
+}
 
 interface UseLocationModalProps {
   isOpen: boolean;
@@ -12,7 +20,7 @@ interface UseLocationModalProps {
   locationToEdit?: Locations | null;
 }
 
-export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocationModalProps) => {
+export const useLocationModal = ({ onClose, locationToEdit }: UseLocationModalProps) => {
   const { createLocation, updateLocation, isLoadingLocations } = useLocations();
   const { clients, isLoadingClients } = useClients();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -20,7 +28,7 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
   // 1. Memorizamos los valores por defecto para que no se recreen en cada render
   const defaultValues = useMemo(() => {
     const initialClientsData = locationToEdit?.clients
-      ? locationToEdit.clients.map((item: any) => ({
+      ? locationToEdit.clients.map((item: ClientLocationRelation) => ({
           clientId: item.clientId,
           isClient: item.isClient ?? true,
           isDepot: item.isDepot ?? false,
@@ -30,8 +38,13 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
     return {
       name: locationToEdit?.name || '',
       address: locationToEdit?.address || '',
-      isPort: locationToEdit?.isPort || false,
-      isDepot: locationToEdit?.isDepot || false,
+      city: locationToEdit?.city || '',
+      isPort: locationToEdit?.isPort ?? false,
+      isDepot: locationToEdit?.isDepot ?? false,
+      isOwnYard: locationToEdit?.isOwnYard ?? false,
+      hasClientYard:
+        locationToEdit?.hasClientYard ??
+        Boolean(locationToEdit?.clients?.some((client) => client.isDepot)),
       isOrigin: locationToEdit?.isOrigin ?? true,
       isDestination: locationToEdit?.isDestination ?? true,
       exigeCita: locationToEdit?.exigeCita || false, 
@@ -42,10 +55,20 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
   // 2. Memorizamos la estructura del formulario
   const formFields: FormField[] = useMemo(() => [
     { name: 'name', label: 'Nombre del Lugar / Parque *', type: 'text', placeholder: 'Ej: Parqueamérica / Patio Seco' },
-    { name: 'address', label: 'Dirección (Opcional)', type: 'text', placeholder: 'Ej: Vía Mamonal' },
-    
-    { name: 'isPort', label: 'Es Puerto Marítimo (Público)', type: 'checkbox' },
-    { name: 'isDepot', label: 'Es Patio de Vacíos (Independiente)', type: 'checkbox' },
+    { name: 'address', label: 'Dirección general (Opcional)', type: 'text', placeholder: 'Ej: Vía Mamonal' },
+    { name: 'city', label: 'Ciudad (Opcional)', type: 'text', placeholder: 'Ej: Cartagena' },
+    { name: 'isPort', label: 'Es Puerto Marítimo', type: 'checkbox' },
+    { name: 'isDepot', label: 'Es Patio de Vacíos', type: 'checkbox' },
+    { name: 'isOwnYard', label: 'Es Patio Propio (Corditrans)', type: 'checkbox' },
+    {
+      name: 'hasClientYard',
+      label: 'Incluye patio de cliente para desenganche de tráileres',
+      type: 'checkbox',
+      visible: (currentValues) =>
+        !currentValues.isPort &&
+        !currentValues.isDepot &&
+        !currentValues.isOwnYard,
+    },
     
     { name: 'isOrigin', label: 'Ruta: Puede ser Origen', type: 'checkbox' },
     { name: 'isDestination', label: 'Ruta: Puede ser Destino', type: 'checkbox' },
@@ -61,15 +84,21 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
       name: 'clientsData',
       label: 'Asignación Comercial Masiva (Funciones por Cliente)',
       type: 'custom',
-      visible: (currentValues) => !currentValues?.isPort && !currentValues?.isDepot,
+      visible: (currentValues) =>
+        !currentValues.isPort &&
+        !currentValues.isDepot &&
+        !currentValues.isOwnYard,
       fullWidth: true,
-      render: (value: any[] = [], onChange) => {
+      render: (value: FormFieldValue, onChange: (value: FormFieldValue) => void) => {
         if (isLoadingClients) return <span className={styles.loadingText}>Cargando portafolio...</span>;
+        const assignments = Array.isArray(value)
+          ? (value as ClientAssignmentFormValue[])
+          : [];
 
         return (
           <div className={styles.clientAssignmentsContainer}>
             {clients.map((client) => {
-              const clientAssignment = value.find((v: any) => v.clientId === client.id);
+              const clientAssignment = assignments.find((v) => v.clientId === client.id);
               const isSelected = Boolean(clientAssignment);
 
               return (
@@ -81,9 +110,13 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
                       checked={isSelected}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          onChange([...value, { clientId: client.id, isClient: true, isDepot: false }]);
+                          onChange([...assignments, {
+                            clientId: client.id,
+                            isClient: true,
+                            isDepot: false,
+                          }]);
                         } else {
-                          onChange(value.filter((v: any) => v.clientId !== client.id));
+                          onChange(assignments.filter((v) => v.clientId !== client.id));
                         }
                       }}
                     />
@@ -92,7 +125,7 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
                     </span>
                   </label>
 
-                  {isSelected && (
+                  {isSelected && clientAssignment && (
                     <div className={styles.granularRoles}>
                       <span className={styles.roleLabel}>Funciones para {client.razonSocial}:</span>
                       <div className={styles.roleToggles}>
@@ -101,7 +134,7 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
                             type="checkbox"
                             checked={clientAssignment.isClient}
                             onChange={(e) => {
-                              onChange(value.map((v: any) => 
+                              onChange(assignments.map((v) => 
                                 v.clientId === client.id ? { ...v, isClient: e.target.checked } : v
                               ));
                             }}
@@ -113,7 +146,7 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
                             type="checkbox"
                             checked={clientAssignment.isDepot}
                             onChange={(e) => {
-                              onChange(value.map((v: any) => 
+                              onChange(assignments.map((v) => 
                                 v.clientId === client.id ? { ...v, isDepot: e.target.checked } : v
                               ));
                             }}
@@ -130,29 +163,38 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
         );
       }
     },
-  ], [clients, isLoadingClients]); // Solo se recrea si cambia la lista de clientes
+  ], [clients, isLoadingClients]);
 
-  const handleSubmit = async (formData: Record<string, any>) => {
-    // ... tu lógica de submit se mantiene exactamente igual ...
+  const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     const isPort = Boolean(formData.isPort);
     const isDepot = Boolean(formData.isDepot);
-    let clientsData = Array.isArray(formData.clientsData) ? formData.clientsData : [];
+    const isOwnYard = Boolean(formData.isOwnYard);
+    const isClientSite = !isPort && !isDepot && !isOwnYard;
+    let clientsData = Array.isArray(formData.clientsData)
+      ? (formData.clientsData as ClientAssignmentFormValue[])
+      : [];
 
-    if (isPort || isDepot) {
+    if (!isClientSite) {
       clientsData = [];
     } else {
-      clientsData = clientsData.map((item: any) => ({
+      clientsData = clientsData.map((item) => ({
         clientId: Number(item.clientId),
         isClient: Boolean(item.isClient),
         isDepot: Boolean(item.isDepot),
-      })).filter((item: any) => item.clientId && (item.isClient || item.isDepot));
+      })).filter((item) => item.clientId && (item.isClient || item.isDepot));
     }
 
     const payload = {
       name: String(formData.name || '').trim(),
       address: String(formData.address || '').trim(),
+      city: String(formData.city || '').trim(),
       isPort,
       isDepot,
+      isOwnYard,
+      hasClientYard:
+        isClientSite &&
+        (Boolean(formData.hasClientYard) ||
+          clientsData.some((client) => client.isDepot)),
       isOrigin: Boolean(formData.isOrigin),
       isDestination: Boolean(formData.isDestination),
       exigeCita: Boolean(formData.exigeCita),
@@ -170,16 +212,10 @@ export const useLocationModal = ({ isOpen, onClose, locationToEdit }: UseLocatio
       return;
     }
 
-    try {
-      if (locationToEdit) {
-        await updateLocation(locationToEdit.id, validation.data);
-      } else {
-        await createLocation(validation.data);
-      }
-      onClose();
-    } catch (error) {
-      console.error("Error guardando ubicación", error);
-    }
+    const success = locationToEdit
+      ? await updateLocation(locationToEdit.id, validation.data)
+      : await createLocation(validation.data);
+    if (success) onClose();
   };
 
   return {

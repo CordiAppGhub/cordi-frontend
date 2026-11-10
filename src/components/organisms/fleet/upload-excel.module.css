@@ -32,6 +32,17 @@
   line-height: 1.4;
 }
 
+.alertSuccess p,
+.alertError p {
+  margin: 0;
+}
+
+.alertSuccess ul,
+.alertError ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
 .alertSuccess {
   background-color: #f0fdf4;
   color: #15803d;

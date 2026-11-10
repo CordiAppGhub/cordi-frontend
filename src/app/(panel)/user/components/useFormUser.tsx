@@ -9,6 +9,7 @@ import { userSchema } from '@/types/user-types';
 import React, { useState } from 'react';
 import { showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
+import styles from '../user.module.css';
 
 
 export default function UserForm() {
@@ -31,7 +32,6 @@ export default function UserForm() {
   role: 'ANALISTA', 
   cedula: '',
   telefono: '',
-  password: '',
 };
 
 const fields: FormField[] = [
@@ -48,11 +48,13 @@ const fields: FormField[] = [
       { label: 'Administrador', value: 'ADMIN' }
     ]
   },
-  {
-    name: 'password',
-    label: mode === 'CREATE' ? 'Contraseña *' : 'Contraseña (Opcional)',
-    type: 'password'
-  },
+  ...(mode === 'EDIT'
+    ? [{
+        name: 'password',
+        label: 'Nueva contraseña (opcional)',
+        type: 'password' as const,
+      }]
+    : []),
   { name: 'cedula', label: 'Cédula', type: 'text' },
   { name: 'telefono', label: 'Teléfono', type: 'text' },
 ];
@@ -72,20 +74,17 @@ const fields: FormField[] = [
       setFormErrors(fieldErrors);
       return;
     }
-    if (mode === 'CREATE' && !validation.data.password) {
-      setFormErrors({ password: 'La contraseña es obligatoria' });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const data = validation.data;
       if (mode === 'CREATE') {
-        if (!data.password) {
-          setFormErrors({ password: 'La contraseña es obligatoria' });
-          return;
-        }
-        await create({ ...data, password: data.password });
+        await create({
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          telefono: data.telefono,
+          cedula: data.cedula,
+        });
       } else if (mode === 'EDIT' && selectedUser) {
         const payload = data.password ? data : { ...data, password: undefined };
         await update({ id: selectedUser.id, data: payload });
@@ -99,16 +98,29 @@ const fields: FormField[] = [
   };
 
   return (
-    <SuperForm
-      fields={fields}
-      defaultValues={defaultValues}
-
-      errors={formErrors}
-      isLoading={isSubmitting}
-      submitText={mode === 'CREATE' ? 'Crear Usuario' : 'Guardar Cambios'}
-      cancelText="Cancelar"
-      onSubmit={handleSubmit}
-      onCancel={closeModal}
-    />
+    <>
+      <SuperForm
+        fields={fields}
+        defaultValues={defaultValues}
+        errors={formErrors}
+        isLoading={isSubmitting}
+        submitText={mode === 'CREATE' ? 'Crear Usuario' : 'Guardar Cambios'}
+        cancelText="Cancelar"
+        onSubmit={handleSubmit}
+        onCancel={closeModal}
+      />
+      {mode === 'CREATE' ? (
+        <p className={styles.passwordHint}>
+          Se enviará al correo del usuario una contraseña temporal, que deberá
+          cambiar al iniciar sesión.
+        </p>
+      ) : (
+        <p className={styles.passwordHint}>
+          Si defines una contraseña, el usuario deberá cambiarla al iniciar
+          sesión. Usa mínimo 12 caracteres, mayúsculas, minúsculas, números y
+          símbolos; no incluyas espacios.
+        </p>
+      )}
+    </>
   );
 }

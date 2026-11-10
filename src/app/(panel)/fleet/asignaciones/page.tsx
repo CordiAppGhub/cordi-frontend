@@ -38,7 +38,7 @@ export default function AssignmentsPage() {
                 <div>
                     <strong className={styles.plate}>{row.vehicle.plate}</strong>
                     <div className={styles.vehicleName}>
-                        {row.vehicle.empresa || 'Sin empresa'}
+                        {row.vehicle.affiliation || 'Sin afiliación'}
                     </div>
                 </div>
             )

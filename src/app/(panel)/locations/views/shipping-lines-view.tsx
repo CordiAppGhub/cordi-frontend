@@ -82,7 +82,10 @@ export function ShippingLinesView() {
 
   function openEdit(line: ShippingLine) {
     setEditingLine(line);
-    form.reset({ name: line.name, nit: line.nit });
+    form.reset({
+      name: line.name,
+      nit: line.nit,
+    });
     setIsModalOpen(true);
   }
 

@@ -1,29 +1,44 @@
 .cardsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-  gap: 12px;
+  gap: 16px; /* Aumentado ligeramente para que la sombra respire */
   width: 100%;
 }
 
-.card {
-  background: #ffffff;
+/* Contenedor principal con elevación */
+.cardContainer {
+  background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: var(--radius-panel);
-  padding: 16px;
-  box-shadow: none;
-  transition: border-color 0.15s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease;
+  cursor: pointer;
 }
 
-.card:hover {
-  border-color: #bdcdd5;
+.cardContainer:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-color: #cbd5e1;
 }
 
-/* Header de la tarjeta */
+.driverCard {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.driverCard:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 8px 18px -8px rgba(15, 23, 42, 0.24);
+}
+
+/* Header */
 .cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  padding: 16px;
 }
 
 .titleGroup {
@@ -38,17 +53,17 @@
   gap: 12px;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-brand-900);
+  color: #0f172a; /* Oscurecido ligeramente para mayor contraste */
 }
 
 .brandBadge {
   background: #f1f5f9;
-  color: var(--color-brand-700);
+  color: #334155;
   font-size: 0.75rem;
   padding: 2px 8px;
-  border-radius: 5px;
+  border-radius: 6px;
   font-weight: 600;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #e2e8f0;
 }
 
 .subTitle {
@@ -58,15 +73,16 @@
   letter-spacing: 0.5px;
 }
 
+/* Caja de métricas interna */
 .metricsBox {
-  background: #f5f7f8;
-  border: 1px solid #e7ecef;
-  border-radius: 5px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   padding: 12px;
+  margin: 0 16px; /* Separado de los bordes externos */
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
 }
 
 .metricItem {
@@ -89,13 +105,30 @@
 }
 
 .metricHighlight {
-  color: var(--color-brand-700);
+  color: #1d4ed8;
 }
 
-/* Sección de documentos */
+/* Documentos */
 .docsSection {
-  border-top: 1px solid #f1f5f9;
+  padding: 16px;
+  margin-top: 16px;
+  border-top: 1px solid #e2e8f0; /* Línea separadora estricta */
+}
+
+.driverDocsSection {
+  gap: 10px;
+  margin: 14px 16px 0;
+  padding: 14px 0 4px;
+  border-top-color: #cbd5e1;
+}
+
+.driverCardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 10px 16px 14px;
   padding-top: 12px;
+  border-top: 1px solid #cbd5e1;
 }
 
 .docsTitle {
@@ -119,6 +152,52 @@
   color: #16a34a;
 }
 
+/* NUEVO: Footer para acciones */
+.cardFooter {
+  background-color: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 12px;
+  margin-top: auto; /* Empuja el footer siempre hacia abajo */
+}
+
+.actionButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.actionButtons .actionButton {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 8px;
+  gap: 6px;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+}
+
+.actionButtons .uncoupleButton {
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.assignmentNotice {
+  display: flex;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .actionButtons {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 .avatarWrapper {
   display: flex;
   gap: 12px;
@@ -136,4 +215,292 @@
   justify-content: center;
   font-weight: 700;
   font-size: 1.2rem;
+}
+
+.fleetAssetTabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.fleetAssetTabs button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.fleetAssetTabs .fleetAssetTabActive {
+  background: #fff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.fleetAssetCount {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.fleetAssetTabActive .fleetAssetCount {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.fleetViewHeading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fleetViewHeading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.fleetViewCount {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cardPagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.cardPaginationSummary {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.cardPaginationControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.cardPaginationControls button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.cardPaginationControls button:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.cardPaginationControls button:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.plateSearch {
+  display: grid;
+  gap: 7px;
+  width: min(100%, 460px);
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.plateSearch > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.plateSearch > span svg {
+  color: #64748b;
+}
+
+.plateSearchInput {
+  position: relative;
+}
+
+.plateSearchInput :global(input) {
+  box-sizing: border-box;
+  min-height: 42px;
+  margin: 0;
+  padding: 9px 12px;
+  border-color: #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.plateSearchInput :global(input:focus) {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.searchEmptyState {
+  padding: 28px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #64748b;
+  text-align: center;
+}
+
+.trailerInventoryCard {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.trailerInventoryCard > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trailerInventoryCard > div strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.trailerInventoryCard p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.trailerStatus {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.trailerLocation {
+  color: #334155 !important;
+  font-weight: 600;
+}
+
+.trailerCoordinates {
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.trailerActionModal {
+  display: grid;
+  gap: 18px;
+}
+
+.trailerActionModal p {
+  margin: 0;
+  color: #475569;
+}
+
+.trailerActionModal label {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.trailerActionModal small {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.trailerActionButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .fleetAssetTabs button {
+    flex: 1;
+    padding-inline: 8px;
+  }
+
+  .fleetViewHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .cardPagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cardPaginationControls {
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .cardPaginationControls button {
+    padding: 6px 7px;
+  }
+
+  .trailerActionButtons {
+    flex-direction: column-reverse;
+  }
 }

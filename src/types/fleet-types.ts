@@ -8,7 +8,7 @@ export interface VehicleAssignment {
   vehicle: {
     id: number;
     plate: string;
-    empresa: string | null;
+    affiliation: string;
   };
   driver: {
     id: number;

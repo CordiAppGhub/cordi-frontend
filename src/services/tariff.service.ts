@@ -86,6 +86,7 @@ export const tariffService = {
 
   applySurchargeToOperation: async (payload: { 
     operationId: number; 
+    novedadId?: number;
     surchargeCode: string; 
     quantity: number; 
     unitPrice: number;

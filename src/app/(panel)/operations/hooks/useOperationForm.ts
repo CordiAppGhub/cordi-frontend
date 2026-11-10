@@ -11,33 +11,43 @@ import { useLocations } from "@/app/(panel)/locations/hooks/useLocation";
 import { operationService, UpdateOperationPayload } from "@/services/operation.service";
 import { useTariffs } from "../../tariff/hooks/useTariff";
 import { Operation } from "@/types/operation-types";
-import { useTrafico } from "./useOperations";
-import { OperationDateTimePicker } from "../components/operation-date-time-picker";
+
 import { operationCargoSchema } from "@/schemas/operation.schema";
-import { CargoFormat, ContainerType } from "@/types/tariff-ypes";
+import { ContainerType } from "@/types/tariff-ypes";
+import { operationOptions } from "@/app/constants/operation.constants";
+import { OperationDateTimePicker } from "../components/forms/operation-date-time-picker";
+import { useTrafico } from "./use-operations";
 
 const containerSizeValues: ContainerType[] = [
   "DRY_20",
   "DRY_40",
   "HC_40",
-  "REEFER_40",
-  "FLAT_RACK",
-  "OPEN_TOP",
+  "REEFER_20",
+  "REEFER_40_HC",
+  "OPEN_TOP_20",
+  "OPEN_TOP_40",
+  "FLAT_RACK_20",
+  "FLAT_RACK_40",
+  "ISO_TANK_20",
 ];
+
+const containerTypeLabels: Record<ContainerType, string> = {
+  DRY_20: "20' Dry (20DV)",
+  DRY_40: "40' Dry (40DV)",
+  HC_40: "40' High Cube (40HC)",
+  REEFER_20: "20' Refrigerado (20RF)",
+  REEFER_40_HC: "40' Refrigerado HC (40RH)",
+  OPEN_TOP_20: "20' Open Top (20OT)",
+  OPEN_TOP_40: "40' Open Top (40OT)",
+  FLAT_RACK_20: "20' Flat Rack (20FR)",
+  FLAT_RACK_40: "40' Flat Rack (40FR)",
+  ISO_TANK_20: "20' ISO Tanque (20TK)",
+};
 
 const getContainerSize = (value?: string | null): ContainerType | null =>
   containerSizeValues.find((containerSize) => containerSize === value) ?? null;
 
-const typeOptions = [
-  { value: "IMPORTACION", label: "Importación" },
-  { value: "EXPORTACION", label: "Exportación" },
-  { value: "RETIRO_VACIO", label: "Retiro de Vacío" },
-  { value: "DEVOLUCION", label: "Devolución de Vacío" },
-  { value: "NACIONAL", label: "Nacional" },
-  { value: "CARGA_SUELTA_URBANA", label: "Carga Suelta Urbana" },
-  { value: "CARGA_SUELTA_NACIONAL", label: "Carga Suelta Nacional" },
-  { value: "MOVIMIENTO_INTERNO", label: "Movimiento Interno" },
-];
+
 
 const dateTimeField = (name: string, label: string): FormField => ({
   name,
@@ -81,14 +91,14 @@ export const useOperationForm = (
   const [isAnticipada, setIsAnticipada] = useState<boolean>(
     operationBase?.isAnticipada || false,
   );
-  const [cargoFormat, setCargoFormat] = useState<CargoFormat>(
-    operationBase?.cargoFormat || "CONTENERIZADA",
+  const [cargoFormat, setCargoFormat] = useState<"CONTENERIZADA" | "SUELTA">(
+    operationBase?.isContainerized ? "CONTENERIZADA" : "SUELTA",
   );
   const [containerSize, setContainerSize] = useState<ContainerType | null>(
     getContainerSize(operationBase?.containerType) ?? "DRY_40",
   );
   const [vehicleTypeId, setVehicleTypeId] = useState<number | null>(
-    operationBase?.vehicleTypeId ?? null,
+    operationBase?.vehicleCapacityId ?? null,
   );
   const [selectedDescargueId, setSelectedDescargueId] = useState<number | null>(
     operationBase?.descargue?.id || operationBase?.cargue?.id || null,
@@ -99,6 +109,9 @@ export const useOperationForm = (
   const [destinoId, setDestinoId] = useState<number | null>(
     operationBase?.destino?.id || null,
   );
+  const [routeScope, setRouteScope] = useState<
+    "URBANO" | "NACIONAL" | null
+  >(operationBase?.routeScope ?? null);
   const [clientId, setClientId] = useState<number | null>(
     operationBase?.client?.id || operationBase?.clientId || null,
   );
@@ -108,7 +121,8 @@ export const useOperationForm = (
   const isImport =
     currentType === "IMPORTACION" || currentType.includes("Importación");
   const isRetiroVacio = currentType === "RETIRO_VACIO";
-  const isDevolucion = currentType === "DEVOLUCION";
+  const isDevolucion =
+    currentType === "DEVOLUCION_VACIO" || currentType === "DEVOLUCION";
 
   const origenLocation = locations.find((loc) => loc.id === origenId);
   const destinoLocation = locations.find((loc) => loc.id === destinoId);
@@ -120,6 +134,14 @@ export const useOperationForm = (
   const exigeCitaDestino = Boolean(
     destinoLocation?.exigeCita || descargueLocation?.exigeCita,
   );
+  const quoteLocationId =
+    isImport || isExport
+      ? selectedDescargueId
+      : isRetiroVacio
+        ? destinoId
+        : isDevolucion
+          ? origenId
+          : destinoId;
 
   const initialValues = useMemo(() => {
     const formatDate = (dateStr?: string | Date | null) => {
@@ -137,22 +159,35 @@ export const useOperationForm = (
       tomorrow.setHours(8, 0, 0, 0);
       return {
         scheduledAt: formatDate(tomorrow),
-        cargoFormat: "CONTENERIZADA",
+        cargoFormat: "SUELTA",
+        isContainerized: false,
+        routeScope: null,
         containerSize: "DRY_40",
-        vehicleTypeId: "",
+        vehicleCapacityId: "",
         programarDesvio: false,
         nuevoDestinoId: "",
         fechaCitaDesvio: "",
         shippingLineId: "",
+        destinoCustomAddressEnabled: false,
+        destinoCustomAddress: "",
         requiresInspection: false,
       };
     }
 
     return {
       type: operationBase.type,
-      cargoFormat: operationBase.cargoFormat || "CONTENERIZADA",
-      vehicleTypeId: operationBase.vehicleTypeId ?? "",
-      shippingLineId: operationBase.shippingLineId ?? "",
+      routeScope: operationBase.routeScope ?? null,
+      cargoFormat: operationBase.isContainerized
+        ? "CONTENERIZADA"
+        : "SUELTA",
+      isContainerized: operationBase.isContainerized,
+      vehicleCapacityId: operationBase.vehicleCapacityId ?? "",
+      shippingLineId: operationBase.shippingLineId
+        ? String(operationBase.shippingLineId)
+        : "",
+      destinoCustomAddressEnabled:
+        operationBase.stops?.at(-1)?.isCustomAddress ?? false,
+      destinoCustomAddress: operationBase.stops?.at(-1)?.address ?? "",
       requiresInspection: operationBase.requiresInspection ?? false,
       clientId: operationBase.client?.id || operationBase.clientId,
       isAnticipada: operationBase.isAnticipada,
@@ -166,6 +201,9 @@ export const useOperationForm = (
       cargoDescription: operationBase.cargoDescription || "",
       weight: operationBase.weight ?? "",
       dimensions: operationBase.dimensions || "",
+      packageType: operationBase.packageType ?? "",
+      packageCount: operationBase.packageCount ?? "",
+      volumeM3: operationBase.volumeM3 ?? "",
       sealNumber: operationBase.sealNumber || "",
       pinRetiro: operationBase.pinRetiro || "",
 
@@ -179,7 +217,6 @@ export const useOperationForm = (
       fechaCitaOrigen: formatDate(operationBase.fechaCitaOrigen),
       fechaCitaDestino: formatDate(operationBase.fechaCitaDestino),
       fechaRetiro: formatDate(operationBase.fechaRetiro),
-      fechaLimiteDevolucion: formatDate(operationBase.fechaLimiteDevolucion),
       nuevoDestinoId: operationBase.nuevoDestinoId || "",
       fechaCitaDesvio: formatDate(operationBase.fechaCitaDesvio),
       programarDesvio: false,
@@ -192,15 +229,9 @@ export const useOperationForm = (
       return;
     }
 
-    const tariffContainerSize =
-      cargoFormat === "CONTENERIZADA" ? containerSize : undefined;
-    const tariffVehicleTypeId =
-      cargoFormat === "SUELTA" ? vehicleTypeId : undefined;
     if (
-      !origenId ||
-      !destinoId ||
-      (cargoFormat === "CONTENERIZADA" && !tariffContainerSize) ||
-      (cargoFormat === "SUELTA" && !tariffVehicleTypeId)
+      !quoteLocationId ||
+      !routeScope
     ) {
       resetQuote();
       return;
@@ -209,19 +240,22 @@ export const useOperationForm = (
     getLiveQuote(
       clientId,
       currentType,
-      isAnticipada,
-      origenId,
-      destinoId,
-      cargoFormat,
-      tariffContainerSize,
-      tariffVehicleTypeId,
+      quoteLocationId,
+      routeScope,
+      cargoFormat === "CONTENERIZADA",
     );
   }, [
     clientId,
     currentType,
-    isAnticipada,
     origenId,
     destinoId,
+    selectedDescargueId,
+    routeScope,
+    quoteLocationId,
+    isImport,
+    isExport,
+    isRetiroVacio,
+    isDevolucion,
     cargoFormat,
     containerSize,
     vehicleTypeId,
@@ -319,6 +353,13 @@ export const useOperationForm = (
     // Tab 1: General y Rutas
     const generalFields: FormField[] = [
       {
+        name: "datosBasicos",
+        label: "Datos Básicos",
+        type: "text",
+        sectionTitle: true,
+        fullWidth: true,
+      },
+      {
         name: "numeroPedido",
         label: "Número de Pedido / Booking (prioritario)",
         type: "text",
@@ -326,10 +367,16 @@ export const useOperationForm = (
         fullWidth: true,
       },
       {
+        name: "documentoTransporte",
+        label: "Manifiesto / DO / BL",
+        type: "text",
+        placeholder: "Ej: BL-987654",
+      },
+      {
         name: "type",
         label: "Tipo de Operación *",
         type: "select",
-        options: typeOptions,
+        options: operationOptions,
         disabled: isEdit,
       },
       {
@@ -338,6 +385,53 @@ export const useOperationForm = (
         type: "select",
         options: clientOptions,
         disabled: isEdit,
+      },
+      {
+        name: "routeScope",
+        label: "Alcance de Ruta *",
+        type: "select",
+        options: [
+          { value: "URBANO", label: "Urbano" },
+          { value: "NACIONAL", label: "Nacional" },
+        ],
+        visible: (formData) => Boolean(formData.type),
+      },
+      {
+        name: "isContainerized",
+        label: "Tipo de carga",
+        placeholder: "Carga Contenerizada",
+        type: "checkbox",
+        layoutClass: "cargoTypeSection",
+      },
+      {
+        name: "shippingLineId",
+        label: "Línea naviera *",
+        type: "select",
+        options: [
+          ...(operationBase?.shippingLine &&
+          !(shippingLinesQuery.data ?? []).some(
+            (line) => line.id === operationBase.shippingLineId,
+          )
+            ? [{
+                value: operationBase.shippingLine.id,
+                label: `${operationBase.shippingLine.name} · NIT ${operationBase.shippingLine.nit}`,
+              }]
+            : []),
+          ...(shippingLinesQuery.data ?? []).map((line) => ({
+            value: line.id,
+            label: `${line.name} · NIT ${line.nit}`,
+          })),
+        ],
+        visible: (formData) => formData.isContainerized === true,
+        layoutClass: "cargoTypeSection",
+        reserveSpaceWhenHidden: true,
+      },
+      {
+        name: "pinRetiro",
+        label: "PIN de Retiro",
+        type: "text",
+        placeholder: "Opcional",
+        visible: (formData) => formData.isContainerized === true,
       },
       ...(!isEdit
         ? [
@@ -348,7 +442,6 @@ export const useOperationForm = (
             },
           ]
         : []),
-      dateTimeField("scheduledAt", "Fecha y hora de operación *"),
     ];
 
     if (isExport) {
@@ -362,6 +455,13 @@ export const useOperationForm = (
 
     if (currentType) {
       generalFields.push(
+        {
+          name: "ruta",
+          label: "Ruta - A dónde vamos",
+          type: "text",
+          sectionTitle: true,
+          fullWidth: true,
+        },
         {
           name: "origenId",
           label: isExport
@@ -387,6 +487,33 @@ export const useOperationForm = (
           type: "select",
           options: destinoOptions,
         },
+        {
+          name: "destinoCustomAddressEnabled",
+          label: "¿Usar dirección personalizada?",
+          type: "checkbox",
+          visible: (formData) =>
+            formData.isContainerized !== true &&
+            formData.type !== "EXPORTACION",
+        },
+        {
+          name: "destinoCustomAddress",
+          label: "Dirección personalizada del destino",
+          type: "textarea",
+          placeholder: "Ingresa la dirección del destino",
+          fullWidth: true,
+          visible: (formData) =>
+            formData.isContainerized !== true &&
+            formData.type !== "EXPORTACION" &&
+            formData.destinoCustomAddressEnabled === true,
+        },
+        {
+          name: "fechas",
+          label: "Fechas - Cuándo vamos",
+          type: "text",
+          sectionTitle: true,
+          fullWidth: true,
+        },
+        dateTimeField("scheduledAt", "Fecha y hora de operación *"),
         dateTimeField(
           "fechaCitaOrigen",
           exigeCitaOrigen
@@ -403,10 +530,6 @@ export const useOperationForm = (
 
       if (isExport)
         generalFields.push(dateTimeField("fechaRetiro", "Fecha de Retiro (Vacío)"));
-      if (isImport)
-        generalFields.push(
-          dateTimeField("fechaLimiteDevolucion", "Fecha Límite Devolución"),
-        );
       if (isEdit && operationBase?.containerStatus === "PENDIENTE_DEVOLUCION") {
         generalFields.push(
           {
@@ -442,17 +565,14 @@ export const useOperationForm = (
       }
     }
 
-    // Tab 2: Carga y Tráfico
+    // Tab 2: Información física de la carga
     const cargaFields: FormField[] = currentType
       ? [
           {
-            name: "cargoFormat",
-            label: "Formato de mercancía *",
-            type: "radio",
-            options: [
-              { value: "CONTENERIZADA", label: "Contenerizada" },
-              { value: "SUELTA", label: "Carga suelta" },
-            ],
+            name: "informacionFisica",
+            label: "Información física de la mercancía",
+            type: "text",
+            sectionTitle: true,
             fullWidth: true,
           },
           {
@@ -460,20 +580,20 @@ export const useOperationForm = (
             label: "Número de contenedor *",
             type: "text",
             placeholder: "Ej: MSKU1234567",
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+            visible: (formData) => formData.isContainerized === true,
           },
           {
             name: "containerSize",
-            label: "Tamaño del contenedor *",
+            label: "Tipo de contenedor *",
             type: "select",
             options: containerSizeValues.map((size) => ({
               value: size,
-              label: size.replace("_", " "),
+              label: containerTypeLabels[size],
             })),
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+            visible: (formData) => formData.isContainerized === true,
           },
           {
-            name: "vehicleTypeId",
+            name: "vehicleCapacityId",
             label: "Capacidad del vehículo *",
             type: "select",
             options: [
@@ -483,28 +603,35 @@ export const useOperationForm = (
                 label: vehicleType.name,
               })),
             ],
-            visible: (formData) => formData.cargoFormat === "SUELTA",
+            visible: (formData) => formData.isContainerized !== true,
           },
           {
-            name: "shippingLineId",
-            label: "Línea naviera *",
-            type: "select",
-            options: [
-              ...(operationBase?.shippingLine &&
-              !(shippingLinesQuery.data ?? []).some(
-                (line) => line.id === operationBase.shippingLineId,
-              )
-                ? [{
-                    value: operationBase.shippingLine.id,
-                    label: `${operationBase.shippingLine.name} · NIT ${operationBase.shippingLine.nit}`,
-                  }]
-                : []),
-              ...(shippingLinesQuery.data ?? []).map((line) => ({
-                value: line.id,
-                label: `${line.name} · NIT ${line.nit}`,
-              })),
-            ],
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+            name: "weight",
+            label: "Peso (kg) *",
+            type: "number",
+            placeholder: "Peso en kg",
+            visible: (formData) => formData.isContainerized !== true,
+          },
+          {
+            name: "volumeM3",
+            label: "Volumen (m³) *",
+            type: "number",
+            placeholder: "Volumen en metros cúbicos",
+            visible: (formData) => formData.isContainerized !== true,
+          },
+          {
+            name: "packageType",
+            label: "Tipo de empaque *",
+            type: "text",
+            placeholder: "Ej: Caja, estiba, bulto",
+            visible: (formData) => formData.isContainerized !== true,
+          },
+          {
+            name: "packageCount",
+            label: "Cantidad de bultos/estibas *",
+            type: "number",
+            placeholder: "Número de bultos o estibas",
+            visible: (formData) => formData.isContainerized !== true,
           },
           {
             name: "cargoDescription",
@@ -512,47 +639,27 @@ export const useOperationForm = (
             type: "textarea",
             placeholder: "Describe la mercancía",
             fullWidth: true,
-            visible: (formData) => formData.cargoFormat === "SUELTA",
-          },
-          {
-            name: "weight",
-            label: "Peso *",
-            type: "number",
-            placeholder: "Peso en kg",
-            visible: (formData) => formData.cargoFormat === "SUELTA",
+            visible: (formData) => formData.isContainerized !== true,
           },
           {
             name: "dimensions",
             label: "Dimensiones *",
             type: "text",
             placeholder: "Ej: 2.4 x 1.8 x 1.5 m",
-            visible: (formData) => formData.cargoFormat === "SUELTA",
+            visible: (formData) => formData.isContainerized !== true,
           },
           {
             name: "peso",
             label: "Peso del contenedor (Kilos / Toneladas)",
             type: "number",
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
+            visible: (formData) => formData.isContainerized === true,
           },
           {
             name: "sealNumber",
             label: "Sello / Precinto",
             type: "text",
             placeholder: "Ej: 123456",
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
-          },
-          {
-            name: "pinRetiro",
-            label: "PIN de Retiro",
-            type: "text",
-            placeholder: "Opcional",
-            visible: (formData) => formData.cargoFormat === "CONTENERIZADA",
-          },
-          {
-            name: "documentoTransporte",
-            label: "Manifiesto / DO / BL",
-            type: "text",
-            placeholder: "Ej: BL-987654",
+            visible: (formData) => formData.isContainerized === true,
           },
         ]
       : [];
@@ -597,15 +704,20 @@ export const useOperationForm = (
       resetQuote();
     }
     if (name === "isAnticipada") setIsAnticipada(Boolean(value));
-    if (name === "cargoFormat") setCargoFormat(String(value) as CargoFormat);
+    if (name === "cargoFormat")
+      setCargoFormat(String(value) as "CONTENERIZADA" | "SUELTA");
+    if (name === "isContainerized")
+      setCargoFormat(value ? "CONTENERIZADA" : "SUELTA");
     if (name === "containerSize")
       setContainerSize(getContainerSize(String(value)));
-    if (name === "vehicleTypeId")
+    if (name === "vehicleCapacityId")
       setVehicleTypeId(Number(value) || null);
     if (name === "programarDesvio") setProgramarDesvio(Boolean(value));
     if (name === "descargueId") setSelectedDescargueId(Number(value) || null);
     if (name === "origenId") setOrigenId(Number(value) || null);
     if (name === "destinoId") setDestinoId(Number(value) || null);
+    if (name === "routeScope")
+      setRouteScope(value === "URBANO" || value === "NACIONAL" ? value : null);
 
     if (name === "clientId") {
       const newClientId = Number(value) || null;
@@ -620,6 +732,7 @@ export const useOperationForm = (
 
   const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     setErrors({});
+    const isContainerized = Boolean(formData.isContainerized);
     const localErrors: Record<string, string> = {};
     const cargoValidation = operationCargoSchema.safeParse(formData);
     if (!cargoValidation.success) {
@@ -634,11 +747,39 @@ export const useOperationForm = (
       localErrors.clientId = "El cliente es obligatorio.";
     if (!formData.scheduledAt)
       localErrors.scheduledAt = "La fecha y hora son obligatorias.";
+    if (!formData.origenId)
+      localErrors.origenId = "Selecciona un origen.";
+    if (!formData.destinoId)
+      localErrors.destinoId = "Selecciona un destino.";
     if (
-      formData.cargoFormat === "SUELTA" &&
-      !formData.vehicleTypeId
+      (formData.type === "IMPORTACION" || formData.type === "EXPORTACION") &&
+      !formData.descargueId
     ) {
-      localErrors.vehicleTypeId = "Selecciona la capacidad del vehículo.";
+      localErrors.descargueId = "Selecciona la sede del cliente.";
+    }
+    if (formData.type && !formData.routeScope) {
+      localErrors.routeScope = "Selecciona el alcance de ruta.";
+    }
+    if (!isContainerized && !formData.vehicleCapacityId) {
+      localErrors.vehicleCapacityId = "Selecciona la capacidad del vehículo.";
+    }
+    if (!isContainerized) {
+      if (!formData.weight) localErrors.weight = "Indica el peso en kg.";
+      if (!String(formData.packageType ?? "").trim())
+        localErrors.packageType = "Indica el tipo de empaque.";
+      if (!formData.packageCount)
+        localErrors.packageCount = "Indica la cantidad de bultos o estibas.";
+      if (!formData.volumeM3)
+        localErrors.volumeM3 = "Indica el volumen de la carga.";
+      if (!String(formData.cargoDescription ?? "").trim())
+        localErrors.cargoDescription = "Describe la carga.";
+    } else {
+      if (!formData.shippingLineId)
+        localErrors.shippingLineId = "La línea naviera es requerida.";
+      if (!formData.containerNumber)
+        localErrors.containerNumber = "El número de contenedor es obligatorio.";
+      if (!formData.containerSize)
+        localErrors.containerSize = "Selecciona el tamaño del contenedor.";
     }
     if (
       isEdit &&
@@ -682,33 +823,47 @@ export const useOperationForm = (
       }
     }
 
-    payload.cargoFormat = String(formData.cargoFormat);
-    payload.vehicleTypeId =
-      formData.cargoFormat === "SUELTA"
-        ? Number(formData.vehicleTypeId)
-        : null;
-    payload.shippingLineId = formData.shippingLineId
+    payload.isContainerized = isContainerized;
+    if (formData.routeScope) {
+      payload.routeScope = String(formData.routeScope) as
+        | "URBANO"
+        | "NACIONAL";
+    }
+    payload.vehicleCapacityId = !isContainerized
+      ? Number(formData.vehicleCapacityId)
+      : null;
+    payload.shippingLineId = isContainerized && formData.shippingLineId
       ? Number(formData.shippingLineId)
       : null;
-    if (formData.cargoFormat === "SUELTA") {
+    if (!isContainerized) {
       payload.containerNumber = null;
       payload.containerSize = null;
-      payload.cargoDescription = String(formData.cargoDescription);
+      payload.cargoDescription = String(formData.cargoDescription).trim();
       payload.weight = Number(formData.weight);
       payload.dimensions = String(formData.dimensions);
+      payload.packageType = String(formData.packageType).trim();
+      payload.packageCount = formData.packageCount
+        ? Number(formData.packageCount)
+        : null;
+      payload.volumeM3 = formData.volumeM3
+        ? Number(formData.volumeM3)
+        : null;
     } else {
       payload.containerNumber = String(formData.containerNumber).toUpperCase();
       payload.containerSize = String(formData.containerSize);
       payload.cargoDescription = null;
       payload.weight = null;
       payload.dimensions = null;
+      payload.packageType = null;
+      payload.packageCount = null;
+      payload.volumeM3 = null;
     }
 
     if (formData.scheduledAt)
       payload.scheduledAt = new Date(
         String(formData.scheduledAt),
       ).toISOString();
-    if (formData.cargoFormat === "CONTENERIZADA" && formData.peso)
+    if (isContainerized && formData.peso)
       payload.peso = Number(formData.peso);
     if (formData.sealNumber)
       payload.sealNumber = String(formData.sealNumber).toUpperCase();
@@ -736,6 +891,35 @@ export const useOperationForm = (
 
     if (formData.origenId) payload.origenId = Number(formData.origenId);
     if (formData.destinoId) payload.destinoId = Number(formData.destinoId);
+    if (!isContainerized) {
+      const customDestinationAddress = String(
+        formData.destinoCustomAddress ?? "",
+      ).trim();
+      const useCustomDestination =
+        Boolean(formData.destinoCustomAddressEnabled) &&
+        customDestinationAddress.length > 0;
+      payload.stops = [
+        {
+          clientId: Number(formData.clientId),
+          locationId: Number(formData.origenId),
+          isCustomAddress: false,
+          stopType: "CARGUE",
+          stopOrder: 0,
+        },
+        {
+          clientId: Number(formData.clientId),
+          locationId: useCustomDestination
+            ? null
+            : Number(formData.destinoId),
+          isCustomAddress: useCustomDestination,
+          ...(useCustomDestination
+            ? { address: customDestinationAddress }
+            : {}),
+          stopType: "DESCARGUE",
+          stopOrder: 1,
+        },
+      ];
+    }
 
     if (isExport && formData.descargueId)
       payload.cargueId = Number(formData.descargueId);
@@ -753,10 +937,6 @@ export const useOperationForm = (
     if (formData.fechaRetiro)
       payload.fechaRetiro = new Date(
         String(formData.fechaRetiro),
-      ).toISOString();
-    if (formData.fechaLimiteDevolucion)
-      payload.fechaLimiteDevolucion = new Date(
-        String(formData.fechaLimiteDevolucion),
       ).toISOString();
     if (
       isEdit &&

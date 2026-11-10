@@ -7,6 +7,11 @@ export const locationService = {
     return response.data;
   },
 
+  getOwnYards: async (): Promise<Locations[]> => {
+    const response = await api.get('/locations/own-yards');
+    return response.data;
+  },
+
   getById: async (id: number): Promise<Locations> => {
     const response = await api.get(`/locations/${id}`);
     return response.data;

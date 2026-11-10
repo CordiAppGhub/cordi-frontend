@@ -1,13 +1,17 @@
 export type OperationStatus =
   | "CREADO"
   | "PROGRAMADO"
+  | "PENDIENTE_CARGUE"
+  | "LISTA_PARA_CARGUE"
   | "ASIGNADO"
   | "EN_CURSO"
+  | "CIERRE_FISICO"
   | "PAUSADA"
   | "FINALIZADO"
   | "CANCELADO";
 
 export type TripMicroState =
+  | "VERIFICADO_EN_SITIO"
   | "RUMBO_AL_PUERTO"
   | "EN_PUERTO"
   | "EN_PUERTO_CARGADO"
@@ -25,6 +29,8 @@ export type TripMicroState =
 
 export type OperationContainerStatus =
   | "PENDIENTE"
+  | "PENDIENTE_CARGUE"
+  | "RESERVADO_ANTICIPADO"
   | "EN_PISO"
   | "PENDIENTE_DEVOLUCION"
   | "EN_INSPECCION"
@@ -32,13 +38,25 @@ export type OperationContainerStatus =
   | "EN_CARGUE"
   | "CARGADO"
   | "EN_DESCARGUE"
-  | "DESCARGADO";
+  | "DESCARGADO"
+  | "DEVUELTO_VACIO";
+
+export type CargoStatus =
+  | "PENDIENTE"
+  | "EN_CARGUE"
+  | "CARGADO"
+  | "SELLADO"
+  | "INSPECCIONADO"
+  | "EN_DESCARGUE"
+  | "DESCARGADO"
+  | "DEVUELTO";
 
 export type ModalType = "DETAILS" | "OCR" | "CLOSING";
 export type ViewMode = "table" | "cards";
 
 export interface Location {
   name: string;
+  address?: string | null;
 }
 
 export interface DriverDeviationNotice {
@@ -63,25 +81,35 @@ export interface Vehicle {
   type?: string;
   brand?: string;
   status?: string;
-  empresa?: string;
+  affiliation?: string;
+  currentTrailerId?: string | null;
 }
 
 export interface Operation {
   id: number;
+  clientId?: number | null;
   createdAt: string;
   type?: string;
-  cargoFormat?: "CONTENERIZADA" | "SUELTA";
+  isContainerized?: boolean;
   status?: OperationStatus;
   isActive: boolean;
+  isAnticipada?: boolean;
+  isAdvanceRetrieval?: boolean;
   fleteAPagar?: number | null;
-  estadoViaje?: TripMicroState;
+  estadoViaje?: TripMicroState | null;
   placaIA?: string | null;
   containerNumber?: string | null;
+  sealNumber?: string | null;
   containerType?: string | null;
   cargoDescription?: string | null;
+  peso?: number | null;
   weight?: number | null;
   dimensions?: string | null;
+  packageType?: string | null;
+  packageCount?: number | null;
+  volumeM3?: number | null;
   containerStatus?: OperationContainerStatus;
+  cargoStatus?: CargoStatus;
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;
   loadingStartedAt?: string | null;
@@ -90,8 +118,13 @@ export interface Operation {
   unloadingCompletedAt?: string | null;
   parentId?: number | null;
   scheduledAt?: string | null;
+  fechaRetiro?: string | null;
   fechaCitaOrigen?: string | null;
   fechaCitaDestino?: string | null;
+  operationDate?: string | null;
+  originAppointment?: string | null;
+  destinationAppointment?: string | null;
+  advanceRetrievalDate?: string | null;
   nuevoDestinoId?: number | null;
   nuevoDestino?: Location;
   fechaCitaDesvio?: string | null;
@@ -104,6 +137,7 @@ export interface Operation {
     fechaCitaDestino?: string | null;
   }>;
   amparoExportOperationId?: number | null;
+  amparoExportFinished?: boolean | null;
   /** true si la operación participa en un OperationAmparo (expo o impo) */
   isAmparado?: boolean;
   evidences?: Array<{
@@ -112,16 +146,75 @@ export interface Operation {
     estadoRevision: string;
     notaAnalista?: string | null;
   }>;
+  stops?: Array<{
+    id: number;
+    clientId: number;
+    locationId: number | null;
+    isCustomAddress?: boolean;
+    address?: string | null;
+    contactName?: string | null;
+    contactPhone?: string | null;
+    observations?: string | null;
+    stopType: "CARGUE" | "DESCARGUE";
+    stopOrder: number;
+    cargoDescription?: string | null;
+    weightKg?: number | null;
+    status: "PENDIENTE" | "EN_CURSO" | "COMPLETADA" | "OMITIDA";
+    client: { razonSocial: string };
+    location: { name: string; address?: string | null } | null;
+  }>;
 
   clientName?: string;
+  clientContactName?: string | null;
+  clientContactPhone?: string | null;
+  customer?: {
+    name: string;
+    contactName: string | null;
+    contactPhone: string | null;
+    locations: Array<{
+      id: number;
+      name: string;
+      address: string | null;
+    }>;
+  } | null;
   clientLocationName?: string;
+  clientLocationId?: number | null;
+  trailerClientLocation?: {
+    id: number;
+    name: string;
+    address?: string | null;
+    clientName: string;
+  } | null;
+  trailerOwnYards?: Array<{
+    id: number;
+    name: string;
+    address?: string | null;
+  }>;
   origenName?: string;
   destinoName?: string;
   vehiclePlate?: string;
 
   origen?: Location;
+  cargue?: Location | null;
+  descargue?: Location | null;
   destino?: Location;
-  vehicle?: Pick<Vehicle, "plate">;
+  originLocation?: Location | null;
+  destinationLocation?: Location | null;
+  vehicle?: Pick<Vehicle, "id" | "plate" | "type" | "currentTrailerId">;
+  trailer?: {
+    id: string;
+    plate: string;
+    trailerType?: "PLANCHA" | "GRILLO" | "TANQUE";
+  };
+}
+
+export type TrailerDestinationType = "CLIENT" | "OWN_YARD";
+
+export interface FleetPlateVerificationResult {
+  verified: boolean;
+  cabPlate: string;
+  trailerPlate: string;
+  estadoViaje: "VERIFICADO_EN_SITIO";
 }
 export interface DriverPortalData {
   id: number;

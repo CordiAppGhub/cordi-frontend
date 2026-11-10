@@ -48,6 +48,58 @@ export const NOVEDAD_CATEGORY_LABELS: Record<NovedadCategory, string> = {
 };
 
 export type NovedadTarget = "DRIVER" | "VEHICLE" | "OPERATION" | "ANALYST";
+export type MaintenanceOrderStatus =
+  | "DIAGNOSIS"
+  | "WAITING_PARTS"
+  | "IN_REPAIR"
+  | "TESTING"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface MaintenanceComponent {
+  id: number;
+  vehicleType: string;
+  code: string;
+  name: string;
+  visualX: number;
+  visualY: number;
+  isActive: boolean;
+}
+
+export interface MaintenanceOrder {
+  id: number;
+  status: MaintenanceOrderStatus;
+  diagnosis: string | null;
+  workPerformed: string | null;
+  testingNotes: string | null;
+  workshopName: string | null;
+  responsible: string | null;
+  estimatedCost: string | number | null;
+  actualCost: string | number | null;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  testedAt: string | null;
+  completedAt: string | null;
+  vehicle: { id: number; plate: string; type: string };
+  novedad: {
+    id: number;
+    category: NovedadCategory | null;
+    description: string;
+    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    status: "PENDING" | "IN_REVIEW" | "RESOLVED";
+  };
+  components: Array<{
+    component: Pick<MaintenanceComponent, "id" | "code" | "name" | "visualX" | "visualY">;
+  }>;
+  history: Array<{
+    id: number;
+    fromStatus: MaintenanceOrderStatus | null;
+    toStatus: MaintenanceOrderStatus;
+    notes: string;
+    createdAt: string;
+    actor: { id: number; name: string | null };
+  }>;
+}
 
 export const CATEGORIES_BY_TARGET: Record<NovedadTarget, NovedadCategory[]> = {
   DRIVER: [
@@ -143,7 +195,14 @@ export interface NovedadItem {
   } | null;
   reportedBy: { name: string; role: string };
   resolvedBy?: { name: string };
-  vehicle?: { plate: string };
+  vehicle?: { plate: string; type?: string };
+  maintenanceOrder?: {
+    id: number;
+    status: MaintenanceOrderStatus;
+    components: Array<{
+      component: Pick<MaintenanceComponent, "id" | "name" | "code">;
+    }>;
+  } | null;
   driver?: { name: string };
   analyst?: { id: number; name: string | null };
   analystDelegations?: Array<{
@@ -190,6 +249,7 @@ export const novedadesService = {
     category: NovedadCategory;
     analystId?: number;
     expectedReturnAt?: string;
+    componentIds?: number[];
   }) => {
     const res = await api.post("/novedades", data);
     return res.data;
@@ -204,5 +264,72 @@ export const novedadesService = {
   markInReview: async (id: number) => {
     const res = await api.patch(`/novedades/${id}/review`);
     return res.data;
+  },
+  getMaintenanceComponents: async (
+    vehicleType?: string,
+    includeInactive = false,
+  ): Promise<MaintenanceComponent[]> => {
+    const { data } = await api.get<MaintenanceComponent[]>(
+      "/novedades/maintenance/components",
+      {
+        params: {
+          ...(vehicleType ? { vehicleType } : {}),
+          ...(includeInactive ? { includeInactive: true } : {}),
+        },
+      },
+    );
+    return data;
+  },
+  createMaintenanceComponent: async (payload: {
+    vehicleType: string;
+    code: string;
+    name: string;
+    visualX: number;
+    visualY: number;
+  }): Promise<MaintenanceComponent> => {
+    const { data } = await api.post<MaintenanceComponent>(
+      "/novedades/maintenance/components",
+      payload,
+    );
+    return data;
+  },
+  updateMaintenanceComponent: async (
+    id: number,
+    payload: Partial<
+      Pick<MaintenanceComponent, "name" | "visualX" | "visualY" | "isActive">
+    >,
+  ): Promise<MaintenanceComponent> => {
+    const { data } = await api.patch<MaintenanceComponent>(
+      `/novedades/maintenance/components/${id}`,
+      payload,
+    );
+    return data;
+  },
+  getMaintenanceOrders: async (): Promise<MaintenanceOrder[]> => {
+    const { data } = await api.get<MaintenanceOrder[]>(
+      "/novedades/maintenance/orders",
+    );
+    return data;
+  },
+  updateMaintenanceOrder: async (
+    id: number,
+    payload: {
+      status?: MaintenanceOrderStatus;
+      notes: string;
+      diagnosis?: string;
+      workPerformed?: string;
+      testingNotes?: string;
+      workshopName?: string;
+      responsible?: string;
+      estimatedCost?: number;
+      actualCost?: number;
+      scheduledAt?: string;
+    },
+  ): Promise<MaintenanceOrder> => {
+    const { data } = await api.patch<MaintenanceOrder>(
+      `/novedades/maintenance/orders/${id}`,
+      payload,
+    );
+    return data;
   },
 };

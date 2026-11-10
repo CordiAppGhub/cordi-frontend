@@ -10,9 +10,11 @@ import { Button } from '@/components/atoms/button/button';
 import { Select } from '@/components/atoms/select/select';
 import { TruckLoader } from '@/components/TruckLoader';
 import { User, Role } from '@/types/user-types';
-import { UserCheck, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react';
+import { KeyRound, Trash2, UserCheck, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react';
 import { showConfirm } from '@/utils/alerts';
 import styles from './user.module.css';
+import UploadExcel from '@/components/organisms/fleet/UploadExcel';
+import { useAuthStore } from '@/store/use-auth.store';
 
 const roleLabels: Record<Role, string> = {
   ADMIN: 'Administrador',
@@ -21,11 +23,24 @@ const roleLabels: Record<Role, string> = {
 };
 
 export default function UsersPage() {
-  const { users, isLoading, error, refetch, disable, enable } = useUsers();
+  const {
+    users,
+    isLoading,
+    error,
+    refetch,
+    disable,
+    enable,
+    remove,
+    resendCredentials,
+    importUsers,
+  } = useUsers();
+  const { user: currentUser } = useAuthStore();
+  const isAdmin = currentUser?.role === 'ADMIN';
   const { isModalOpen, mode, currentPage, openModal, closeModal, setPage } = useUserStore();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [resendingUserId, setResendingUserId] = useState<number | null>(null);
 
   const handleDisable = async (id: number) => {
     const confirmed = await showConfirm({
@@ -48,6 +63,40 @@ export default function UsersPage() {
       await enable(id);
     } catch {
       // La mutación presenta el error mediante una notificación.
+    }
+  };
+
+  const handleRemove = async (user: User) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar usuario permanentemente?',
+      text: `Se eliminará la cuenta de ${user.name}. Esta acción no se puede deshacer. Si tiene registros que deban conservarse, tendrás que desactivarlo en lugar de eliminarlo.`,
+      confirmButtonText: 'Sí, eliminar usuario',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await remove(user.id);
+    } catch {
+      // La mutación presenta el error mediante una notificación.
+    }
+  };
+
+  const handleResendCredentials = async (user: User) => {
+    const confirmed = await showConfirm({
+      title: '¿Reenviar credenciales?',
+      text: `Se generará una nueva contraseña temporal para ${user.name}. Su contraseña actual dejará de funcionar y deberá cambiar la nueva al iniciar sesión.`,
+      confirmButtonText: 'Reenviar credenciales',
+    });
+    if (!confirmed) return;
+
+    setResendingUserId(user.id);
+    try {
+      await resendCredentials(user.id);
+    } catch {
+      // La mutación presenta el error mediante una notificación.
+    } finally {
+      setResendingUserId(null);
     }
   };
 
@@ -122,6 +171,17 @@ export default function UsersPage() {
       id: 'actions',
       renderCell: (row: User) => (
         <div className={styles.actions}>
+          {row.isActive && (
+            <Button
+              onClick={() => void handleResendCredentials(row)}
+              disabled={resendingUserId !== null}
+              aria-label={`Reenviar credenciales a ${row.name}`}
+              title="Genera una nueva contraseña temporal y la envía por correo"
+            >
+              <KeyRound size={14} aria-hidden="true" />
+              {resendingUserId === row.id ? 'Enviando...' : 'Reenviar acceso'}
+            </Button>
+          )}
           <Button 
             onClick={() => openModal('EDIT', row)} 
           >
@@ -133,6 +193,17 @@ export default function UsersPage() {
           >
             {row.isActive ? 'Desactivar' : 'Reactivar'}
           </Button>
+          {isAdmin && row.id !== currentUser?.id && (
+            <Button
+              onClick={() => void handleRemove(row)}
+              className={styles.deleteAction}
+              aria-label={`Eliminar usuario ${row.name}`}
+              title="Eliminar usuario permanentemente"
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              Eliminar
+            </Button>
+          )}
         </div>
       )
     }
@@ -169,6 +240,20 @@ export default function UsersPage() {
           <div><span className={styles.summaryLabel}>Administradores</span><strong>{adminCount}</strong></div>
         </article>
       </section>
+
+      <UploadExcel
+        title="Importación masiva de usuarios"
+        description={
+          <>
+            Carga un archivo Excel (.xlsx o .xls) con una fila de encabezados.
+            Columnas requeridas: NOMBRE, CORREO y ROL (ADMIN, JEFE_DE_FLOTA o
+            ANALISTA). CÉDULA y TELÉFONO son opcionales. Se enviará a cada
+            usuario una contraseña temporal por correo y deberá cambiarla al
+            ingresar. Máximo 250 usuarios por archivo.
+          </>
+        }
+        onUpload={importUsers}
+      />
 
       <div className={styles.filters}>
         <input

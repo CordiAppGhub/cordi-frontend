@@ -1,8 +1,8 @@
-# Reglas de Desarrollo - Frontend Cordibot
+# Reglas de Desarrollo - Frontend Corditrans TMS
 
 ## 1. Rol y Contexto del Proyecto
 * **Tecnologías Core:** React 19.2, Next.js 16.3 (App Router), TypeScript 5.9.
-* **Propósito del Sistema:** Interfaz de usuario para la plataforma de logística y transporte "Cordibot" / "Corditrans". Incluye torre de control, seguimiento de viajes, programación, gestión de flota, liquidación de tarifas y un portal optimizado para conductores.
+* **Propósito del Sistema:** Interfaz de usuario para la plataforma de logística y transporte "Corditrans TMS". Incluye torre de control, seguimiento de viajes, programación, gestión de flota, liquidación de tarifas y un portal optimizado para conductores.
 * **Conexión con Backend:** El backend corre en NestJS. Las peticiones a `/api/*` se reenvían al backend mediante los *rewrites* de `next.config.ts` hacia `NEXT_PUBLIC_API_URL` (por defecto `http://localhost:4000`).
 * **Gestor de Paquetes Exclusivo:** `pnpm`. No uses `npm` ni `yarn`.
   * Desarrollo: `pnpm dev`

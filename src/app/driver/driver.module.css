@@ -216,6 +216,97 @@
   margin-top: 12px;
 }
 
+.uncoupleTrailerButton {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.uncoupleTrailerButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.trailerLocationActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.trailerClientButton {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.trailerYardButton {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.trailerLocationStatus {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.trailerLocationSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.trailerLocationSummary p {
+  margin: 0;
+}
+
+.trailerLocationSummary strong {
+  color: #0f172a;
+}
+
+.trailerLocationSelect {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.trailerLocationModalActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (min-width: 480px) {
+  .trailerLocationActions,
+  .trailerLocationModalActions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .actionButtonsRow {
   display: flex;
   gap: 12px;

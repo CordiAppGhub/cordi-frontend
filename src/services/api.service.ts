@@ -18,7 +18,25 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (status !== 401) {
+    const isIncompleteFleetAssignment =
+      status === 400 &&
+      error.response?.data?.message ===
+        'ADVERTENCIA: El vehículo seleccionado no tiene un conductor o tráiler asignado.';
+
+    if (status === 401) {
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const isLoginOrDriver =
+          currentPath === '/login' ||
+          currentPath === '/driver' ||
+          currentPath.startsWith('/driver/');
+
+        if (!isLoginOrDriver) {
+          const redirectParam = encodeURIComponent(currentPath + window.location.search);
+          window.location.assign(`/login?redirect=${redirectParam}`);
+        }
+      }
+    } else if (!isIncompleteFleetAssignment) {
       showToast.error(error);
     }
 

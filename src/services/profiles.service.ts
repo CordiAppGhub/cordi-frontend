@@ -3,6 +3,7 @@ import { api } from "./api.service";
 export type ProfileKind =
   | "containers"
   | "vehicles"
+  | "trailers"
   | "drivers"
   | "analysts"
   | "shipping-lines";
@@ -26,6 +27,19 @@ export interface ProfileList {
   meta: { total: number; page: number; limit: number };
 }
 
+export interface TrailerCouplingHistory {
+  id: number;
+  trailerPlate: string;
+  vehiclePlate: string;
+  coupledAt: string | null;
+  uncoupledAt: string | null;
+  uncoupledLocation: { name: string } | null;
+}
+
+export type ProfileRecordData = Record<string, unknown> & {
+  couplingHistory?: TrailerCouplingHistory[];
+};
+
 export interface ProfileOperation {
   id: number;
   type: string;
@@ -35,6 +49,26 @@ export interface ProfileOperation {
   documentoTransporte?: string | null;
   scheduledAt?: string | null;
   createdAt: string;
+  containerStatus?: string | null;
+  depositoDevolucion?: { id: number; name: string } | null;
+  fleteACobrar?: number | null;
+  fleteACobrarManual?: number | null;
+  patioCobro?: number | null;
+  surcharges?: Array<{
+    id: number;
+    surchargeCode: string;
+    quantity: number;
+    appliedPrice: number;
+    costPrice: number;
+    totalPrice: number;
+    observations?: string | null;
+    surcharge?: { name: string } | null;
+    novedad?: {
+      id: number;
+      category: string | null;
+      description: string;
+    } | null;
+  }>;
   client?: { razonSocial: string } | null;
   driver?: { name: string | null } | null;
   analyst?: { name: string | null } | null;
@@ -43,7 +77,11 @@ export interface ProfileOperation {
   origen?: { name: string } | null;
   destino?: { name: string } | null;
   nuevoDestino?: { name: string } | null;
-  shippingLine?: { id: number; name: string; nit: string } | null;
+  shippingLine?: {
+    id: number;
+    name: string;
+    nit: string;
+  } | null;
   requiresInspection: boolean;
   inspectionStatus?: "APROBADO" | "RECHAZADO_MAL_ESTADO" | null;
   deviations: Array<{
@@ -70,6 +108,7 @@ export interface ProfileOperation {
     id: number;
     description: string;
     severity: string;
+    category?: string | null;
     status: string;
     createdAt: string;
     resolutionNotes?: string | null;
@@ -77,7 +116,7 @@ export interface ProfileOperation {
 }
 
 export interface ProfileDetail {
-  profile: Record<string, unknown>;
+  profile: ProfileRecordData;
   metrics: {
     totalOperations: number;
     activeOperations: number;
@@ -87,6 +126,10 @@ export interface ProfileDetail {
     inspections: number;
     rejectedInspections: number;
     deviations: number;
+    lastReportedLocation?: {
+      locationName: string;
+      reportedAt: string;
+    } | null;
     operationsByStatus: Array<{ status: string; count: number }>;
     operationsByDestination: Array<{
       locationId: number;

@@ -4,6 +4,25 @@
   width: 100%;
 }
 
+.rollbackButton {
+  align-self: flex-start;
+  min-height: 44px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rollbackButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .amparoBanner {
   display: flex;
   align-items: center;
@@ -45,7 +64,8 @@
 }
 
 .containerStatusSelect,
-.issueDescription {
+.issueDescription,
+.sealNumberInput {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #cbd5e1;
@@ -58,6 +78,16 @@
 .issueDescription {
   min-height: 72px;
   resize: vertical;
+}
+
+.sealNumberControls {
+  display: flex;
+  gap: 8px;
+}
+
+.sealNumberInput {
+  min-width: 0;
+  flex: 1;
 }
 
 .issueMessage {

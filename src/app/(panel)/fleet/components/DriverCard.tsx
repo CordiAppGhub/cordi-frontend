@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Truck, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Star, Truck, Pencil, Trash2 } from 'lucide-react';
 import { Driver } from '@/types/drivers';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import styles from './fleet-cards.module.css';
@@ -24,9 +24,18 @@ export const DriverCard: React.FC<DriverCardProps> = ({
   const assignedVehicle = driver.drivenVehicles && driver.drivenVehicles.length > 0 
     ? driver.drivenVehicles[0].plate 
     : null;
+  const affiliationLabel = {
+    CORDIVEHICULOS: 'Cordivehículos',
+    CORDIHUB: 'Cordihub',
+    TERCEROS: 'Terceros',
+  }[driver.affiliation];
 
   return (
-    <div className={styles.card} onClick={() => onClickDetail(driver.id)} style={{ cursor: 'pointer' }}>
+    <div
+      className={`${styles.cardContainer} ${styles.driverCard}`}
+      onClick={() => onClickDetail(driver.id)}
+      style={{ cursor: 'pointer' }}
+    >
       
       <div className={styles.cardHeader}>
         <div className={styles.avatarWrapper}>
@@ -60,7 +69,15 @@ export const DriverCard: React.FC<DriverCardProps> = ({
         </div>
       </div>
 
-      <div className={styles.docsSection} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className={`${styles.docsSection} ${styles.driverDocsSection}`}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', alignItems: 'center' }}>
+          <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Building2 size={14} /> Empresa de afiliación:
+          </span>
+          <span style={{ fontWeight: '600', color: '#334155' }}>
+            {affiliationLabel}
+          </span>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', alignItems: 'center' }}>
           <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Truck size={14} /> Vehículo Asignado:
@@ -78,14 +95,7 @@ export const DriverCard: React.FC<DriverCardProps> = ({
       {/* Botones de acción rápida */}
       {(onEdit || onDelete) && (
         <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '8px',
-            paddingTop: '10px',
-            borderTop: '1px solid #f1f5f9',
-            marginTop: '4px',
-          }}
+          className={styles.driverCardActions}
           onClick={(e) => e.stopPropagation()}
         >
           {onEdit && (

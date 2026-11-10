@@ -1,0 +1,23 @@
+.panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.heading { margin: 0.75rem 0 0.25rem; font-size: 0.85rem; font-weight: 700; color: var(--color-brand-900); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
+.hint { margin: 0; font-size: 0.72rem; color: var(--color-text-muted); }
+.error { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+
+.pill { width: 100%; min-height: 32px; padding: 4px 8px; gap: 6px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
+.pill:disabled { opacity: 0.45; }
+.pillSelected { border-color: var(--color-brand-800); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
+.pillReadonly { cursor: default; }
+.pillReadonly:hover { background-color: var(--color-surface); border-color: var(--color-border-strong); }
+
+.dot { display: inline-block; width: 0.6rem; height: 0.6rem; flex-shrink: 0; border-radius: 50%; }
+.AVAILABLE { background: #16a34a; }
+.ENDING_SOON { background: #ca8a04; }
+.BUSY { background: #dc2626; }
+.UNAVAILABLE { background: #6b7280; }
+
+@media (max-width: 420px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

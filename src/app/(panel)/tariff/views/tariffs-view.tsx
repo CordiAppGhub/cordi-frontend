@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/atoms/button/button';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
-import { RouteTariffModal } from '../components/route-tariff-modal';
+import { ClientTariffModal } from '../components/client-tariff-modal';
 import { getClientGroupColumns, getTariffColumns, groupTariffsByClient } from '../components/tariff-columns';
 import { useTariffs } from '../hooks/useTariff';
 import { SurchargeFormsModal } from '../components/SurchargeFormModal';
@@ -59,7 +59,7 @@ export const TariffsView: React.FC = () => {
 
 
   const tabOptions: TabOption[] = useMemo(() => [
-    { id: 'BASE', label: 'Tarifas de Viaje' },
+    { id: 'BASE', label: 'Tarifas Comerciales' },
     { id: 'NOVEDADES', label: 'Novedades y Recargos' },
     { id: 'VEHICULOS', label: 'Tarifas de Vehículos' },
   ], []);
@@ -114,7 +114,7 @@ export const TariffsView: React.FC = () => {
       <PageHeader
         title={
           activeTab === 'BASE'
-            ? 'Tarifario de Viajes (Base)'
+            ? 'Tarifas Comerciales por Cliente y Ubicación'
             : activeTab === 'NOVEDADES'
               ? 'Catálogo de Novedades y Recargos'
               : 'Configuración de Rentabilidad (Flotas)'
@@ -123,7 +123,7 @@ export const TariffsView: React.FC = () => {
         titleClassName={styles.title}
         actions={
           <Button onClick={handleOpenMainModal} variant="primary">
-            {activeTab === 'BASE' && '+ Nueva Tarifa Base'}
+            {activeTab === 'BASE' && '+ Nueva Tarifa Comercial'}
             {activeTab === 'NOVEDADES' && '+ Nueva Novedad / Excepción'}
             {activeTab === 'VEHICULOS' && '+ Nueva Tarifa de Flota'}
           </Button>
@@ -170,7 +170,7 @@ export const TariffsView: React.FC = () => {
         </>
       )}
 
-      <RouteTariffModal
+      <ClientTariffModal
         key={selectedClientTariff?.id ?? 'new'}
         isOpen={isTariffModalOpen}
         initialData={selectedClientTariff}

@@ -6,7 +6,7 @@ import './globals.css';
 
 
 export const metadata = {
-  title: 'Cordibot | Corditrans',
+  title: 'Corditrans TMS',
   description: 'Plataforma logística para conductores y personal administrativo',
   manifest: '/manifest.json',
   icons: {
@@ -16,7 +16,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Cordibot',
+    title: 'Corditrans TMS',
   },
 };
 export const viewport: Viewport = {

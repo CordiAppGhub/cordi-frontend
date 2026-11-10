@@ -179,6 +179,62 @@
   line-height: 1.4;
 }
 
+.forgotLink {
+  display: block;
+  margin-top: 1rem;
+  color: var(--color-accent-strong);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
+.helperText {
+  margin: 0 0 0.75rem;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.passwordRules {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.passwordRule,
+.passwordRuleMet {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.passwordRuleMet {
+  color: #15803d;
+}
+
+.backLink {
+  display: block;
+  margin-top: 1rem;
+  color: #475569;
+  font-size: 0.84rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--color-brand-900);
+  text-decoration: underline;
+}
+
 @keyframes cardIn {
   from {
     opacity: 0;

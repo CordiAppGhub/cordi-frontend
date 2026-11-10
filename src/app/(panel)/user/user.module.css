@@ -279,6 +279,17 @@
   color: #a84545;
 }
 
+.actions .deleteAction {
+  border-color: #efcaca;
+  background: #fff7f7;
+  color: #a12626;
+}
+
+.actions .deleteAction:hover {
+  border-color: #d98b8b;
+  background: #feecec;
+}
+
 .error {
   display: flex;
   align-items: center;
@@ -334,4 +345,10 @@
   .summaryCard {
     padding: 10px 12px;
   }
+}
+.passwordHint {
+  margin: 0.75rem 0 0;
+  color: #475569;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }

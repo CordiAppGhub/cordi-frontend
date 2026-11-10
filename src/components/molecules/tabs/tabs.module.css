@@ -82,3 +82,13 @@
   background-color: var(--color-accent-soft);
   color: var(--color-accent-strong);
 }
+
+.tabError {
+  color: #ef4444;
+  border-bottom-color: #ef4444;
+}
+
+.tabError::after {
+  content: " *";
+  font-weight: 800;
+}

@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import{ AxiosError } from 'axios';
 
 import { tariffService, CreateSurchargeCatalogInput, CreateAffiliationTariffInput } from '@/services/tariff.service';
 import { showToast } from '@/utils/alerts';
-import { CargoFormat, ContainerType, CreateClientTariffInput, CreateSurchargeOverrideInput, UpsertPatioTariffInput } from '@/types/tariff-ypes';
+import {
+  CreateClientTariffInput,
+  CreateSurchargeOverrideInput,
+  UpsertPatioTariffInput,
+} from '@/types/tariff-ypes';
 
 interface BackendErrorResponse {
   message?: string;
@@ -17,7 +21,15 @@ export function useTariffs() {
 
   const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
   const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
+  const quoteRequestId = useRef(0);
 
+  const invalidateOperationTariffs = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
+      queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] }),
+    ]);
 
   
   const {
@@ -85,9 +97,12 @@ export function useTariffs() {
 
   const createTariffMutation = useMutation({
     mutationFn: (data: CreateClientTariffInput) => tariffService.createClientTariff(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('La tarifa base ha sido registrada exitosamente.');
-      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo registrar la tarifa.';
@@ -98,9 +113,12 @@ export function useTariffs() {
   const updateTariffMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateClientTariffInput }) =>
       tariffService.updateClientTariff(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('La tarifa se actualizó correctamente.');
-      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo actualizar la tarifa.';
@@ -134,9 +152,12 @@ export function useTariffs() {
 
   const createVehicleTariffMutation = useMutation({
     mutationFn: (data: CreateAffiliationTariffInput) => tariffService.upsertVehicleTariff(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('La tarifa de flota se ha configurado exitosamente.');
-      queryClient.invalidateQueries({ queryKey: ['vehicle-tariffs'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vehicle-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo guardar la tarifa de flota.';
@@ -146,9 +167,12 @@ export function useTariffs() {
 
   const upsertPatioTariffMutation = useMutation({
     mutationFn: (data: UpsertPatioTariffInput) => tariffService.upsertPatioTariff(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('La tarifa del patio se guardó correctamente.');
-      queryClient.invalidateQueries({ queryKey: ['patio-tariffs'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['patio-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo guardar la tarifa del patio.';
@@ -211,23 +235,14 @@ export function useTariffs() {
   const getLiveQuote = useCallback(async (
     clientId: number | null, 
     operationType: string | null, 
-    isAnticipada: boolean = false,
-    originLocationId?: number | null,
-    destinationLocationId?: number | null,
-    cargoFormat?: CargoFormat,
-    containerSize?: ContainerType | null,
-    vehicleTypeId?: number | null,
+    locationId: number | null,
+    routeScope: "URBANO" | "NACIONAL" | null,
+    isContainerized: boolean,
   ) => {
-    if (
-      !clientId ||
-      !operationType ||
-      !originLocationId ||
-      !destinationLocationId ||
-      !cargoFormat ||
-      (cargoFormat === 'CONTENERIZADA' && !containerSize) ||
-      (cargoFormat === 'SUELTA' && !vehicleTypeId)
-    ) {
+    const requestId = ++quoteRequestId.current;
+    if (!clientId || !operationType || !locationId || !routeScope) {
       setSuggestedPrice(null);
+      setIsCalculatingPrice(false);
       return;
     }
 
@@ -236,25 +251,28 @@ export function useTariffs() {
       const quote = await tariffService.getQuote({
         clientId,
         operationType,
-        isAnticipada,
-        originLocationId,
-        destinationLocationId,
-        cargoFormat,
-        containerSize:
-          cargoFormat === 'CONTENERIZADA' ? containerSize ?? undefined : undefined,
-        vehicleTypeId:
-          cargoFormat === 'SUELTA' ? vehicleTypeId ?? undefined : undefined,
+        routeScope,
+        locationId,
+        isContainerized,
       });
-      setSuggestedPrice(quote.price);
+      if (requestId === quoteRequestId.current) {
+        setSuggestedPrice(quote.price);
+      }
     } catch {
-      setSuggestedPrice(null);
+      if (requestId === quoteRequestId.current) {
+        setSuggestedPrice(null);
+      }
     } finally {
-      setIsCalculatingPrice(false);
+      if (requestId === quoteRequestId.current) {
+        setIsCalculatingPrice(false);
+      }
     }
   }, []);
 
   const resetQuote = useCallback(() => {
+    quoteRequestId.current += 1;
     setSuggestedPrice(null);
+    setIsCalculatingPrice(false);
   }, []);
 
   return {
