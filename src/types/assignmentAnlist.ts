@@ -1,4 +1,5 @@
 // src/types/assignment.types.ts
+
 export interface AnalystUser {
   id: number;
   name: string | null;
@@ -84,4 +85,29 @@ export interface AnalystDelegation {
     status: string;
     numeroPedido: string | null;
   } | null;
+}
+
+// Nuevos tipos para trazabilidad
+export interface AssignmentLogUser {
+  id: number;
+  name: string | null;
+}
+
+export type AssignmentChangeReason =
+  | 'ASIGNACION_INICIAL'
+  | 'CAMBIO_DE_ANALISTA'
+  | 'DESASIGNACION';
+
+export interface ClientAssignmentLog {
+  id: number;
+  clientId: number;
+  previousAnalystId: number | null;
+  previousAnalyst: AssignmentLogUser | null;
+  newAnalystId: number | null;
+  newAnalyst: AssignmentLogUser | null;
+  reason: AssignmentChangeReason;
+  notes: string | null;
+  performedById: number;
+  performedBy: AssignmentLogUser;
+  createdAt: string;
 }

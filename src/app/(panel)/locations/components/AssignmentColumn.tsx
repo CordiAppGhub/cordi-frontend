@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { History } from 'lucide-react';
 import { ColumnDef } from '@/types/table';
 import { Assignment, AnalystAssignmentGroup } from '@/types/assignmentAnlist';
 
@@ -65,6 +66,7 @@ export const getAnalystGroupColumns = (): ColumnDef<AnalystAssignmentGroup>[] =>
 
 export const getAssignedClientColumns = (
   removeAssignment: (clientId: number) => void,
+  onViewHistory?: (clientId: number, clientName: string) => void,
 ): ColumnDef<Assignment>[] => [
   {
     id: 'client',
@@ -102,15 +104,30 @@ export const getAssignedClientColumns = (
     header: 'Acciones',
     type: 'text',
     renderCell: (row) => (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          removeAssignment(row.clientId);
-        }}
-        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem' }}
-      >
-        Revocar
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {onViewHistory && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewHistory(row.clientId, row.client?.razonSocial ?? `Cliente #${row.clientId}`);
+            }}
+            title="Ver historial de asignaciones"
+            style={{ color: '#0369a1', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}
+          >
+            <History size={14} />
+            Historial
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removeAssignment(row.clientId);
+          }}
+          style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem' }}
+        >
+          Revocar
+        </button>
+      </div>
     ),
   },
 ];
