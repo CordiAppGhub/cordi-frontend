@@ -3,6 +3,7 @@
 import {
   AnalystDelegation,
   Assignment,
+  ClientAssignmentLog,
   CreateAssignmentInput,
   CreateDelegationInput,
   DelegationResources,
@@ -47,5 +48,10 @@ export const assignmentService = {
 
   revokeDelegation: async (delegationId: number): Promise<void> => {
     await api.delete(`/analyst-assignments/delegations/${delegationId}`);
+  },
+
+  getHistory: async (clientId: number): Promise<ClientAssignmentLog[]> => {
+    const response = await api.get(`/analyst-assignments/client/${clientId}/history`);
+    return response.data;
   },
 };

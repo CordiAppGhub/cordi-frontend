@@ -20,6 +20,7 @@ import {
   groupAssignmentsByAnalyst,
 } from '../components/AssignmentColumn';
 import { TruckLoader } from '@/components/TruckLoader';
+import { AssignmentHistory } from '@/components/organisms/assignment-history/assignment-history';
 import styles from '../locations.module.css';
 export const AssignmentsView: React.FC = () => {
   const {
@@ -38,13 +39,27 @@ export const AssignmentsView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Historial de asignaciones
+  const [historyClientId, setHistoryClientId] = useState<number | null>(null);
+  const [historyClientName, setHistoryClientName] = useState<string>('');
+
+  const handleOpenHistory = (clientId: number, clientName: string) => {
+    setHistoryClientId(clientId);
+    setHistoryClientName(clientName);
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryClientId(null);
+    setHistoryClientName('');
+  };
+
   const handleOpenCreate = () => {
     setIsModalOpen(true);
     setValidationErrors({});
   };
 
   const columns = useMemo(() => getAnalystGroupColumns(), []);
-  const subColumns = useMemo(() => getAssignedClientColumns(removeAssignment), [removeAssignment]);
+  const subColumns = useMemo(() => getAssignedClientColumns(removeAssignment, handleOpenHistory), [removeAssignment, handleOpenHistory]);
   const groups = useMemo(() => groupAssignmentsByAnalyst(assignments), [assignments]);
 
   const formFields: FormField[] = [
@@ -155,6 +170,22 @@ export const AssignmentsView: React.FC = () => {
             onSubmit={handleSubmit}
             onCancel={() => setIsModalOpen(false)}
             onChange={() => setValidationErrors({})}
+          />
+        </SuperModal>
+      )}
+
+      {/* Modal de historial de asignaciones */}
+      {historyClientId !== null && (
+        <SuperModal
+          isOpen={historyClientId !== null}
+          onClose={handleCloseHistory}
+          title="Historial de Asignaciones"
+          width="600px"
+          maxHeight="70vh"
+        >
+          <AssignmentHistory
+            clientId={historyClientId}
+            clientName={historyClientName}
           />
         </SuperModal>
       )}
