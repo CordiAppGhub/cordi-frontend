@@ -26,4 +26,6 @@ jobs:
           script: |
             cd ~/corditrans
             docker-compose pull frontend
+            docker-compose stop frontend
+            docker-compose rm -f frontend
             docker-compose up -d --no-deps frontend
