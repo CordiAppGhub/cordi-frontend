@@ -32,6 +32,7 @@ export function useDriverPortal() {
   } = useDriverAuthStore();
 
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   const {
     data: queryDriver = null,
@@ -142,9 +143,13 @@ export function useDriverPortal() {
       }
       if (response.smsSent) {
         showToast.success("Código enviado. Revisa tus mensajes.");
+        setAuthNotice(null);
       } else {
-        console.error("Falló el envío del OTP por Twilio.");
-        showToast.error("No se pudo enviar el código por SMS.");
+        setAuthNotice(
+          response.adminNotified
+            ? "No pudimos enviar el código por SMS. El administrador o jefe de flota ya fue notificado; comunícate con ellos para que generen y te compartan un código temporal."
+            : "No pudimos enviar el código por SMS y no hay personal de flota disponible. Comunícate con soporte para solicitar un código temporal.",
+        );
       }
       setAuthError(null);
       setAuthStep("OTP");
@@ -164,6 +169,7 @@ export function useDriverPortal() {
       driverAuthService.verifyOtp(cedula, code),
     onSuccess: () => {
       setAuthError(null);
+      setAuthNotice(null);
       showToast.success("¡Bienvenido al portal!");
       queryClient.invalidateQueries({ queryKey: ["driver-portal-profile"] });
       queryClient.invalidateQueries({ queryKey: ["driver-trip-history"] });
@@ -520,6 +526,7 @@ export function useDriverPortal() {
     authStep,
     setAuthStep,
     authError,
+    authNotice,
     logout,
 
     requestOtp: (cedula: string) => requestOtpMutation.mutateAsync(cedula),

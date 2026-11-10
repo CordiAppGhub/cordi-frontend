@@ -23,6 +23,7 @@ import {
 import { showToast } from '@/utils/alerts';
 import { dashboardService, OperationAlert } from '@/services/dashboard.service';
 import { operationService } from '@/services/operation.service';
+import { notificationsService } from '@/services/notifications.service';
 import { socket } from '@/lib/socket';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import styles from './navbar.module.css';
@@ -70,6 +71,35 @@ export const Navbar: React.FC = () => {
     staleTime: 15_000,
   });
   const pendingCount = pendingCountQuery.data ?? 0;
+  const notificationsQuery = useQuery({
+    queryKey: ['notifications', 'mine'],
+    queryFn: notificationsService.getMine,
+    enabled: canViewOperationAlerts,
+    refetchInterval: 30_000,
+  });
+  const unreadNotifications = notificationsQuery.data?.unreadCount ?? 0;
+
+  const markNotificationAsRead = async (notificationId: number) => {
+    try {
+      await notificationsService.markAsRead(notificationId);
+      await queryClient.invalidateQueries({
+        queryKey: ['notifications', 'mine'],
+      });
+    } catch (error: unknown) {
+      showToast.error(error, 'No se pudo actualizar la notificación.');
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await notificationsService.markAllAsRead();
+      await queryClient.invalidateQueries({
+        queryKey: ['notifications', 'mine'],
+      });
+    } catch (error: unknown) {
+      showToast.error(error, 'No se pudieron marcar las notificaciones como leídas.');
+    }
+  };
 
   useEffect(() => {
     const refreshNavbarAlerts = () => {
@@ -118,6 +148,7 @@ export const Navbar: React.FC = () => {
       ),
     }));
   }, [alertsQuery.data]);
+  const totalAlerts = groupedAlerts.length + unreadNotifications;
 
   const rawTabs: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={16} /> },
@@ -178,106 +209,194 @@ export const Navbar: React.FC = () => {
                 type="button"
                 className={styles.alertsButton}
                 onClick={() => setAlertsOpen((open) => !open)}
-                aria-label={`Alertas de operaciones: ${groupedAlerts.length}`}
+                aria-label={`Alertas y notificaciones: ${totalAlerts}`}
                 aria-expanded={alertsOpen}
-                aria-controls="operation-alerts-panel"
+                aria-controls="alerts-panel"
               >
                 <Bell size={17} aria-hidden="true" />
-                {groupedAlerts.length > 0 && (
+                {totalAlerts > 0 && (
                   <span className={styles.alertsCount}>
-                    {groupedAlerts.length > 99 ? '99+' : groupedAlerts.length}
+                    {totalAlerts > 99 ? '99+' : totalAlerts}
                   </span>
                 )}
               </button>
               {alertsOpen && (
                 <div
                   className={styles.alertsPanel}
-                  id="operation-alerts-panel"
+                  id="alerts-panel"
                   role="region"
-                  aria-label="Alertas de operaciones"
+                  aria-label="Alertas y notificaciones"
                 >
                   <div className={styles.alertsPanelHeader}>
-                    <strong>Alertas de operaciones</strong>
-                    <span>{groupedAlerts.length} operaciones</span>
+                    <strong>Alertas y notificaciones</strong>
+                    <span>{totalAlerts} pendientes</span>
                   </div>
-                  {alertsQuery.isError ? (
-                    <div className={styles.alertsMessage} role="alert">
-                      <span>No se pudieron cargar las alertas.</span>
+                  <section className={styles.alertsSection}>
+                    <h2 className={styles.alertsSectionHeading}>
+                      Alertas operativas
+                      <span>{groupedAlerts.length}</span>
+                    </h2>
+                    {alertsQuery.isError ? (
+                      <div className={styles.alertsMessage} role="alert">
+                        <span>No se pudieron cargar las alertas.</span>
+                        <button
+                          type="button"
+                          onClick={() => void alertsQuery.refetch()}
+                        >
+                          Reintentar
+                        </button>
+                      </div>
+                    ) : alertsQuery.isPending ? (
+                      <p className={styles.alertsMessage}>Cargando alertas...</p>
+                    ) : groupedAlerts.length === 0 ? (
+                      <p className={styles.alertsMessage}>
+                        No hay alertas operativas pendientes.
+                      </p>
+                    ) : (
+                      <ul className={styles.alertsList}>
+                        {groupedAlerts.map((group) => {
+                          const mainAlert = group.alerts[0];
+                          const additionalAlerts = group.alerts.length - 1;
+
+                          return (
+                            <li key={group.operationId}>
+                              <button
+                                type="button"
+                                className={styles.alertItem}
+                                onClick={() => {
+                                  setSelectedOperation(group);
+                                  setAlertsOpen(false);
+                                }}
+                              >
+                                {mainAlert.type === 'NO_MOVEMENT' ? (
+                                  <Clock3
+                                    size={17}
+                                    className={styles.alertIcon}
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <AlertTriangle
+                                    size={17}
+                                    className={styles.alertIcon}
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                <span className={styles.alertContent}>
+                                  <strong>{group.operationLabel}</strong>
+                                  <span>
+                                    {group.alerts.length === 1
+                                      ? mainAlert.title
+                                      : `${group.alerts.length} alertas operativas`}
+                                    {additionalAlerts > 0 && (
+                                      <span className={styles.additionalAlertsBadge}>
+                                        +{additionalAlerts}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span>{mainAlert.message}</span>
+                                  <time dateTime={mainAlert.occurredAt}>
+                                    {new Intl.DateTimeFormat('es-CO', {
+                                      dateStyle: 'short',
+                                      timeStyle: 'short',
+                                    }).format(new Date(mainAlert.occurredAt))}
+                                  </time>
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    <Link
+                      href="/operations"
+                      className={styles.alertsFooter}
+                      onClick={() => setAlertsOpen(false)}
+                    >
+                      Ver operaciones
+                    </Link>
+                  </section>
+
+                  <section className={styles.alertsSection}>
+                    <h2 className={styles.alertsSectionHeading}>
+                      Notificaciones
+                      <span>{unreadNotifications} sin leer</span>
+                    </h2>
+                    {notificationsQuery.isError ? (
+                      <div className={styles.alertsMessage} role="alert">
+                        <span>No se pudieron cargar las notificaciones.</span>
+                        <button
+                          type="button"
+                          onClick={() => void notificationsQuery.refetch()}
+                        >
+                          Reintentar
+                        </button>
+                      </div>
+                    ) : notificationsQuery.isPending ? (
+                      <p className={styles.alertsMessage}>
+                        Cargando notificaciones...
+                      </p>
+                    ) : notificationsQuery.data.notifications.length === 0 ? (
+                      <p className={styles.alertsMessage}>
+                        No tienes notificaciones.
+                      </p>
+                    ) : (
+                      <ul className={styles.alertsList}>
+                        {notificationsQuery.data.notifications.map((notification) => (
+                          <li key={notification.id}>
+                            <div
+                              className={`${styles.notificationItem} ${
+                                notification.isRead ? '' : styles.notificationUnread
+                              }`}
+                            >
+                              <strong>{notification.title}</strong>
+                              <span>{notification.message}</span>
+                              <time dateTime={notification.createdAt}>
+                                {new Intl.DateTimeFormat('es-CO', {
+                                  dateStyle: 'short',
+                                  timeStyle: 'short',
+                                }).format(new Date(notification.createdAt))}
+                              </time>
+                            </div>
+                            {notification.title ===
+                              'Falló el envío del código de acceso' && (
+                              <Link
+                                href="/fleet"
+                                className={styles.alertsFooter}
+                                onClick={() => {
+                                  setAlertsOpen(false);
+                                  if (!notification.isRead) {
+                                    void markNotificationAsRead(notification.id);
+                                  }
+                                }}
+                              >
+                                Ir a Flota y gestionar el acceso
+                              </Link>
+                            )}
+                            {!notification.isRead && (
+                              <button
+                                type="button"
+                                className={styles.notificationReadButton}
+                                onClick={() =>
+                                  void markNotificationAsRead(notification.id)
+                                }
+                              >
+                                Marcar como leída
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {unreadNotifications > 0 && (
                       <button
                         type="button"
-                        onClick={() => void alertsQuery.refetch()}
+                        className={styles.alertsFooter}
+                        onClick={() => void markAllNotificationsAsRead()}
                       >
-                        Reintentar
+                        Marcar todas como leídas
                       </button>
-                    </div>
-                  ) : alertsQuery.isPending ? (
-                    <p className={styles.alertsMessage}>Cargando alertas...</p>
-                  ) : groupedAlerts.length === 0 ? (
-                    <p className={styles.alertsMessage}>
-                      No hay alertas operativas pendientes.
-                    </p>
-                  ) : (
-                    <ul className={styles.alertsList}>
-                      {groupedAlerts.map((group) => {
-                        const mainAlert = group.alerts[0];
-                        const additionalAlerts = group.alerts.length - 1;
-
-                        return (
-                          <li key={group.operationId}>
-                            <button
-                              type="button"
-                              className={styles.alertItem}
-                              onClick={() => {
-                                setSelectedOperation(group);
-                                setAlertsOpen(false);
-                              }}
-                            >
-                              {mainAlert.type === 'NO_MOVEMENT' ? (
-                                <Clock3
-                                  size={17}
-                                  className={styles.alertIcon}
-                                  aria-hidden="true"
-                                />
-                              ) : (
-                                <AlertTriangle
-                                  size={17}
-                                  className={styles.alertIcon}
-                                  aria-hidden="true"
-                                />
-                              )}
-                              <span className={styles.alertContent}>
-                                <strong>{group.operationLabel}</strong>
-                                <span>
-                                  {group.alerts.length === 1
-                                    ? mainAlert.title
-                                    : `${group.alerts.length} alertas operativas`}
-                                  {additionalAlerts > 0 && (
-                                    <span className={styles.additionalAlertsBadge}>
-                                      +{additionalAlerts}
-                                    </span>
-                                  )}
-                                </span>
-                                <span>{mainAlert.message}</span>
-                                <time dateTime={mainAlert.occurredAt}>
-                                  {new Intl.DateTimeFormat('es-CO', {
-                                    dateStyle: 'short',
-                                    timeStyle: 'short',
-                                  }).format(new Date(mainAlert.occurredAt))}
-                                </time>
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                  <Link
-                    href="/operations"
-                    className={styles.alertsFooter}
-                    onClick={() => setAlertsOpen(false)}
-                  >
-                    Ver operaciones
-                  </Link>
+                    )}
+                  </section>
                 </div>
               )}
             </div>

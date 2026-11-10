@@ -7,6 +7,7 @@ import styles from '../driver.module.css';
 interface DriverAuthSectionProps {
   authStep: 'CEDULA' | 'OTP';
   authError: string | null;
+  authNotice: string | null;
   cedulaInput: string;
   setCedulaInput: (val: string) => void;
   otpInput: string;
@@ -19,6 +20,7 @@ interface DriverAuthSectionProps {
 export function DriverAuthSection({
   authStep,
   authError,
+  authNotice,
   cedulaInput,
   setCedulaInput,
   otpInput,
@@ -52,6 +54,11 @@ export function DriverAuthSection({
           </form>
         ) : (
           <form onSubmit={onOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {authNotice && (
+              <div role="status" style={{ color: '#92400e', backgroundColor: '#fef3c7', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', textAlign: 'left' }}>
+                {authNotice}
+              </div>
+            )}
             <input 
               type="text" 
               placeholder="123456"

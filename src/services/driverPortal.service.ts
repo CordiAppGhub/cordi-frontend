@@ -13,6 +13,7 @@ import type { MyNovedadesResponse, NovedadCategory } from "./novedades.servies";
 interface DriverOtpRequestResponse {
   message: string;
   smsSent: boolean;
+  adminNotified: boolean;
   developmentOtp?: string;
 }
 
