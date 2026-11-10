@@ -39,7 +39,11 @@ export const AssignClientModal: React.FC<AssignClientModalProps> = ({
     control,
     reset,
     formState: { errors, isSubmitting },
+<<<<<<< HEAD
   } = useForm<z.input<typeof assignClientSchema>, unknown, AssignClientFormValues>({
+=======
+  } = useForm<AssignClientFormValues>({
+>>>>>>> 1681de5e7b0dde48e398b29919d7540a03acb952
     resolver: zodResolver(assignClientSchema),
     defaultValues: {
       analystId: 0,
@@ -57,7 +61,11 @@ export const AssignClientModal: React.FC<AssignClientModalProps> = ({
     onClose();
   };
 
+<<<<<<< HEAD
   const onSubmit: SubmitHandler<AssignClientFormValues> = async (values) => {
+=======
+  const onSubmit = async (values: AssignClientFormValues) => {
+>>>>>>> 1681de5e7b0dde48e398b29919d7540a03acb952
     const success = await onAssign({ analystId: values.analystId, clientId });
     if (success) handleClose();
   };
@@ -169,7 +177,11 @@ export const AssignClientModal: React.FC<AssignClientModalProps> = ({
 
         {/* Acciones */}
         <div className={styles.actions}>
+<<<<<<< HEAD
           <Button type="button" variant="secondary" onClick={handleClose}>
+=======
+          <Button type="button" variant="ghost" onClick={handleClose}>
+>>>>>>> 1681de5e7b0dde48e398b29919d7540a03acb952
             Cancelar
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting || isLoadingAnalysts}>
