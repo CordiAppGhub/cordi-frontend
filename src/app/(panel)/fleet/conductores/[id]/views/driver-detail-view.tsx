@@ -140,7 +140,7 @@ export function DriverDetailView() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          {userRole === 'ADMIN' && (
+          {(userRole === 'ADMIN' || userRole === 'JEFE_DE_FLOTA') && (
             <Button
               variant="secondary"
               onClick={handleManualRecoveryCode}

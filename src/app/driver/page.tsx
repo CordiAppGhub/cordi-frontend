@@ -65,6 +65,7 @@ export default function DriverPortalPage() {
     authStep,
     setAuthStep,
     authError,
+    authNotice,
     requestOtp,
     verifyOtp,
     logout,
@@ -398,6 +399,7 @@ export default function DriverPortalPage() {
       <DriverAuthSection
         authStep={authStep}
         authError={authError}
+        authNotice={authNotice}
         cedulaInput={cedulaInput}
         setCedulaInput={setCedulaInput}
         otpInput={otpInput}

@@ -134,7 +134,8 @@
   top: calc(100% + 12px);
   right: 0;
   width: min(400px, calc(100vw - 24px));
-  overflow: hidden;
+  max-height: min(80vh, 640px);
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   background: #fff;
@@ -158,9 +159,28 @@
   font-size: 0.72rem;
 }
 
+.alertsSection + .alertsSection {
+  border-top: 1px solid var(--color-border);
+}
+
+.alertsSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px 15px;
+  background: #f7fafb;
+  color: #183347;
+  font-size: 0.72rem;
+}
+
+.alertsSectionHeading span {
+  color: #617582;
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
 .alertsList {
-  max-height: min(55vh, 420px);
-  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -168,6 +188,46 @@
 
 .alertsList li + li {
   border-top: 1px solid #edf1f3;
+}
+
+.notificationItem {
+  display: grid;
+  gap: 5px;
+  padding: 12px 15px 8px;
+}
+
+.notificationItem strong {
+  color: #183347;
+  font-size: 0.76rem;
+}
+
+.notificationItem span {
+  color: #526774;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.notificationItem time {
+  color: #71838d;
+  font-size: 0.65rem;
+}
+
+.notificationUnread {
+  border-left: 3px solid #e0433f;
+  background: #fff8f7;
+}
+
+.notificationReadButton {
+  display: block;
+  margin: 0 15px 10px auto;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #146d82;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 650;
 }
 
 .alertItem {
