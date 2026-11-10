@@ -12,7 +12,7 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
+        source:'/api/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://144.126.133.43:4000'}/api/:path*`,
       },
     ];
