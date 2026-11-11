@@ -28,6 +28,7 @@ import { Loader } from 'lucide-react';
 import { OperationAmparosPanel } from '../components/amparados/operation-amparos-panel';
 import { OperationResourceModal } from '../components/actions/operation-resource-modal';
 import { OperationHistoryView } from './history/operation-history-view';
+import { PendingDriverExtraReports } from '../components/actions/pending-driver-extra-reports';
 import { useOperationHistoryStore } from '@/store/use-operation-history.store';
 import { useCancelOperation } from '../hooks/use-cancel-operation';
 import { useQuery } from '@tanstack/react-query';
@@ -434,6 +435,7 @@ export function OperationsView() {
 
       {section === 'active' ? (
         <>
+          <PendingDriverExtraReports />
           <OperationAmparosPanel
             enabled={
               user?.role === 'ADMIN' ||

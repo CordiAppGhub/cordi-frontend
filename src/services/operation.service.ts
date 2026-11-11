@@ -1,6 +1,7 @@
 import { api } from "./api.service";
 import {
   Operation,
+  OperationSurcharge,
   OperationsClientGroup,
   Evidence,
 } from "@/types/operation-types";
@@ -75,6 +76,25 @@ export interface ScheduleOperationsFilters {
   busqueda?: string;
   requiereAccion?: boolean;
   analystId?: number;
+}
+
+export interface DriverExtraReport {
+  id: number;
+  operationId: number;
+  driverId: number;
+  type: "STAND_BY" | "DESVIO" | "MANIOBRA_EXTRA" | "EN_PISO";
+  durationHours: number | null;
+  description: string;
+  evidenceUrl: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  driver: { id: number; name: string | null; cedula: string | null };
+  operation: {
+    id: number;
+    containerNumber: string | null;
+    numeroPedido: string | null;
+    client: { razonSocial: string } | null;
+  };
 }
 
 export type HistoricalFilterOptionKind = "manifest";
@@ -494,6 +514,24 @@ export const operationService = {
     const response = await api.patch<Operation>(
       `/operations/${operationId}/patio-manual`,
       data,
+    );
+    return response.data;
+  },
+
+  getPendingExtraReports: async (): Promise<DriverExtraReport[]> => {
+    const response = await api.get<DriverExtraReport[]>(
+      "/operations/extra-reports/pending",
+    );
+    return response.data;
+  },
+
+  approveExtraReport: async (
+    reportId: number,
+    payload: { conceptId: string; amount: number; cost: number },
+  ): Promise<OperationSurcharge> => {
+    const response = await api.post<OperationSurcharge>(
+      `/operations/extra-reports/${reportId}/approve`,
+      payload,
     );
     return response.data;
   },

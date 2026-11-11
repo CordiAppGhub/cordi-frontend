@@ -20,6 +20,7 @@ import { DriverNovedadesTab } from "./components/DriverNovedadesTab";
 import type { DriverTab } from "./components/DriverHeaderNav";
 import { CurrentTripTab } from "./components/CurrentTripTab";
 import { OperationDetailsCard } from "./components/operation-details-card";
+import { ReportExtraModal } from "./components/ReportExtraModal";
 import Swal from "sweetalert2";
 import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 import { compressFiles } from "@/utils/image-compressor";
@@ -93,6 +94,9 @@ export default function DriverPortalPage() {
     null,
   );
   const [selectedOperationId, setSelectedOperationId] = useState<number | null>(
+    null,
+  );
+  const [extraReportOperationId, setExtraReportOperationId] = useState<number | null>(
     null,
   );
   const [modalType, setModalType] = useState<
@@ -457,6 +461,7 @@ export default function DriverPortalPage() {
             setModalType("DEVIATION");
             setIsModalOpen(true);
           }}
+          onReportExtra={setExtraReportOperationId}
           onOpenOcrModal={() => {
             const operation = activeOperation || null;
             setSelectedOperation(operation);
@@ -509,6 +514,12 @@ export default function DriverPortalPage() {
       ) : (
         <DriverProfile driver={driver} />
       )}
+
+      <ReportExtraModal
+        operationId={extraReportOperationId}
+        onClose={() => setExtraReportOperationId(null)}
+        onSuccess={() => setExtraReportOperationId(null)}
+      />
 
       <SuperModal
         isOpen={isModalOpen}

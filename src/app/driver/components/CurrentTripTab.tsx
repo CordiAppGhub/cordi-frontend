@@ -37,6 +37,7 @@ interface CurrentTripTabProps {
     sealNumber: string,
   ) => Promise<void>;
   onReportDeviation: () => void;
+  onReportExtra: (operationId: number) => void;
   onOpenOcrModal: () => void;
   onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
@@ -66,6 +67,7 @@ export function CurrentTripTab({
   onCompleteStop,
   onUpdateSealNumber,
   onReportDeviation,
+  onReportExtra,
   onOpenOcrModal,
   onOpenPlateVerification,
   onOpenEvidenceModal,
@@ -380,6 +382,7 @@ export function CurrentTripTab({
             onCompleteStop={onCompleteStop}
             onUpdateSealNumber={onUpdateSealNumber}
             onReportDeviation={onReportDeviation}
+            onReportExtra={onReportExtra}
             onOpenOcrModal={onOpenOcrModal}
             onOpenPlateVerification={onOpenPlateVerification}
             onOpenEvidenceModal={onOpenEvidenceModal}

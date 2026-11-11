@@ -104,6 +104,7 @@ interface OperationWorkflowProps {
     sealNumber: string,
   ) => Promise<void>;
   onReportDeviation: () => void;
+  onReportExtra: (operationId: number) => void;
   onOpenOcrModal: () => void;
   onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
@@ -783,6 +784,7 @@ export function OperationWorkflow({
   onCompleteStop,
   onUpdateSealNumber,
   onReportDeviation,
+  onReportExtra,
   onOpenOcrModal,
   onOpenPlateVerification,
   onOpenEvidenceModal,
@@ -1175,6 +1177,15 @@ export function OperationWorkflow({
           >
             Reportar estado
           </Button>
+          {operation.status === "EN_CURSO" && (
+            <Button
+              variant="secondary"
+              disabled={isLoading}
+              onClick={() => onReportExtra(operation.id)}
+            >
+              Reportar cobro extra
+            </Button>
+          )}
           {operation.type === "IMPORTACION" &&
             currentState === "LLEGADA_DESTINO" &&
             ["EN_INSPECCION", "FALLA_REPORTADA"].includes(

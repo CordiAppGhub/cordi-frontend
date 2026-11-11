@@ -223,6 +223,32 @@ export const driverPortalService = {
     const { data } = await api.post("/portal/novedades", payload);
     return data;
   },
+  async reportExtraReport(
+    operationId: number,
+    payload: {
+      type: "STAND_BY" | "DESVIO" | "MANIOBRA_EXTRA" | "EN_PISO";
+      durationHours?: number;
+      description: string;
+      file: File;
+    },
+  ) {
+    const formData = new FormData();
+    formData.append("type", payload.type);
+    if (payload.durationHours !== undefined) {
+      formData.append("durationHours", String(payload.durationHours));
+    }
+    formData.append("description", payload.description);
+    formData.append("file", payload.file);
+    const { data } = await api.post(
+      `/portal/operations/${operationId}/extra-reports`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 45000,
+      },
+    );
+    return data;
+  },
 };
 
 export const driverAuthService = {
