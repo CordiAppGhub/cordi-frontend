@@ -3,7 +3,7 @@
 ## 1. Rol y Contexto del Proyecto
 * **Tecnologías Core:** React 19.2, Next.js 16.3 (App Router), TypeScript 5.9.
 * **Propósito del Sistema:** Interfaz de usuario para la plataforma de logística y transporte "Corditrans TMS". Incluye torre de control, seguimiento de viajes, programación, gestión de flota, liquidación de tarifas y un portal optimizado para conductores.
-* **Conexión con Backend:** El backend corre en NestJS. Las peticiones a `/api/*` se reenvían al backend mediante los *rewrites* de `next.config.ts` hacia `NEXT_PUBLIC_API_URL` (por defecto `http://localhost:4000`).
+* **Conexión con Backend:** El backend corre en NestJS. Las peticiones a `/api/*` se reenvían mediante los *rewrites* de `next.config.ts` hacia `INTERNAL_API_URL` (accesible desde Next.js); Socket.IO usa `NEXT_PUBLIC_API_URL` (accesible desde el navegador, sin `/api`).
 * **Gestor de Paquetes Exclusivo:** `pnpm`. No uses `npm` ni `yarn`.
   * Desarrollo: `pnpm dev`
   * Compilación: `pnpm build`
@@ -88,7 +88,7 @@ El enrutador de Next.js se estructura en `src/app/` por dominios de acceso:
   - Todo consumo de endpoint debe ubicarse en una función de servicio en `src/services/` (ej. `operation.service.ts`, `tariff.service.ts`).
   - Tipa estrictamente los parámetros y retornos con interfaces de `src/types/`.
 * **WebSockets y Tiempo Real (`src/lib/socket.ts`):**
-  - Instancia `socket.io-client` conectada a `NEXT_PUBLIC_API_URL` con `transports: ['websocket']`.
+  - Instancia `socket.io-client` conectada a `NEXT_PUBLIC_API_URL`, comenzando con polling y actualizando a WebSocket; reintenta otros transportes si el primero falla.
   - Se utiliza para sincronizar cambios en vivo: `operation_${id}_updated`, `global_operations_updated`, etc.
 
 ---

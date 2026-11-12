@@ -177,6 +177,15 @@ const EMPTY_RETURN_STATE_ORDER = [
   "FINALIZADO",
 ];
 
+const INTERNAL_MOVEMENT_STATE_ORDER = [
+  "ASIGNADO",
+  "EN_RUTA_ORIGEN",
+  "LLEGADA_ORIGEN",
+  "EN_RUTA_DESTINO",
+  "LLEGADA_DESTINO",
+  "FINALIZADO",
+];
+
 const LOOSE_CARGO_STATE_ORDER = [
   "ASIGNADO",
   "EN_RUTA_ORIGEN",
@@ -399,6 +408,91 @@ const EMPTY_RETURN_STEPS: WorkflowStep[] = [
     label: "SUBIR TIRILLA EIR Y FINALIZAR",
     nextState: "FINALIZADO",
     action: "close",
+  },
+];
+
+const INTERNAL_MOVEMENT_STEPS: WorkflowStep[] = [
+  {
+    id: "internal-movement-depart-origin",
+    travelState: "ASIGNADO",
+    label: "INICIAR RUTA AL ORIGEN",
+    nextState: "EN_RUTA_ORIGEN",
+    action: "update",
+  },
+  {
+    id: "internal-movement-arrive-origin",
+    travelState: "EN_RUTA_ORIGEN",
+    label: "REPORTAR LLEGADA AL ORIGEN",
+    nextState: "LLEGADA_ORIGEN",
+    action: "update",
+    instruction: "Realiza el cargue o enganche en el origen antes de continuar.",
+  },
+  {
+    id: "internal-movement-depart-destination",
+    travelState: "LLEGADA_ORIGEN",
+    label: "INICIAR RUTA AL DESTINO",
+    nextState: "EN_RUTA_DESTINO",
+    action: "update",
+  },
+  {
+    id: "internal-movement-arrive-destination",
+    travelState: "EN_RUTA_DESTINO",
+    label: "REPORTAR LLEGADA AL DESTINO",
+    nextState: "LLEGADA_DESTINO",
+    action: "update",
+  },
+  {
+    id: "internal-movement-close",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR SOPORTE Y CERRAR MOVIMIENTO",
+    nextState: "FINALIZADO",
+    action: "close",
+  },
+];
+
+const INTERNAL_MOVEMENT_LOOSE_CARGO_STEPS: WorkflowStep[] = [
+  INTERNAL_MOVEMENT_STEPS[0],
+  INTERNAL_MOVEMENT_STEPS[1],
+  {
+    id: "internal-movement-loose-loading",
+    travelState: "LLEGADA_ORIGEN",
+    label: "SUBIR EVIDENCIA DE CARGA Y SALIR AL DESTINO",
+    nextState: "EN_RUTA_DESTINO",
+    action: "evidence",
+    evidenceTypes: [LOOSE_CARGO_EVIDENCE],
+    requiresCargoStatus: ["CARGADO"],
+    instruction:
+      "Envía cuatro fotos de la carga: de frente, de atrás y de ambos lados.",
+  },
+  INTERNAL_MOVEMENT_STEPS[3],
+  {
+    id: "internal-movement-loose-arrival",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR FOTOS DE LA CARGA AL LLEGAR",
+    action: "evidence",
+    evidenceTypes: [LOOSE_CARGO_ARRIVAL_EVIDENCE],
+  },
+  {
+    id: "internal-movement-loose-unloading",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR FOTOS DEL DESCARGUE",
+    action: "evidence",
+    evidenceTypes: [LOOSE_CARGO_UNLOADING_EVIDENCE],
+    requiresCargoStatus: ["EN_DESCARGUE"],
+    requiresEvidence: [LOOSE_CARGO_ARRIVAL_EVIDENCE],
+  },
+  {
+    id: "internal-movement-loose-close",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR SOPORTE Y CERRAR MOVIMIENTO",
+    nextState: "FINALIZADO",
+    action: "evidence",
+    evidenceTypes: [DELIVERY_DOC_EVIDENCE],
+    requiresEvidence: [
+      LOOSE_CARGO_ARRIVAL_EVIDENCE,
+      LOOSE_CARGO_UNLOADING_EVIDENCE,
+    ],
+    requiresCargoStatus: ["DESCARGADO"],
   },
 ];
 
@@ -819,7 +913,9 @@ export function OperationWorkflow({
     currentState === "FINALIZADO" ||
     currentState === "CONTENEDOR_LIBRE";
   const stateOrder =
-    operation.isContainerized === false
+    operation.type === "MOVIMIENTO_INTERNO"
+      ? INTERNAL_MOVEMENT_STATE_ORDER
+      : operation.isContainerized === false
       ? LOOSE_CARGO_STATE_ORDER
       : operation.type === "DEVOLUCION_VACIO"
         ? EMPTY_RETURN_STATE_ORDER
@@ -829,26 +925,35 @@ export function OperationWorkflow({
             ? EXPORT_STATE_ORDER
             : IMPORT_STATE_ORDER;
 
-  let workflowSteps = STANDARD_WORKFLOW_STEPS;
+  let workflowSteps: WorkflowStep[];
 
-  if (operation.type === "IMPORTACION") {
-    if (operation.containerStatus === "PENDIENTE_DEVOLUCION") {
-      workflowSteps = PENDING_RETURN_STEPS;
-    } else if (operation.isAmparado) {
-      workflowSteps = AMPARADO_IMPORT_STEPS;
-    } else {
-      workflowSteps = IMPORT_TO_YARD_STEPS;
+  if (operation.type === "MOVIMIENTO_INTERNO") {
+    workflowSteps =
+      operation.isContainerized === false
+        ? INTERNAL_MOVEMENT_LOOSE_CARGO_STEPS
+        : INTERNAL_MOVEMENT_STEPS;
+  } else {
+    workflowSteps = STANDARD_WORKFLOW_STEPS;
+
+    if (operation.type === "IMPORTACION") {
+      if (operation.containerStatus === "PENDIENTE_DEVOLUCION") {
+        workflowSteps = PENDING_RETURN_STEPS;
+      } else if (operation.isAmparado) {
+        workflowSteps = AMPARADO_IMPORT_STEPS;
+      } else {
+        workflowSteps = IMPORT_TO_YARD_STEPS;
+      }
+    } else if (operation.type === "EXPORTACION") {
+      workflowSteps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
     }
-  } else if (operation.type === "EXPORTACION") {
-    workflowSteps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
-  }
 
-  if (operation.isContainerized === false) {
-    workflowSteps = LOOSE_CARGO_STEPS;
-  } else if (operation.type === "DEVOLUCION_VACIO") {
-    workflowSteps = EMPTY_RETURN_STEPS;
-  } else if (operation.type === "RETIRO_VACIO") {
-    workflowSteps = EMPTY_PICKUP_STEPS;
+    if (operation.isContainerized === false) {
+      workflowSteps = LOOSE_CARGO_STEPS;
+    } else if (operation.type === "DEVOLUCION_VACIO") {
+      workflowSteps = EMPTY_RETURN_STEPS;
+    } else if (operation.type === "RETIRO_VACIO") {
+      workflowSteps = EMPTY_PICKUP_STEPS;
+    }
   }
   workflowSteps = [PLATE_VERIFICATION_STEP, ...workflowSteps];
 
@@ -867,7 +972,7 @@ export function OperationWorkflow({
     TRAVEL_START_STATES.has(activeStep?.nextState ?? "") &&
     !isSameColombiaDate(travelStartDate, currentTime);
   const isWaitingForDeviationConfirmation =
-    operation.status === "PAUSADA" &&
+    operation.status === "DESVIO_REPORTADO" &&
     operation.containerStatus === "PENDIENTE_DEVOLUCION" &&
     (!operation.nuevoDestinoId || !operation.fechaCitaDesvio);
 

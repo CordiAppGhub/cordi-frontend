@@ -7,6 +7,7 @@ export type OperationStatus =
   | "EN_CURSO"
   | "CIERRE_FISICO"
   | "PAUSADA"
+  | "DESVIO_REPORTADO"
   | "FINALIZADO"
   | "CANCELADO";
 
