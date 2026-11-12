@@ -237,7 +237,7 @@ export function CurrentTripTab({
                       : "Devolución pendiente de confirmación"}
                   </strong>
                   <p>
-                    {activeOperation.status === "PAUSADA"
+                    {activeOperation.status === "DESVIO_REPORTADO"
                       ? "El viaje está en pausa hasta que el analista confirme el destino y la cita."
                       : "Continúa al destino y en la cita confirmados por el analista."}
                   </p>

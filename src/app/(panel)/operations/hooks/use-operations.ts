@@ -336,13 +336,18 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
         void queryClient.invalidateQueries({ queryKey: ['trafico-detail', opId] });
       }
     };
+    const handleAlertsUpdate = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'operation-alerts'],
+      });
+    };
 
     socket.on('global_operations_updated', handleGlobalUpdate);
-    socket.on('operation_alerts_updated', () => void queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] }));
+    socket.on('operation_alerts_updated', handleAlertsUpdate);
 
     return () => {
       socket.off('global_operations_updated', handleGlobalUpdate);
-      socket.off('operation_alerts_updated');
+      socket.off('operation_alerts_updated', handleAlertsUpdate);
     };
   }, [queryClient]);
 

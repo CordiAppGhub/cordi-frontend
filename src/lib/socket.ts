@@ -2,11 +2,11 @@ import { io } from 'socket.io-client';
 
 const SOCKET_URL = 
   process.env.NEXT_PUBLIC_API_URL || 
-  (typeof window !== 'undefined' ? '' : 'http://localhost:4000');
+  (typeof window !== 'undefined' ? '' : 'corditrans-backend:4000')
 
 export const socket = io(SOCKET_URL, {
   autoConnect: typeof window !== 'undefined',
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],
   withCredentials: true,
   reconnection: true,
   reconnectionAttempts: Infinity,
@@ -23,6 +23,6 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
     console.log('🔌 Desconectado de WebSockets:', reason);
   });
   socket.on('connect_error', (error) => {
-    console.warn('⚠️ Error de conexión WebSocket (reintentando con polling/websocket):', error.message);
+    console.warn('⚠️ Error de conexión WebSocket (reconectando):', error.message);
   });
 }

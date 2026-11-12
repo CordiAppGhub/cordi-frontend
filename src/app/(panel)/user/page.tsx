@@ -219,7 +219,7 @@ export default function UsersPage() {
           <h1 className={styles.title}>Gestión de usuarios</h1>
           <p className={styles.subtitle}>Administra accesos, roles y estado de las cuentas.</p>
         </div>
-        <span className={styles.accessNote}>Panel exclusivo para administradores</span>
+        <span className={styles.accessNote}>Panel de administración de usuarios</span>
       </div>
 
       <section className={styles.summaryGrid} aria-label="Resumen de usuarios">
