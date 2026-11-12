@@ -6,6 +6,11 @@ const withPWA = nextPWA({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
 });
+const backendUrl =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://corditrans-backend:4000';
+
 const nextConfig = {
   output: 'standalone' as const,
   turbopack: {},
@@ -13,7 +18,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://corditrans-backend:4000'}/api/:path*`,
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/socket.io/:path*',
+        destination: `${backendUrl}/socket.io/:path*`,
       },
     ];
   },
