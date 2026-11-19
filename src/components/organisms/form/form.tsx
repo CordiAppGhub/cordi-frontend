@@ -12,7 +12,7 @@ import {
 import { Input } from '../../atoms/input/input';
 import { Select } from '../../atoms/select/select';
 import { Button } from '../../atoms/button/button';
-import { SuperFormProps, FormFieldValue } from './types/form.types';
+import type { SuperFormProps, FormFieldValue } from './types/form.types';
 import styles from './SuperForm.module.css';
 
 const EMPTY_DEFAULT_VALUES: Record<string, FormFieldValue> = {};
@@ -192,217 +192,257 @@ export function SuperForm<
     )(e);
   }
 
-  return (
-    <form onSubmit={handleSubmit} className={styles.form}>
-      <div className={styles.fieldsGrid}>
-        {fields.map((field) => {
-          const isVisible = typeof field.visible === 'function'
-            ? field.visible(formData)
-            : field.visible !== false;
-          if (!isVisible) {
-            return field.reserveSpaceWhenHidden ? (
-              <div
-                key={field.name}
-                className={`${styles.formGroup} ${styles.reservedField}`}
-                aria-hidden="true"
-              />
-            ) : null;
-          }
+  const renderField = (field: (typeof fields)[number]) => {
+    const isVisible = typeof field.visible === 'function'
+      ? field.visible(formData)
+      : field.visible !== false;
+    if (!isVisible) {
+      return field.reserveSpaceWhenHidden ? (
+        <div
+          key={field.name}
+          className={`${styles.formGroup} ${styles.reservedField}`}
+          aria-hidden="true"
+        />
+      ) : null;
+    }
 
-          const options = typeof field.options === 'function'
-            ? field.options(formData)
-            : field.options ?? [];
-          const label = typeof field.label === 'function'
-            ? field.label(formData)
-            : field.label;
-          const isDisabled = typeof field.disabled === 'function'
-            ? field.disabled(formData)
-            : field.disabled ?? false;
-          const errorMessage =
-            fieldErrors[field.name] ??
-            Object.entries(validationErrors).find(([name]) =>
-              name.startsWith(`${field.name}.`),
-            )?.[1];
+    const options = typeof field.options === 'function'
+      ? field.options(formData)
+      : field.options ?? [];
+    const label = typeof field.label === 'function'
+      ? field.label(formData)
+      : field.label;
+    const isDisabled = typeof field.disabled === 'function'
+      ? field.disabled(formData)
+      : field.disabled ?? false;
+    const errorMessage =
+      fieldErrors[field.name] ??
+      Object.entries(validationErrors).find(([name]) =>
+        name.startsWith(`${field.name}.`),
+      )?.[1];
 
-          const isFullWidth = field.type === 'textarea' || field.type === 'multiselect' || field.fullWidth;
+    const isFullWidth = field.type === 'textarea' || field.type === 'multiselect' || field.fullWidth;
 
-          if (field.sectionTitle) {
-            return (
-              <div
-                key={field.name}
-                className={`${styles.formGroup} ${styles.sectionHeader}`}
-              >
-                <h3 className={styles.sectionTitle}>{label}</h3>
-              </div>
-            );
-          }
+    if (field.sectionTitle) {
+      return (
+        <div
+          key={field.name}
+          className={`${styles.formGroup} ${styles.sectionHeader}`}
+        >
+          <h3 className={styles.sectionTitle}>{label}</h3>
+        </div>
+      );
+    }
+
+    return (
+      <Controller
+        key={field.name}
+        name={field.name as FieldPath<TFieldValues>}
+        control={control}
+        defaultValue={(field.defaultValue ?? '') as FieldPathValue<TFieldValues, FieldPath<TFieldValues>>}
+        render={({ field: controllerField }) => {
+          const value = (controllerField.value ?? '') as FormFieldValue;
+          const onChange = (newValue: FormFieldValue) =>
+            handleChange(field.name, newValue, controllerField.onChange);
 
           return (
-            <Controller
-              key={field.name}
-              name={field.name as FieldPath<TFieldValues>}
-              control={control}
-              defaultValue={(field.defaultValue ?? '') as FieldPathValue<TFieldValues, FieldPath<TFieldValues>>}
-              render={({ field: controllerField }) => {
-                const value = (controllerField.value ?? '') as FormFieldValue;
-                const onChange = (newValue: FormFieldValue) =>
-                  handleChange(field.name, newValue, controllerField.onChange);
+            <div
+              className={`${styles.formGroup} ${isFullWidth ? styles.fullWidth : ''} ${field.layoutClass === 'cargoTypeSection' ? styles.cargoTypeSection : ''}`}
+            >
+              {field.type === 'checkbox' ? (
+                <span className={styles.label}>{label}</span>
+              ) : (
+                <label className={styles.label}>
+                  {label}
+                </label>
+              )}
 
-                return (
-                  <div
-                    className={`${styles.formGroup} ${isFullWidth ? styles.fullWidth : ''} ${field.layoutClass === 'cargoTypeSection' ? styles.cargoTypeSection : ''}`}
-                  >
-                    {field.type === 'checkbox' ? (
-                      <span className={styles.label}>{label}</span>
-                    ) : (
-                      <label className={styles.label}>
-                        {label}
-                      </label>
-                    )}
+              {(() => {
+                switch (field.type) {
+                  case 'textarea':
+                    return (
+                      <textarea
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        value={String(value)}
+                        onChange={(e) => onChange(e.target.value)}
+                        onBlur={controllerField.onBlur}
+                        disabled={isDisabled || isLoading}
+                        className={styles.textareaInput}
+                      />
+                    );
 
-                    {(() => {
-                      switch (field.type) {
-                        case 'textarea':
+                  case 'select':
+                    return (
+                      <Select
+                        name={field.name}
+                        options={options}
+                        value={String(value)}
+                        onChange={(e) => onChange(e.target.value)}
+                        onBlur={controllerField.onBlur}
+                        disabled={isDisabled || isLoading}
+                        error={errorMessage}
+                      />
+                    );
+
+                  case 'multiselect':
+                    return (
+                      <div className={styles.multiselectContainer}>
+                        {options.map((opt) => {
+                          const isChecked =
+                            Array.isArray(value) &&
+                            value.some(
+                              (selectedValue) =>
+                                String(selectedValue) ===
+                                String(opt.value),
+                            );
                           return (
-                            <textarea
-                              name={field.name}
-                              placeholder={field.placeholder}
-                              value={String(value)}
-                              onChange={(e) => onChange(e.target.value)}
-                              onBlur={controllerField.onBlur}
-                              disabled={isDisabled || isLoading}
-                              className={styles.textareaInput}
-                            />
-                          );
-
-                        case 'select':
-                          return (
-                            <Select
-                              name={field.name}
-                              options={options}
-                              value={String(value)}
-                              onChange={(e) => onChange(e.target.value)}
-                              onBlur={controllerField.onBlur}
-                              disabled={isDisabled || isLoading}
-                              error={errorMessage}
-                            />
-                          );
-
-                        case 'multiselect':
-                          return (
-                            <div className={styles.multiselectContainer}>
-                              {options.map((opt) => {
-                                const isChecked =
-                                  Array.isArray(value) &&
-                                  value.some(
-                                    (selectedValue) =>
-                                      String(selectedValue) ===
-                                      String(opt.value),
-                                  );
-                                return (
-                                  <label
-                                    key={opt.value}
-                                    className={styles.multiselectOption}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={(e) => {
-                                        const currentValues = Array.isArray(
-                                          value,
-                                        )
-                                          ? value.map(String)
-                                          : [];
-                                        const newValues = e.target.checked
-                                          ? [
-                                              ...currentValues,
-                                              String(opt.value),
-                                            ]
-                                          : currentValues.filter(
-                                              (v) => v !== String(opt.value),
-                                            );
-                                        onChange(newValues);
-                                      }}
-                                      disabled={isDisabled || isLoading}
-                                      className={styles.checkboxInput}
-                                    />
-                                    <span>{opt.label}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          );
-
-                        case 'checkbox':
-                          return (
-                            <label className={styles.checkboxLabel}>
+                            <label
+                              key={opt.value}
+                              className={styles.multiselectOption}
+                            >
                               <input
                                 type="checkbox"
-                                name={field.name}
-                                checked={Boolean(value)}
-                                onChange={(e) => onChange(e.target.checked)}
-                                onBlur={controllerField.onBlur}
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const currentValues = Array.isArray(
+                                    value,
+                                  )
+                                    ? value.map(String)
+                                    : [];
+                                  const newValues = e.target.checked
+                                    ? [
+                                        ...currentValues,
+                                        String(opt.value),
+                                      ]
+                                    : currentValues.filter(
+                                        (v) => v !== String(opt.value),
+                                      );
+                                  onChange(newValues);
+                                }}
                                 disabled={isDisabled || isLoading}
                                 className={styles.checkboxInput}
                               />
-                              <span>{field.placeholder || 'Activar'}</span>
+                              <span>{opt.label}</span>
                             </label>
                           );
+                        })}
+                      </div>
+                    );
 
-                        case 'radio':
-                          return (
-                            <div className={styles.radioGroup}>
-                              {options.map((opt) => (
-                                <label
-                                  key={opt.value}
-                                  className={styles.radioLabel}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={field.name}
-                                    value={opt.value}
-                                    checked={String(value) === String(opt.value)}
-                                    onChange={(e) =>
-                                      onChange(e.target.value)
-                                    }
-                                    disabled={isDisabled || isLoading}
-                                  />
-                                  {opt.label}
-                                </label>
-                              ))}
-                            </div>
-                          );
+                  case 'checkbox':
+                    return (
+                      <label className={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          name={field.name}
+                          checked={Boolean(value)}
+                          onChange={(e) => onChange(e.target.checked)}
+                          onBlur={controllerField.onBlur}
+                          disabled={isDisabled || isLoading}
+                          className={styles.checkboxInput}
+                        />
+                        <span>{field.placeholder || 'Activar'}</span>
+                      </label>
+                    );
 
-                        case 'custom':
-                          return field.render
-                            ? field.render(value, onChange, validationErrors)
-                            : null;
-
-                        default:
-                          return (
-                            <Input
-                              type={field.type}
+                  case 'radio':
+                    return (
+                      <div className={styles.radioGroup}>
+                        {options.map((opt) => (
+                          <label
+                            key={opt.value}
+                            className={styles.radioLabel}
+                          >
+                            <input
+                              type="radio"
                               name={field.name}
-                              placeholder={field.placeholder}
-                              value={String(value)}
-                              onChange={(e) => onChange(e.target.value)}
-                              onBlur={controllerField.onBlur}
+                              value={opt.value}
+                              checked={String(value) === String(opt.value)}
+                              onChange={(e) =>
+                                onChange(e.target.value)
+                              }
                               disabled={isDisabled || isLoading}
-                              error={errorMessage}
                             />
-                          );
-                      }
-                    })()}
+                            {opt.label}
+                          </label>
+                        ))}
+                      </div>
+                    );
 
-                    {errorMessage && (
-                      <span className={styles.errorMessage}>
-                        {errorMessage}
-                      </span>
-                    )}
-                  </div>
-                );
-              }}
-            />
+                  case 'custom':
+                    return field.render
+                      ? field.render(value, onChange, validationErrors)
+                      : null;
+
+                  default:
+                    return (
+                      <Input
+                        type={field.type}
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        value={String(value)}
+                        onChange={(e) => onChange(e.target.value)}
+                        onBlur={controllerField.onBlur}
+                        disabled={isDisabled || isLoading}
+                        error={errorMessage}
+                      />
+                    );
+                }
+              })()}
+
+              {errorMessage && (
+                <span className={styles.errorMessage}>
+                  {errorMessage}
+                </span>
+              )}
+            </div>
+          );
+        }}
+      />
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <div className={styles.fieldsGrid}>
+        {fields.map((field, index) => {
+          if (!field.collapsibleGroup) return renderField(field);
+          if (
+            fields
+              .slice(0, index)
+              .some((previous) => previous.collapsibleGroup === field.collapsibleGroup)
+          ) {
+            return null;
+          }
+
+          const groupedFields: typeof fields = [];
+          for (let groupIndex = index; groupIndex < fields.length; groupIndex += 1) {
+            const groupedField = fields[groupIndex];
+            if (groupedField.collapsibleGroup !== field.collapsibleGroup) break;
+            groupedFields.push(groupedField);
+          }
+
+          if (
+            !groupedFields.some((groupedField) =>
+              typeof groupedField.visible === 'function'
+                ? groupedField.visible(formData)
+                : groupedField.visible !== false,
+            )
+          ) {
+            return null;
+          }
+
+          return (
+            <details
+              key={field.collapsibleGroup}
+              className={styles.collapsibleSection}
+            >
+              <summary>{field.collapsibleGroupTitle}</summary>
+              <div className={styles.collapsibleFieldsGrid}>
+                {groupedFields.map(renderField)}
+              </div>
+            </details>
           );
         })}
       </div>

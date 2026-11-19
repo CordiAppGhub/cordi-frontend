@@ -23,7 +23,7 @@ export const inspectionResultSchema = z
       context.addIssue({
         code: "custom",
         path: ["comodato"],
-        message: "Adjunta la fotografía del comodato.",
+        message: "Adjunta al menos un soporte del comodato.",
       });
     }
   });

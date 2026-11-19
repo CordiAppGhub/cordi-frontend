@@ -1,0 +1,13 @@
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding-top: 1rem;
+}
+
+@media (max-width: 520px) {
+  .formActions > button {
+    flex: 1 1 100%;
+  }
+}

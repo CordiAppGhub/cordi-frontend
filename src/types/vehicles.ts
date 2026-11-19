@@ -15,12 +15,20 @@ export type TrailerStatus =
   | 'AVAILABLE_IN_YARD'
   | 'AT_CLIENT_SITE'
   | 'IN_MAINTENANCE';
-export type TrailerType = 'PLANCHA' | 'GRILLO' | 'TANQUE';
+export type TrailerType =
+  | 'PLANCHA'
+  | 'GRILLO'
+  | 'TANQUE'
+  | 'PLATAFORMA'
+  | 'FURGON'
+  | 'CAMA_BAJA'
+  | 'PORTACONTENEDOR';
 
 export interface Vehicle {
   id: number;
   plate: string;
   type: VehicleType;
+  axles: number | null;
   brand: string | null;
   modelYear: number | null;
   cargoCapacity: number | null;
@@ -74,6 +82,7 @@ export type UpdateTrailerInput = Partial<CreateTrailerInput>;
 export type CreateVehicleDto = Omit<
   Vehicle,
   | 'id'
+  | 'axles'
   | 'status'
   | 'ownershipType'
   | 'driver'
@@ -87,6 +96,7 @@ export type CreateVehicleDto = Omit<
   | 'tecnomecanicaFileUrl'
   | 'tecnomecanicaExpiration'
 > & {
+  axles?: 2 | 3;
   affiliation: VehicleAffiliation;
   status?: VehicleStatus;
   insuranceFileUrl?: string | null;

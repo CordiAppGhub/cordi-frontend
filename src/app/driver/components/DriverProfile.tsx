@@ -1,7 +1,7 @@
 'use client';
 
 import { BadgeCheck, IdCard, Phone, Truck, UserRound } from 'lucide-react';
-import { DriverPortalData } from '@/types/driver-portal.types';
+import type { DriverPortalData } from '@/types/driver-portal.types';
 import styles from './driver-profile.module.css';
 
 function ProfileField({

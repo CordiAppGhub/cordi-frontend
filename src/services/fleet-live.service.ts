@@ -5,9 +5,18 @@ export type FleetLiveStatus = 'AVAILABLE' | 'ENDING_SOON' | 'BUSY' | 'UNAVAILABL
 export interface FleetLiveVehicle {
   id: number;
   plate: string;
+  axles: number | null;
+  cargoCapacity: number | null;
   ownershipType: 'PROPIO' | 'TERCERO';
   driverId: number | null;
   trailerId: string | null;
+  trailer: {
+    id: string;
+    plate: string;
+    trailerType: string | null;
+    axles: number | null;
+    capacity: number | null;
+  } | null;
   status: FleetLiveStatus;
   appointmentAt: string | null;
 }
@@ -15,6 +24,9 @@ export interface FleetLiveVehicle {
 export interface FleetLiveTrailer {
   id: string;
   plate: string;
+  trailerType: string | null;
+  axles: number | null;
+  capacity: number | null;
   coupledVehicle: { id: number; plate: string } | null;
   status: FleetLiveStatus;
   appointmentAt: string | null;

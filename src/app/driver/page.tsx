@@ -8,7 +8,7 @@ import styles from "./driver.module.css";
 import { Button } from "@/components/atoms/button/button";
 import { Select } from "@/components/atoms/select/select";
 import { SuperModal } from "@/components/organisms/modal/modal";
-import {
+import type {
   Operation,
   TrailerDestinationType,
 } from "@/types/driver-portal.types";
@@ -99,6 +99,9 @@ export default function DriverPortalPage() {
   const [extraReportOperationId, setExtraReportOperationId] = useState<number | null>(
     null,
   );
+  const [extraReportDefaultType, setExtraReportDefaultType] = useState<
+    "EN_PISO" | undefined
+  >();
   const [modalType, setModalType] = useState<
     | "DETAILS"
     | "OCR"
@@ -225,7 +228,7 @@ export default function DriverPortalPage() {
         if (deviationReason !== "AVERIA_NO_APTO") {
           throw new Error("Selecciona un motivo de desvío válido.");
         }
-        await reportDeviation(selectedOperation.id, file);
+        await reportDeviation(selectedOperation.id, files);
         setIsModalOpen(false);
       }
     } catch (err: unknown) {
@@ -461,7 +464,10 @@ export default function DriverPortalPage() {
             setModalType("DEVIATION");
             setIsModalOpen(true);
           }}
-          onReportExtra={setExtraReportOperationId}
+          onReportExtra={(operationId, defaultType) => {
+            setExtraReportOperationId(operationId);
+            setExtraReportDefaultType(defaultType);
+          }}
           onOpenOcrModal={() => {
             const operation = activeOperation || null;
             setSelectedOperation(operation);
@@ -517,8 +523,12 @@ export default function DriverPortalPage() {
 
       <ReportExtraModal
         operationId={extraReportOperationId}
+        defaultType={extraReportDefaultType}
         onClose={() => setExtraReportOperationId(null)}
-        onSuccess={() => setExtraReportOperationId(null)}
+        onSuccess={() => {
+          setExtraReportOperationId(null);
+          setExtraReportDefaultType(undefined);
+        }}
       />
 
       <SuperModal
@@ -636,8 +646,7 @@ export default function DriverPortalPage() {
                       <option value="AVERIA_NO_APTO">Avería / No apto</option>
                     </Select>
                     <span>
-                      Adjunta una foto clara del comodato entregado por el
-                      patio.
+                      Adjunta una o varias fotos o documentos PDF del comodato.
                     </span>
                   </label>
                 )}
@@ -691,8 +700,9 @@ export default function DriverPortalPage() {
                       : "image/*,application/pdf"
                   }
                   multiple={
-                    modalType === "EVIDENCE" &&
-                    evidenceTypes[evidenceIndex] !== "TIRILLA_EIR"
+                    modalType === "DEVIATION" ||
+                    (modalType === "EVIDENCE" &&
+                      evidenceTypes[evidenceIndex] !== "TIRILLA_EIR")
                   }
                   ref={fileInputRef}
                   onChange={handleFileChange}

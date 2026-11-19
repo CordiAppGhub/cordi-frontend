@@ -8,7 +8,17 @@ export const createVehicleSchema = z.object({
   plate: z.string().trim().min(1, 'La placa es obligatoria'),
   type: z.enum(['PATINETA', 'MULA', 'TRAILER']),
   brand: z.string().trim().optional(),
-  trailerType: z.enum(['PLANCHA', 'GRILLO', 'TANQUE']).optional(),
+  trailerType: z
+    .enum([
+      'PLANCHA',
+      'GRILLO',
+      'TANQUE',
+      'PLATAFORMA',
+      'FURGON',
+      'CAMA_BAJA',
+      'PORTACONTENEDOR',
+    ])
+    .optional(),
   axles: z.union([z.literal(2), z.literal(3)]).optional(),
   currentLocationId: z.number().int().positive().optional(),
   notes: z.string().trim().max(2000).optional(),

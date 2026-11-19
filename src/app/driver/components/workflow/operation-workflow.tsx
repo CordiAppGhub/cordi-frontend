@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import styles from "./operation-workflow.module.css";
 import { Button } from "@/components/atoms/button/button";
 import { Select } from "@/components/atoms/select/select";
 import { ContainerRollback } from "./container-rollback";
 import { ContainerStateRollback } from "./container-state-rollback";
 import { useIsMutating } from "@tanstack/react-query";
-import {
+import type {
   CargoStatus,
   OperationContainerStatus,
 } from "@/types/driver-portal.types";
@@ -78,6 +78,7 @@ interface OperationData {
     type: string;
     estadoRevision: string;
     notaAnalista?: string | null;
+    etapa?: string | null;
   }>;
   trailer?: { plate: string };
   isAmparado?: boolean;
@@ -86,6 +87,7 @@ interface OperationData {
 
 interface OperationWorkflowProps {
   operation: OperationData;
+  containerCardRef: React.RefObject<HTMLElement | null>;
   isLoading: boolean;
   blockingOperationId?: number;
   onUpdateState: (operationId: number, newState: string) => Promise<void>;
@@ -104,7 +106,10 @@ interface OperationWorkflowProps {
     sealNumber: string,
   ) => Promise<void>;
   onReportDeviation: () => void;
-  onReportExtra: (operationId: number) => void;
+  onReportExtra: (
+    operationId: number,
+    defaultType?: "EN_PISO",
+  ) => void;
   onOpenOcrModal: () => void;
   onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
@@ -123,6 +128,9 @@ type WorkflowStep = {
   action: "update" | "ocr" | "close" | "evidence" | "verify-plates";
   evidenceTypes?: string[];
   requiresEvidence?: string[];
+  requiresEvidenceStage?: string;
+  requiresEvidenceStages?: Partial<Record<string, string>>;
+  evidenceStage?: string;
   requiresContainerStatus?: OperationContainerStatus[];
   requiresCargoStatus?: CargoStatus[];
   requiresSeal?: boolean;
@@ -256,8 +264,131 @@ function hasValidEvidence(operation: OperationData, type: string): boolean {
   );
 }
 
-function hasAllEvidence(operation: OperationData, types?: string[]): boolean {
-  return (types ?? []).every((type) => hasValidEvidence(operation, type));
+function hasStageEvidence(
+  operation: OperationData,
+  type: string,
+  etapa?: string,
+): boolean {
+  return Boolean(
+    operation.evidences?.some(
+      (evidence) =>
+        evidence.type === type &&
+        evidence.estadoRevision !== "DEVUELTO" &&
+        (!etapa || evidence.etapa === etapa),
+    ),
+  );
+}
+
+function hasAllEvidence(
+  operation: OperationData,
+  types?: string[],
+  etapa?: string,
+): boolean {
+  return (types ?? []).every((type) =>
+    etapa
+      ? hasStageEvidence(operation, type, etapa)
+      : hasValidEvidence(operation, type),
+  );
+}
+
+function hasRequiredEvidence(
+  operation: OperationData,
+  step: WorkflowStep,
+): boolean {
+  return (step.requiresEvidence ?? []).every((type) =>
+    hasStageEvidence(
+      operation,
+      type,
+      step.requiresEvidenceStages?.[type] ?? step.requiresEvidenceStage,
+    ),
+  );
+}
+
+const containerStatusTransitions: Partial<
+  Record<OperationContainerStatus, OperationContainerStatus[]>
+> = {
+  PENDIENTE: ["EN_INSPECCION", "EN_CARGUE"],
+  PENDIENTE_CARGUE: ["EN_CARGUE"],
+  EN_INSPECCION: ["EN_CARGUE", "FALLA_REPORTADA"],
+  EN_CARGUE: ["CARGADO", "FALLA_REPORTADA"],
+  CARGADO: ["EN_DESCARGUE", "EN_PISO"],
+  EN_DESCARGUE: ["DESCARGADO", "EN_PISO"],
+  DESCARGADO: ["EN_PISO"],
+  EN_PISO: ["EN_INSPECCION", "FALLA_REPORTADA"],
+};
+
+const getMilestoneContainerStatuses = (
+  operation: OperationData,
+  state: string,
+): OperationContainerStatus[] => {
+  if (operation.type === "EXPORTACION" && state === "EN_CLIENTE") {
+    return ["EN_CARGUE", "CARGADO"];
+  }
+  if (operation.type === "EXPORTACION" && state === "EN_PUERTO") {
+    return ["EN_DESCARGUE", "DESCARGADO"];
+  }
+  if (operation.type === "IMPORTACION" && state === "EN_CLIENTE") {
+    return ["EN_DESCARGUE", "DESCARGADO", "EN_PISO"];
+  }
+  if (operation.type === "RETIRO_VACIO" && state === "EN_CLIENTE") {
+    return ["EN_PISO"];
+  }
+  if (
+    operation.type === "DEVOLUCION_VACIO" &&
+    state === "LLEGADA_ORIGEN"
+  ) {
+    return ["EN_CARGUE", "CARGADO"];
+  }
+  if (
+    operation.type === "DEVOLUCION_VACIO" &&
+    state === "LLEGADA_DESTINO"
+  ) {
+    return ["EN_DESCARGUE", "DESCARGADO"];
+  }
+  return [];
+};
+
+export function getRequiredContainerAction(
+  operation: OperationData,
+  requiredStatuses?: OperationContainerStatus[],
+): OperationContainerStatus | null {
+  const state = normalizeTravelState(operation.estadoViaje);
+  const currentStatus = operation.containerStatus || "PENDIENTE";
+  const required = requiredStatuses?.length
+    ? requiredStatuses
+    : getMilestoneContainerStatuses(operation, state);
+
+  if (required.includes(currentStatus)) return null;
+
+  const nextStatuses = containerStatusTransitions[currentStatus] ?? [];
+  const directTarget = required.find((status) =>
+    nextStatuses.includes(status),
+  );
+  if (directTarget) return directTarget;
+
+  const intermediateStatuses: Partial<
+    Record<OperationContainerStatus, Partial<Record<OperationContainerStatus, OperationContainerStatus>>>
+  > = {
+    PENDIENTE: {
+      CARGADO: "EN_CARGUE",
+      DESCARGADO: "EN_CARGUE",
+      EN_PISO: "EN_CARGUE",
+    },
+    EN_CARGUE: {
+      DESCARGADO: "CARGADO",
+      EN_PISO: "CARGADO",
+    },
+    CARGADO: {
+      DESCARGADO: "EN_DESCARGUE",
+    },
+  };
+  for (const target of required) {
+    const intermediate = intermediateStatuses[currentStatus]?.[target];
+    if (intermediate && nextStatuses.includes(intermediate)) {
+      return intermediate;
+    }
+  }
+  return null;
 }
 
 function isContainerReady(
@@ -289,10 +420,14 @@ function isStepComplete(
   if (currentIndex < stepIndex) return false;
 
   if (step.action === "ocr") {
-    return hasValidEvidence(operation, CONTAINER_NUMBER_EVIDENCE);
+    return hasStageEvidence(
+      operation,
+      CONTAINER_NUMBER_EVIDENCE,
+      step.evidenceStage,
+    );
   }
   if (step.action === "evidence" && !step.nextState) {
-    return hasAllEvidence(operation, step.evidenceTypes);
+    return hasAllEvidence(operation, step.evidenceTypes, step.evidenceStage);
   }
   return false;
 }
@@ -370,6 +505,7 @@ const EMPTY_PICKUP_STEPS: WorkflowStep[] = [
     label: "SUBIR SOPORTE Y FINALIZAR",
     nextState: "FINALIZADO",
     action: "close",
+    requiresContainerStatus: ["EN_PISO"],
   },
 ];
 
@@ -394,6 +530,7 @@ const EMPTY_RETURN_STEPS: WorkflowStep[] = [
     label: "INICIAR TRASLADO AL DEPÓSITO O PUERTO",
     nextState: "EN_RUTA_DESTINO",
     action: "update",
+    requiresContainerStatus: ["CARGADO"],
   },
   {
     id: "empty-return-arrive-destination",
@@ -408,6 +545,7 @@ const EMPTY_RETURN_STEPS: WorkflowStep[] = [
     label: "SUBIR TIRILLA EIR Y FINALIZAR",
     nextState: "FINALIZADO",
     action: "close",
+    requiresContainerStatus: ["DESCARGADO"],
   },
 ];
 
@@ -607,13 +745,22 @@ const IMPORT_TO_YARD_STEPS: WorkflowStep[] = [
     evidenceTypes: [PORT_ENTRY_EVIDENCE],
   },
   {
+    id: "impo-leave-port",
+    travelState: "EN_PUERTO",
+    label: "SUBIR ARIN DE SALIDA DEL PUERTO",
+    action: "evidence",
+    evidenceTypes: [PORT_EXIT_EVIDENCE],
+    requiresEvidence: [PORT_ENTRY_EVIDENCE],
+  },
+  {
     id: "impo-ocr",
     travelState: "EN_PUERTO",
-    label: "ESCANEAR CONTENEDOR (OCR)",
+    label: "CAPTURA FUERA DE TERMINAL: FOTO OCR DEL CONTENEDOR",
     action: "ocr",
-    requiresContainerStatus: ["EN_CARGUE", "CARGADO"],
+    evidenceStage: "EN_PUERTO_CARGADO",
+    requiresContainerStatus: ["CARGADO"],
     instruction:
-      "Antes de escanear, reporta el estado del contenedor como EN CARGUE.",
+      "Fuera de la terminal, toma la foto OCR del contenedor cargado en el vehículo.",
   },
   {
     id: "impo-seals",
@@ -622,18 +769,28 @@ const IMPORT_TO_YARD_STEPS: WorkflowStep[] = [
     action: "evidence",
     evidenceTypes: [SEAL_EVIDENCE],
     requiresEvidence: [CONTAINER_NUMBER_EVIDENCE],
+    requiresEvidenceStage: "EN_PUERTO_CARGADO",
+    evidenceStage: "EN_PUERTO_CARGADO",
     requiresContainerStatus: ["CARGADO"],
     instruction:
       "El contenedor ya debe estar montado: márcalo como CARGADO y luego sube las fotos de los sellos.",
   },
   {
-    id: "impo-leave-port",
+    id: "impo-to-client",
     travelState: "EN_PUERTO",
-    label: "SUBIR ARIN DE SALIDA E INICIAR RUTA A CLIENTE",
+    label: "INICIAR RUTA A CLIENTE",
     nextState: "RUMBO_AL_CLIENTE",
-    action: "evidence",
-    evidenceTypes: [PORT_EXIT_EVIDENCE],
-    requiresEvidence: [PORT_ENTRY_EVIDENCE, SEAL_EVIDENCE, CONTAINER_NUMBER_EVIDENCE],
+    action: "update",
+    requiresEvidence: [
+      PORT_ENTRY_EVIDENCE,
+      PORT_EXIT_EVIDENCE,
+      SEAL_EVIDENCE,
+      CONTAINER_NUMBER_EVIDENCE,
+    ],
+    requiresEvidenceStages: {
+      [SEAL_EVIDENCE]: "EN_PUERTO_CARGADO",
+      [CONTAINER_NUMBER_EVIDENCE]: "EN_PUERTO_CARGADO",
+    },
     requiresContainerStatus: ["CARGADO"],
     requiresSeal: true,
   },
@@ -671,6 +828,25 @@ const IMPORT_TO_YARD_STEPS: WorkflowStep[] = [
     instruction:
       "Adjunta la Tirilla EIR emitida por el depósito o puerto. El comodato es un documento distinto y no reemplaza este soporte.",
   },
+];
+
+const IMPORT_FLOOR_CLOSE_STEP: WorkflowStep = {
+  id: "impo-floor-close",
+  travelState: "EN_CLIENTE",
+  label: "SUBIR SOPORTE Y CERRAR TRAMO EN CLIENTE",
+  nextState: "FINALIZADO",
+  action: "close",
+  requiresContainerStatus: ["EN_PISO"],
+  instruction:
+    "El contenedor quedó en piso. Adjunta el soporte del cierre físico; su devolución se programa en una operación hija.",
+};
+
+const IMPORT_TO_FLOOR_STEPS: WorkflowStep[] = [
+  ...IMPORT_TO_YARD_STEPS.filter(
+    (step) =>
+      !["impo-to-yard", "impo-arrive-yard", "impo-close"].includes(step.id),
+  ),
+  IMPORT_FLOOR_CLOSE_STEP,
 ];
 
 const EXPORT_STEPS: WorkflowStep[] = [
@@ -723,6 +899,7 @@ const EXPORT_STEPS: WorkflowStep[] = [
     label: "SUBIR FOTO CARGANDO EL CONTENEDOR",
     action: "evidence",
     evidenceTypes: [LOADING_PHOTO_EVIDENCE],
+    requiresContainerStatus: ["EN_CARGUE"],
     instruction:
       "Toma la foto del cargue y reporta el estado del contenedor como EN CARGUE.",
   },
@@ -739,11 +916,30 @@ const EXPORT_STEPS: WorkflowStep[] = [
       "Antes de salir al puerto, finaliza el cargue y reporta el contenedor como CARGADO.",
   },
   {
+    id: "expo-pre-port-ocr",
+    travelState: "RUMBO_AL_PUERTO",
+    label: "FOTO OCR DEL CONTENEDOR CARGADO (FUERA DEL PUERTO)",
+    action: "ocr",
+    evidenceStage: "PRE_INGRESO_PUERTO",
+  },
+  {
+    id: "expo-pre-port-seals",
+    travelState: "RUMBO_AL_PUERTO",
+    label: "SUBIR FOTO DEL SELLO (FUERA DEL PUERTO)",
+    action: "evidence",
+    evidenceTypes: [SEAL_EVIDENCE],
+    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE],
+    requiresEvidenceStage: "PRE_INGRESO_PUERTO",
+    evidenceStage: "PRE_INGRESO_PUERTO",
+  },
+  {
     id: "expo-arrive-port",
     travelState: "RUMBO_AL_PUERTO",
     label: "REPORTAR LLEGADA AL PUERTO",
     nextState: "EN_PUERTO",
     action: "update",
+    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE, SEAL_EVIDENCE],
+    requiresEvidenceStage: "PRE_INGRESO_PUERTO",
   },
   {
     id: "expo-port-entry",
@@ -751,6 +947,7 @@ const EXPORT_STEPS: WorkflowStep[] = [
     label: "SUBIR ARIN DE INGRESO A PUERTO",
     action: "evidence",
     evidenceTypes: [PORT_ENTRY_EVIDENCE],
+    requiresContainerStatus: ["EN_DESCARGUE", "DESCARGADO"],
   },
   {
     id: "expo-close",
@@ -844,6 +1041,18 @@ const AMPARADO_IMPORT_STEPS: WorkflowStep[] = [
   ).map((step) => ({ ...step, id: `amparo-${step.id}` })),
 ];
 
+const AMPARADO_IMPORT_FLOOR_STEPS: WorkflowStep[] = [
+  ...AMPARADO_IMPORT_STEPS.filter(
+    (step) =>
+      ![
+        "amparo-impo-to-yard",
+        "amparo-impo-arrive-yard",
+        "amparo-impo-close",
+      ].includes(step.id),
+  ),
+  { ...IMPORT_FLOOR_CLOSE_STEP, id: "amparo-impo-floor-close" },
+];
+
 const PENDING_RETURN_STEPS: WorkflowStep[] = [
   {
     id: "return-start",
@@ -870,6 +1079,7 @@ const PENDING_RETURN_STEPS: WorkflowStep[] = [
 
 export function OperationWorkflow({
   operation,
+  containerCardRef,
   isLoading: isProcessing,
   blockingOperationId,
   onUpdateState,
@@ -939,9 +1149,15 @@ export function OperationWorkflow({
       if (operation.containerStatus === "PENDIENTE_DEVOLUCION") {
         workflowSteps = PENDING_RETURN_STEPS;
       } else if (operation.isAmparado) {
-        workflowSteps = AMPARADO_IMPORT_STEPS;
+        workflowSteps =
+          operation.containerStatus === "EN_PISO"
+            ? AMPARADO_IMPORT_FLOOR_STEPS
+            : AMPARADO_IMPORT_STEPS;
       } else {
-        workflowSteps = IMPORT_TO_YARD_STEPS;
+        workflowSteps =
+          operation.containerStatus === "EN_PISO"
+            ? IMPORT_TO_FLOOR_STEPS
+            : IMPORT_TO_YARD_STEPS;
       }
     } else if (operation.type === "EXPORTACION") {
       workflowSteps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
@@ -966,6 +1182,32 @@ export function OperationWorkflow({
         ),
       );
   const activeStep = isFinished ? undefined : workflowSteps[currentIndex];
+  const requiredContainerAction =
+    operation.isContainerized === false || isFinished
+      ? null
+      : getRequiredContainerAction(
+          operation,
+          activeStep?.requiresContainerStatus,
+        );
+  const focusContainerAction = useCallback(
+    (status: OperationContainerStatus) => {
+      setSelectedContainerStatus(status);
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)")
+        .matches
+        ? "auto"
+        : "smooth";
+      containerCardRef.current?.scrollIntoView({
+        behavior,
+        block: "center",
+      });
+    },
+    [containerCardRef],
+  );
+  useEffect(() => {
+    if (requiredContainerAction) {
+      focusContainerAction(requiredContainerAction);
+    }
+  }, [requiredContainerAction, currentState, operation.id, focusContainerAction]);
   const travelStartDate = getTravelStartDate(operation, activeStep?.nextState);
   const isTravelStartBlocked =
     Boolean(activeStep?.nextState) &&
@@ -1158,7 +1400,12 @@ export function OperationWorkflow({
           </div>
         </section>
       ) : (
-        <section className={styles.containerStatusSection}>
+        <section
+          ref={containerCardRef}
+          className={`${styles.containerStatusSection} ${
+            requiredContainerAction ? styles.containerStatusAttention : ""
+          }`}
+        >
           <h3 className={styles.title}>ESTADO DEL CONTENEDOR</h3>
           <p>
             Número: {operation.containerNumber || "Pendiente de validación OCR"}
@@ -1213,6 +1460,13 @@ export function OperationWorkflow({
           {activeStep?.instruction && (
             <p className={styles.containerHint} role="status">
               {activeStep.instruction}
+            </p>
+          )}
+          {requiredContainerAction && (
+            <p className={styles.containerHint} role="alert">
+              Antes de continuar, actualiza el contenedor a{" "}
+              <strong>{requiredContainerAction.replace(/_/g, " ")}</strong> y
+              confirma el cambio.
             </p>
           )}
           <label
@@ -1282,6 +1536,21 @@ export function OperationWorkflow({
           >
             Reportar estado
           </Button>
+          {operation.containerStatus === "EN_PISO" && (
+            <div className={styles.floorReportNotice} role="status">
+              <strong>
+                Se generó automáticamente una novedad y un reporte de cobro
+                pendiente por contenedor en piso.
+              </strong>
+              <Button
+                variant="secondary"
+                disabled={isLoading}
+                onClick={() => onReportExtra(operation.id, "EN_PISO")}
+              >
+                Adjuntar foto de soporte
+              </Button>
+            </div>
+          )}
           {operation.status === "EN_CURSO" && (
             <Button
               variant="secondary"
@@ -1364,10 +1633,12 @@ export function OperationWorkflow({
         {workflowSteps.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isActive = index === currentIndex;
+          const missingContainerStatus =
+            isActive &&
+            !isContainerReady(operation, step.requiresContainerStatus);
           const missingPrerequisites =
             isActive &&
-            (!isContainerReady(operation, step.requiresContainerStatus) ||
-              !hasAllEvidence(operation, step.requiresEvidence) ||
+            (!hasRequiredEvidence(operation, step) ||
               (Boolean(step.requiresCargoStatus?.length) &&
                 !step.requiresCargoStatus?.includes(
                   operation.cargoStatus || "PENDIENTE",
@@ -1376,7 +1647,7 @@ export function OperationWorkflow({
           const missingRequirements: string[] = [];
           if (
             isActive &&
-            !isContainerReady(operation, step.requiresContainerStatus)
+            missingContainerStatus
           ) {
             missingRequirements.push(
               `Estado del contenedor: ${(step.requiresContainerStatus ?? []).map((status) => status.replace(/_/g, " ")).join(" o ")}.`,
@@ -1384,7 +1655,10 @@ export function OperationWorkflow({
           }
           if (isActive) {
             for (const type of step.requiresEvidence ?? []) {
-              if (!hasValidEvidence(operation, type)) {
+              const stage =
+                step.requiresEvidenceStages?.[type] ??
+                step.requiresEvidenceStage;
+              if (!hasStageEvidence(operation, type, stage)) {
                 const label =
                   type === LOADING_PHOTO_EVIDENCE
                     ? "foto del cargue"
@@ -1451,7 +1725,20 @@ export function OperationWorkflow({
                           : styles.lockedBtn
                 }`}
                 disabled={isDisabled}
-                onClick={() => isClickable && handleAction(step)}
+                onClick={() => {
+                  if (!isClickable) return;
+                  const requiredStatus = isActive
+                    ? getRequiredContainerAction(
+                        operation,
+                        step.requiresContainerStatus,
+                      )
+                    : null;
+                  if (requiredStatus) {
+                    focusContainerAction(requiredStatus);
+                    return;
+                  }
+                  handleAction(step);
+                }}
               >
                 <span className={styles.stepIcon}>
                   {hasRejectedEvidence

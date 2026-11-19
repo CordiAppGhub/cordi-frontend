@@ -5,6 +5,7 @@ import {
   OperationsClientGroup,
   Evidence,
 } from "@/types/operation-types";
+import type { TrailerType } from "@/types/vehicles";
 import type { CargoStatus, OperationContainerStatus } from "@/types/driver-portal.types";
 
 export async function correctContainerState(
@@ -189,8 +190,10 @@ export type UpdateOperationPayload = Partial<{
   }>;
   isContainerized: boolean;
   vehicleCapacityId: number | null;
+  requiredTrailerType: TrailerType | null;
   clientId: number;
   isAnticipada: boolean;
+  destinoTemporalId: number | null;
   origenId: number | null;
   cargueId: number;
   descargueId: number;
@@ -213,7 +216,6 @@ export type UpdateOperationPayload = Partial<{
   packageCount: number | null;
   volumeM3: number | null;
   sealNumber: string;
-  pinRetiro: string;
   documentoTransporte: string;
   numeroPedido: string;
   observaciones: string;
@@ -221,7 +223,12 @@ export type UpdateOperationPayload = Partial<{
   fechaCitaDestino: string;
   nuevoDestinoId: number;
   fechaCitaDesvio: string;
-  fechaRetiro: string;
+  fechaRetiro: string | null;
+  fechaLimiteFisico: string | null;
+  diasLibresDocumental: number | null;
+  fechaLimiteDocumental: string | null;
+  diasLibresDevolucion: number | null;
+  fechaLimiteDevolucion: string | null;
   depositoDevolucionId: number | null;
   programarDesvio: boolean;
   shippingLineId: number | null;
@@ -231,6 +238,12 @@ export type UpdateOperationPayload = Partial<{
 
 export interface AssignExternalResourcesPayload {
   plate: string;
+  trailerPlate?: string;
+  tractorAxles?: 2 | 3;
+  trailerType?: TrailerType;
+  trailerAxles?: 2 | 3;
+  cargoCapacityKg?: number;
+  force?: boolean;
   driverName: string;
   driverCedula: string;
   driverPhone: string;
@@ -271,6 +284,13 @@ export interface ExternalEvidenceUploads {
 // SERVICIO PRINCIPAL UNIFICADO
 // ==========================================
 export const operationService = {
+  getEvidencePdf: async (operationId: number): Promise<Blob> => {
+    const response = await api.get<Blob>(
+      `/operations/${operationId}/evidences-pdf`,
+      { responseType: "blob" },
+    );
+    return response.data;
+  },
   reportIssue: async (
     operationId: number,
     payload: OperationIssueInput,
@@ -467,7 +487,7 @@ export const operationService = {
       result: InspectionResult;
       newLocationId?: number;
       observations?: string;
-      comodato?: File;
+      comodato?: File | File[];
     },
   ): Promise<Operation> => {
     const formData = new FormData();
@@ -476,7 +496,12 @@ export const operationService = {
       formData.append("newLocationId", String(data.newLocationId));
     }
     if (data.observations) formData.append("observations", data.observations);
-    if (data.comodato) formData.append("comodato", data.comodato);
+    const comodatos = data.comodato
+      ? Array.isArray(data.comodato)
+        ? data.comodato
+        : [data.comodato]
+      : [];
+    comodatos.forEach((file) => formData.append("comodatos", file));
     const response = await api.post<Operation>(
       `/operations/${operationId}/inspection-result`,
       formData,

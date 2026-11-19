@@ -23,6 +23,10 @@ export interface CargoVehicleType {
   id: number;
   code: string;
   name: string;
+  tractorAxles: number | null;
+  trailerAxles: number | null;
+  requiresTrailer: boolean;
+  maxPayloadKg: number | null;
   isActive: boolean;
 }
 

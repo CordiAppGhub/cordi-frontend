@@ -13,8 +13,16 @@ export type FormFieldType =
   | 'time' | 'file' 
   | 'custom'; 
 
-// 🚀 Ampliamos para permitir arreglos de objetos (como clientsData)
-export type FormFieldValue = string | number | boolean | string[] | number[] | any[] | Record<string, any> | null | undefined; 
+export type FormFieldValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | number[]
+  | unknown[]
+  | Record<string, unknown>
+  | null
+  | undefined;
 
 export interface FormOption {
   label: string;
@@ -37,11 +45,13 @@ export interface FormField {
   gridSpan?: number;
   fullWidth?: boolean;
   sectionTitle?: boolean;
+  collapsibleGroup?: string;
+  collapsibleGroupTitle?: string;
   layoutClass?: 'cargoTypeSection';
   reserveSpaceWhenHidden?: boolean;
   render?: (
-    value: any,
-    onChange: (newValue: any) => void,
+    value: FormFieldValue,
+    onChange: (newValue: FormFieldValue) => void,
     validationErrors?: Record<string, string>,
   ) => React.ReactNode;
   defaultValue?: FormFieldValue;

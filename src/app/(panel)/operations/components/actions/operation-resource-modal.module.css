@@ -73,6 +73,11 @@
   line-height: 1.5;
 }
 
+.externalFleetLabel {
+  color: var(--color-brand-800);
+  font-size: 0.82rem;
+}
+
 .ownershipToggle {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

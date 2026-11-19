@@ -26,19 +26,26 @@ export function useDashboard(filters: DashboardFilters = {}) {
     placeholderData: (previousData) => previousData,
   });
 
-  useEffect(() => {
-    const handleUpdate = () => {
+ // Dentro de useDashboard.ts
+useEffect(() => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const handleUpdate = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    };
+    }, 500);
+  };
 
-    socket.on('global_operations_updated', handleUpdate);
-    socket.on('operation_alerts_updated', handleUpdate);
+  socket.on('global_operations_updated', handleUpdate);
+  socket.on('operation_alerts_updated', handleUpdate);
 
-    return () => {
-      socket.off('global_operations_updated', handleUpdate);
-      socket.off('operation_alerts_updated', handleUpdate);
-    };
-  }, [queryClient]);
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    socket.off('global_operations_updated', handleUpdate);
+    socket.off('operation_alerts_updated', handleUpdate);
+  };
+}, [queryClient]);
 
   let errorMessage: string | null = null;
   if (queryError) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useState, useMemo, useEffect } from "react";
+import { createElement, useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FormField,
@@ -18,6 +18,7 @@ import { useTrafico } from "./use-operations";
 import { OperationDateTimePicker } from "../components/forms/operation-date-time-picker";
 import { operationCargoSchema } from "@/schemas/operation.schema";
 import { ContainerType } from "@/types/tariff-ypes";
+import type { TrailerType } from "@/types/vehicles";
 import { operationOptions } from "@/app/constants/operation.constants";
 import { formatAppointmentLocationLabel } from "@/utils/appointment-label";
 
@@ -47,6 +48,16 @@ const containerTypeLabels: Record<ContainerType, string> = {
   ISO_TANK_20: "20' ISO Tanque (20TK)",
 };
 
+const trailerTypeValues: TrailerType[] = [
+  "PLANCHA",
+  "GRILLO",
+  "TANQUE",
+  "PLATAFORMA",
+  "FURGON",
+  "CAMA_BAJA",
+  "PORTACONTENEDOR",
+];
+
 const getContainerSize = (value?: string | null): ContainerType | null =>
   containerSizeValues.find((containerSize) => containerSize === value) ?? null;
 
@@ -70,9 +81,34 @@ const formatDateForForm = (dateValue?: string | Date | null) => {
   return localDate.toISOString().slice(0, 16);
 };
 
+const calculateDeadline = (
+  fechaRetiro: FormFieldValue,
+  diasLibres: FormFieldValue,
+): string => {
+  if (
+    typeof fechaRetiro !== "string" ||
+    !fechaRetiro.trim() ||
+    diasLibres === "" ||
+    diasLibres === null ||
+    diasLibres === undefined
+  ) {
+    return "";
+  }
+
+  const days = Number(diasLibres);
+  const deadline = new Date(fechaRetiro);
+  if (!Number.isInteger(days) || days < 0 || Number.isNaN(deadline.getTime())) {
+    return "";
+  }
+
+  deadline.setDate(deadline.getDate() + days);
+  return formatDateForForm(deadline);
+};
+
 export const useOperationForm = (
   onClose: () => void,
   operationBase?: Operation | null,
+  onCreatedForDispatch?: (operation: Operation) => void,
 ) => {
   const { updateOperation, createOperation, isLoadingOperations } =
     useTrafico();
@@ -88,10 +124,23 @@ export const useOperationForm = (
     getLiveQuote,
     resetQuote,
     vehicleTypes,
+    isLoadingVehicles: isLoadingVehicleTypes,
+    vehicleTypesError,
   } = useTariffs();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [programarDesvio, setProgramarDesvio] = useState(false);
+  const formValuesRef = useRef<Record<string, FormFieldValue>>({
+    fechaRetiro: formatDateForForm(operationBase?.fechaRetiro),
+    diasLibresDocumental: operationBase?.diasLibresDocumental ?? "",
+    fechaLimiteDocumental: formatDateForForm(
+      operationBase?.fechaLimiteDocumental,
+    ),
+    diasLibresDevolucion: operationBase?.diasLibresDevolucion ?? "",
+    fechaLimiteDevolucion: formatDateForForm(
+      operationBase?.fechaLimiteDevolucion,
+    ),
+  });
 
   const isEdit = !!operationBase;
 
@@ -103,6 +152,9 @@ export const useOperationForm = (
   );
   const [cargoFormat, setCargoFormat] = useState<"CONTENERIZADA" | "SUELTA">(
     operationBase?.isContainerized ? "CONTENERIZADA" : "SUELTA",
+  );
+  const [cargoWeightKg, setCargoWeightKg] = useState<number | null>(
+    operationBase?.weight ?? null,
   );
   const [containerSize, setContainerSize] = useState<ContainerType | null>(
     getContainerSize(operationBase?.containerType) ?? "DRY_40",
@@ -133,6 +185,40 @@ export const useOperationForm = (
   const isRetiroVacio = currentType === "RETIRO_VACIO";
   const isDevolucion =
     currentType === "DEVOLUCION_VACIO" || currentType === "DEVOLUCION";
+  const relatedParentOperationsQuery = useQuery({
+    queryKey: ["empty-return-parent-operations", clientId],
+    queryFn: () =>
+      operationService.getActiveOperationsByClient(clientId, {
+        page: 1,
+        limit: 50,
+      }),
+    enabled: isDevolucion && clientId !== null,
+  });
+  const relatedParentOperations = (
+    relatedParentOperationsQuery.data?.data ?? []
+  ).filter(
+    (operation) =>
+      operation.isContainerized &&
+      (operation.type === "IMPORTACION" || operation.type === "EXPORTACION") &&
+      Boolean(operation.containerNumber),
+  );
+  const relatedParentOperationOptions = useMemo(() => {
+    const options = relatedParentOperations.map((operation) => ({
+      value: operation.id,
+      label: `#${operation.id} · ${operation.type === "IMPORTACION" ? "Importación" : "Exportación"} · ${operation.containerNumber}`,
+    }));
+    const currentRelatedOperationId = operationBase?.relatedOperationId;
+    if (
+      currentRelatedOperationId &&
+      !options.some((option) => option.value === currentRelatedOperationId)
+    ) {
+      options.unshift({
+        value: currentRelatedOperationId,
+        label: `Operación vinculada #${currentRelatedOperationId}`,
+      });
+    }
+    return [{ value: "", label: "Sin operación vinculada" }, ...options];
+  }, [relatedParentOperations, operationBase?.relatedOperationId]);
 
   const quoteLocationId =
     isImport || isExport
@@ -155,6 +241,7 @@ export const useOperationForm = (
         routeScope: null,
         containerSize: "DRY_40",
         vehicleCapacityId: "",
+        requiredTrailerType: "",
         programarDesvio: false,
         nuevoDestinoId: "",
         fechaCitaDesvio: "",
@@ -167,6 +254,12 @@ export const useOperationForm = (
         requiresInspection: false,
         relatedOperationId: "",
         containerNumber: "",
+        fechaRetiro: "",
+        fechaLimiteFisico: "",
+        diasLibresDocumental: "",
+        fechaLimiteDocumental: "",
+        diasLibresDevolucion: "",
+        fechaLimiteDevolucion: "",
       };
     }
 
@@ -176,6 +269,7 @@ export const useOperationForm = (
       cargoFormat: operationBase.isContainerized ? "CONTENERIZADA" : "SUELTA",
       isContainerized: operationBase.isContainerized,
       vehicleCapacityId: operationBase.vehicleCapacityId ?? "",
+      requiredTrailerType: operationBase.requiredTrailerType ?? "",
       shippingLineId: operationBase.shippingLineId
         ? String(operationBase.shippingLineId)
         : "",
@@ -203,7 +297,6 @@ export const useOperationForm = (
       packageCount: operationBase.packageCount ?? "",
       volumeM3: operationBase.volumeM3 ?? "",
       sealNumber: operationBase.sealNumber || "",
-      pinRetiro: operationBase.pinRetiro || "",
 
       numeroPedido: operationBase.numeroPedido || "",
       documentoTransporte: operationBase.documentoTransporte || "",
@@ -215,6 +308,15 @@ export const useOperationForm = (
       fechaCitaOrigen: formatDateForForm(operationBase.fechaCitaOrigen),
       fechaCitaDestino: formatDateForForm(operationBase.fechaCitaDestino),
       fechaRetiro: formatDateForForm(operationBase.fechaRetiro),
+      fechaLimiteFisico: formatDateForForm(operationBase.fechaLimiteFisico),
+      diasLibresDocumental: operationBase.diasLibresDocumental ?? "",
+      fechaLimiteDocumental: formatDateForForm(
+        operationBase.fechaLimiteDocumental,
+      ),
+      diasLibresDevolucion: operationBase.diasLibresDevolucion ?? "",
+      fechaLimiteDevolucion: formatDateForForm(
+        operationBase.fechaLimiteDevolucion,
+      ),
       nuevoDestinoId: operationBase.nuevoDestinoId || "",
       fechaCitaDesvio: formatDateForForm(operationBase.fechaCitaDesvio),
       programarDesvio: false,
@@ -284,6 +386,14 @@ export const useOperationForm = (
 
     return options;
   }, [clients, isEdit, clientId, operationBase]);
+
+  const looseCargoLocationOptions = useMemo(
+    () => locations.map((location) => ({
+      value: location.id,
+      label: location.name,
+    })),
+    [locations],
+  );
 
   const origenOptions = useMemo(() => {
     if (isDevolucion) {
@@ -478,14 +588,6 @@ export const useOperationForm = (
         layoutClass: "cargoTypeSection",
         reserveSpaceWhenHidden: true,
       },
-      {
-        name: "pinRetiro",
-        label: "PIN de Retiro",
-        type: "text",
-        placeholder: "Opcional",
-        visible: (formData) =>
-          !isDevolucion && formData.isContainerized === true,
-      },
       ...(!isEdit
         ? [
             {
@@ -526,7 +628,10 @@ export const useOperationForm = (
                 ? "Puerto de Retiro (Vacío) *"
                 : "Puerto de Retiro (Lleno) *",
           type: "select",
-          options: origenOptions,
+          options: (formData) =>
+            formData.isContainerized === true || isImport
+              ? origenOptions
+              : looseCargoLocationOptions,
         },
         ...(isExport
           ? [
@@ -598,7 +703,10 @@ export const useOperationForm = (
                 ? "Destino del contenedor vacío *"
                 : "Patio de Devolución (Vacío) *",
           type: "select",
-          options: destinoOptions,
+          options: (formData) =>
+            formData.isContainerized === true || isExport
+              ? destinoOptions
+              : looseCargoLocationOptions,
         },
         {
           name: "destinoCustomAddressEnabled",
@@ -708,6 +816,46 @@ export const useOperationForm = (
         }
       }
 
+      generalFields.push(
+        {
+          name: "fechasLimite",
+          label: "Fechas límite",
+          type: "text",
+          sectionTitle: true,
+          fullWidth: true,
+        },
+      );
+      if (isImport || isDevolucion) {
+        generalFields.push(dateTimeField("fechaRetiro", "Fecha de retiro"));
+      }
+      generalFields.push(
+        dateTimeField("fechaLimiteFisico", "límite físico en puerto"),
+        {
+          name: "diasLibresDocumental",
+          label: "Días libres documentales",
+          type: "number",
+          placeholder: "Opcional",
+        },
+        dateTimeField(
+          "fechaLimiteDocumental",
+          "Límite de cierre documental",
+        ),
+      );
+      if (isImport || isExport || isDevolucion) {
+        generalFields.push(
+          {
+            name: "diasLibresDevolucion",
+            label: "Días libres de naviera para devolución de vacío",
+            type: "number",
+            placeholder: "Opcional",
+          },
+          dateTimeField(
+            "fechaLimiteDevolucion",
+            "Límite de devolución del contenedor vacío",
+          ),
+        );
+      }
+
       if (isImport) {
         generalFields.push(
           {
@@ -775,9 +923,9 @@ export const useOperationForm = (
           },
           {
             name: "relatedOperationId",
-            label: "ID de importación original (opcional)",
-            type: "number",
-            placeholder: "Ingrese el ID de la operación de importación",
+            label: "Operación padre (importación o exportación)",
+            type: "select",
+            options: relatedParentOperationOptions,
             fullWidth: true,
           },
         ]
@@ -809,16 +957,65 @@ export const useOperationForm = (
             },
             {
               name: "vehicleCapacityId",
-              label: "Capacidad del vehículo *",
+              label: "Configuración Vehicular / Ejes *",
+              type: "select",
+              options: (formData) => {
+                const enteredWeight =
+                  typeof formData.weight === "number" ||
+                  typeof formData.weight === "string"
+                    ? Number(formData.weight)
+                    : 0;
+                return [
+                  { value: "", label: "-- Seleccionar configuración --" },
+                  ...vehicleTypes
+                    .map((vehicleType) => {
+                      const supportsWeight =
+                        !enteredWeight ||
+                        vehicleType.maxPayloadKg === null ||
+                        enteredWeight <= vehicleType.maxPayloadKg;
+                      const trailerDescription = vehicleType.requiresTrailer
+                        ? ` + tráiler ${vehicleType.trailerAxles ?? "?"} ejes`
+                        : " · rígido";
+                      const payloadDescription =
+                        vehicleType.maxPayloadKg === null
+                          ? "sin límite configurado"
+                          : `máx. ${vehicleType.maxPayloadKg.toLocaleString("es-CO")} kg`;
+                      return {
+                        value: vehicleType.id,
+                        supportsWeight,
+                        label: `${vehicleType.name} · cabezote ${vehicleType.tractorAxles ?? "?"} ejes${trailerDescription} · ${payloadDescription}${supportsWeight ? "" : " · NO SOPORTA EL PESO"}`,
+                      };
+                    })
+                    .sort(
+                      (left, right) =>
+                        Number(right.supportsWeight) -
+                        Number(left.supportsWeight),
+                    ),
+                ];
+              },
+              visible: (formData) => formData.isContainerized !== true,
+            },
+            {
+              name: "requiredTrailerType",
+              label: "Tipo de Tráiler / Carrocería",
               type: "select",
               options: [
-                { value: "", label: "-- Seleccionar capacidad --" },
-                ...vehicleTypes.map((vehicleType) => ({
-                  value: vehicleType.id,
-                  label: vehicleType.name,
-                })),
+                { value: "", label: "-- Sin requisito específico --" },
+                { value: "PLANCHA", label: "Plancha" },
+                { value: "PLATAFORMA", label: "Plataforma" },
+                { value: "GRILLO", label: "Grillo" },
+                { value: "TANQUE", label: "Tanque" },
+                { value: "FURGON", label: "Furgón" },
+                { value: "CAMA_BAJA", label: "Cama baja" },
+                { value: "PORTACONTENEDOR", label: "Portacontenedor" },
               ],
-              visible: (formData) => formData.isContainerized !== true,
+              visible: (formData) =>
+                formData.isContainerized !== true &&
+                (!formData.vehicleCapacityId ||
+                  vehicleTypes.find(
+                    (vehicleType) =>
+                      vehicleType.id === Number(formData.vehicleCapacityId),
+                  )?.requiresTrailer === true),
             },
             {
               name: "weight",
@@ -828,24 +1025,30 @@ export const useOperationForm = (
               visible: (formData) => formData.isContainerized !== true,
             },
             {
-              name: "volumeM3",
-              label: "Volumen (m³) *",
-              type: "number",
-              placeholder: "Volumen en metros cúbicos",
-              visible: (formData) => formData.isContainerized !== true,
-            },
-            {
-              name: "packageType",
-              label: "Tipo de empaque *",
-              type: "text",
-              placeholder: "Ej: Caja, estiba, bulto",
-              visible: (formData) => formData.isContainerized !== true,
-            },
-            {
-              name: "packageCount",
-              label: "Cantidad de bultos/estibas *",
-              type: "number",
-              placeholder: "Número de bultos o estibas",
+              name: "configurationWeightWarning",
+              label: "",
+              type: "custom",
+              fullWidth: true,
+              render: () => {
+                const selectedConfiguration = vehicleTypes.find(
+                  (vehicleType) => vehicleType.id === vehicleTypeId,
+                );
+                if (
+                  !cargoWeightKg ||
+                  !selectedConfiguration?.maxPayloadKg ||
+                  cargoWeightKg <= selectedConfiguration.maxPayloadKg
+                ) {
+                  return null;
+                }
+                return createElement(
+                  "span",
+                  {
+                    role: "alert",
+                    style: { color: "#b91c1c", fontWeight: 600 },
+                  },
+                  `El peso supera el máximo de ${selectedConfiguration.maxPayloadKg.toLocaleString("es-CO")} kg para esta configuración.`,
+                );
+              },
               visible: (formData) => formData.isContainerized !== true,
             },
             {
@@ -857,10 +1060,37 @@ export const useOperationForm = (
               visible: (formData) => formData.isContainerized !== true,
             },
             {
+              name: "packageType",
+              label: "Tipo de empaque",
+              type: "text",
+              placeholder: "Ej: Caja, estiba, bulto",
+              collapsibleGroup: "cargoDetails",
+              collapsibleGroupTitle:
+                "Detalles adicionales de empaque y medidas (opcional)",
+              visible: (formData) => formData.isContainerized !== true,
+            },
+            {
+              name: "packageCount",
+              label: "Cantidad de bultos/estibas",
+              type: "number",
+              placeholder: "Número de bultos o estibas",
+              collapsibleGroup: "cargoDetails",
+              visible: (formData) => formData.isContainerized !== true,
+            },
+            {
+              name: "volumeM3",
+              label: "Volumen (m³)",
+              type: "number",
+              placeholder: "Volumen en metros cúbicos",
+              collapsibleGroup: "cargoDetails",
+              visible: (formData) => formData.isContainerized !== true,
+            },
+            {
               name: "dimensions",
-              label: "Dimensiones *",
+              label: "Dimensiones",
               type: "text",
               placeholder: "Ej: 2.4 x 1.8 x 1.5 m",
+              collapsibleGroup: "cargoDetails",
               visible: (formData) => formData.isContainerized !== true,
             },
             {
@@ -899,7 +1129,10 @@ export const useOperationForm = (
     operationBase,
     clientOptions,
     shippingLinesQuery.data,
+    looseCargoLocationOptions,
     vehicleTypes,
+    vehicleTypeId,
+    cargoWeightKg,
     origenOptions,
     descargueOptions,
     destinoOptions,
@@ -913,9 +1146,22 @@ export const useOperationForm = (
     locations,
     clientId,
     programarDesvio,
+    relatedParentOperationOptions,
   ]);
   const handleFormChange = (name: string, value: FormFieldValue) => {
     setErrors({});
+    if (name === "weight") {
+      const parsedWeight =
+        typeof value === "number" ||
+        (typeof value === "string" && value.trim() !== "")
+          ? Number(value)
+          : null;
+      setCargoWeightKg(
+        parsedWeight !== null && Number.isFinite(parsedWeight)
+          ? parsedWeight
+          : null,
+      );
+    }
 
     if (name === "type") {
       setCurrentType(String(value));
@@ -925,8 +1171,12 @@ export const useOperationForm = (
     if (name === "isAnticipada") setIsAnticipada(Boolean(value));
     if (name === "cargoFormat")
       setCargoFormat(String(value) as "CONTENERIZADA" | "SUELTA");
-    if (name === "isContainerized")
+    if (name === "isContainerized") {
       setCargoFormat(value ? "CONTENERIZADA" : "SUELTA");
+      setOrigenId(null);
+      setDestinoId(null);
+      resetQuote();
+    }
     if (name === "containerSize")
       setContainerSize(getContainerSize(String(value)));
     if (name === "vehicleCapacityId") setVehicleTypeId(Number(value) || null);
@@ -947,8 +1197,99 @@ export const useOperationForm = (
       }
     }
   };
+  const setFieldsOnChange = (name: string, value: FormFieldValue) => {
+    formValuesRef.current[name] = value;
+    if (name === "isContainerized") {
+      const clearedRouteValues = {
+        origenId: "",
+        destinoId: "",
+        destinoCustomAddressEnabled: false,
+        destinoCustomAddress: "",
+      };
+      Object.assign(formValuesRef.current, clearedRouteValues);
+      return clearedRouteValues;
+    }
+    if (name === "vehicleCapacityId") {
+      const selectedConfiguration = vehicleTypes.find(
+        (vehicleType) => vehicleType.id === Number(value),
+      );
+      if (selectedConfiguration && !selectedConfiguration.requiresTrailer) {
+        formValuesRef.current.requiredTrailerType = "";
+        return { requiredTrailerType: "" };
+      }
+    }
+    if (name === "dimensions" && typeof value === "string") {
+      const dimensions = value.match(
+        /^\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*m?\s*$/i,
+      );
+      if (dimensions) {
+        const [length, width, height] = dimensions
+          .slice(1)
+          .map((dimension) => Number(dimension.replace(",", ".")));
+        const volumeM3 = Math.round(length * width * height * 1000) / 1000;
+        formValuesRef.current.volumeM3 = String(volumeM3);
+        return { volumeM3: String(volumeM3) };
+      }
+    }
+    if (name === "relatedOperationId") {
+      const selectedParentOperation = relatedParentOperations.find(
+        (operation) => operation.id === Number(value),
+      );
+      if (!selectedParentOperation) return {};
 
-  const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
+      const parentFechaRetiro = formatDateForForm(
+        selectedParentOperation.fechaRetiro,
+      );
+      const parentDays =
+        selectedParentOperation.diasLibresDevolucion ?? "";
+      const inheritedValues: Record<string, FormFieldValue> = {
+        containerNumber: selectedParentOperation.containerNumber ?? "",
+        fechaRetiro: parentFechaRetiro,
+        diasLibresDevolucion: parentDays,
+        fechaLimiteDevolucion:
+          formatDateForForm(selectedParentOperation.fechaLimiteDevolucion) ||
+          calculateDeadline(parentFechaRetiro, parentDays),
+      };
+      Object.assign(formValuesRef.current, inheritedValues);
+      return inheritedValues;
+    }
+
+    const updatesDocumentaryDeadline =
+      name === "fechaRetiro" || name === "diasLibresDocumental";
+    const updatesEmptyReturnDeadline =
+      name === "fechaRetiro" || name === "diasLibresDevolucion";
+    if (!updatesDocumentaryDeadline && !updatesEmptyReturnDeadline) {
+      return {};
+    }
+
+    const updates: Record<string, FormFieldValue> = {};
+    if (updatesDocumentaryDeadline) {
+      const deadline = calculateDeadline(
+        name === "fechaRetiro" ? value : formValuesRef.current.fechaRetiro,
+        name === "diasLibresDocumental"
+          ? value
+          : formValuesRef.current.diasLibresDocumental,
+      );
+      formValuesRef.current.fechaLimiteDocumental = deadline;
+      updates.fechaLimiteDocumental = deadline;
+    }
+    if (updatesEmptyReturnDeadline) {
+      const deadline = calculateDeadline(
+        name === "fechaRetiro" ? value : formValuesRef.current.fechaRetiro,
+        name === "diasLibresDevolucion"
+          ? value
+          : formValuesRef.current.diasLibresDevolucion,
+      );
+      formValuesRef.current.fechaLimiteDevolucion = deadline;
+      updates.fechaLimiteDevolucion = deadline;
+    }
+    return updates;
+  };
+
+  const handleSubmit = async (
+    formData: Record<string, FormFieldValue>,
+    createAndAssign = false,
+  ) => {
     setErrors({});
     const isSubmittingDevolucion =
       formData.type === "DEVOLUCION_VACIO" || formData.type === "DEVOLUCION";
@@ -1082,16 +1423,11 @@ export const useOperationForm = (
       }
     }
     if (!isContainerized && !formData.vehicleCapacityId) {
-      localErrors.vehicleCapacityId = "Selecciona la capacidad del vehículo.";
+      localErrors.vehicleCapacityId =
+        "Selecciona una configuración vehicular.";
     }
     if (!isContainerized) {
       if (!formData.weight) localErrors.weight = "Indica el peso en kg.";
-      if (!String(formData.packageType ?? "").trim())
-        localErrors.packageType = "Indica el tipo de empaque.";
-      if (!formData.packageCount)
-        localErrors.packageCount = "Indica la cantidad de bultos o estibas.";
-      if (!formData.volumeM3)
-        localErrors.volumeM3 = "Indica el volumen de la carga.";
       if (!String(formData.cargoDescription ?? "").trim())
         localErrors.cargoDescription = "Describe la carga.";
     } else {
@@ -1169,6 +1505,17 @@ export const useOperationForm = (
     payload.vehicleCapacityId = !isContainerized
       ? Number(formData.vehicleCapacityId)
       : null;
+    const selectedVehicleConfiguration = vehicleTypes.find(
+      (vehicleType) => vehicleType.id === Number(formData.vehicleCapacityId),
+    );
+    payload.requiredTrailerType =
+      !isContainerized &&
+      (!formData.vehicleCapacityId ||
+        selectedVehicleConfiguration?.requiresTrailer === true)
+      ? trailerTypeValues.find(
+          (trailerType) => trailerType === formData.requiredTrailerType,
+        ) ?? null
+      : null;
     payload.shippingLineId =
       isContainerized && !isSubmittingDevolucion && formData.shippingLineId
         ? Number(formData.shippingLineId)
@@ -1178,8 +1525,8 @@ export const useOperationForm = (
       payload.containerSize = null;
       payload.cargoDescription = String(formData.cargoDescription).trim();
       payload.weight = Number(formData.weight);
-      payload.dimensions = String(formData.dimensions);
-      payload.packageType = String(formData.packageType).trim();
+      payload.dimensions = String(formData.dimensions ?? "").trim() || null;
+      payload.packageType = String(formData.packageType ?? "").trim() || null;
       payload.packageCount = formData.packageCount
         ? Number(formData.packageCount)
         : null;
@@ -1204,7 +1551,6 @@ export const useOperationForm = (
     if (isContainerized && formData.peso) payload.peso = Number(formData.peso);
     if (formData.sealNumber)
       payload.sealNumber = String(formData.sealNumber).toUpperCase();
-    if (formData.pinRetiro) payload.pinRetiro = String(formData.pinRetiro);
 
     if (formData.numeroPedido)
       payload.numeroPedido = String(formData.numeroPedido);
@@ -1279,6 +1625,54 @@ export const useOperationForm = (
         fechaRetiroInput !== formatDateForForm(operationBase?.fechaRetiro))
     ) {
       payload.fechaRetiro = new Date(fechaRetiroInput).toISOString();
+    } else if (isEdit && operationBase?.fechaRetiro && !fechaRetiroInput) {
+      payload.fechaRetiro = null;
+    }
+    const fechaLimiteFisicoInput = String(
+      formData.fechaLimiteFisico ?? "",
+    ).trim();
+    if (fechaLimiteFisicoInput) {
+      payload.fechaLimiteFisico = new Date(
+        fechaLimiteFisicoInput,
+      ).toISOString();
+    } else if (isEdit && operationBase?.fechaLimiteFisico) {
+      payload.fechaLimiteFisico = null;
+    }
+    const diasLibresDocumentalInput = String(
+      formData.diasLibresDocumental ?? "",
+    ).trim();
+    if (diasLibresDocumentalInput) {
+      payload.diasLibresDocumental = Number(diasLibresDocumentalInput);
+    } else if (isEdit && operationBase?.diasLibresDocumental != null) {
+      payload.diasLibresDocumental = null;
+    }
+    const fechaLimiteDocumentalInput = String(
+      formData.fechaLimiteDocumental ?? "",
+    ).trim();
+    if (fechaLimiteDocumentalInput) {
+      payload.fechaLimiteDocumental = new Date(
+        fechaLimiteDocumentalInput,
+      ).toISOString();
+    } else if (isEdit && operationBase?.fechaLimiteDocumental) {
+      payload.fechaLimiteDocumental = null;
+    }
+    const diasLibresDevolucionInput = String(
+      formData.diasLibresDevolucion ?? "",
+    ).trim();
+    if (diasLibresDevolucionInput) {
+      payload.diasLibresDevolucion = Number(diasLibresDevolucionInput);
+    } else if (isEdit && operationBase?.diasLibresDevolucion != null) {
+      payload.diasLibresDevolucion = null;
+    }
+    const fechaLimiteDevolucionInput = String(
+      formData.fechaLimiteDevolucion ?? "",
+    ).trim();
+    if (fechaLimiteDevolucionInput) {
+      payload.fechaLimiteDevolucion = new Date(
+        fechaLimiteDevolucionInput,
+      ).toISOString();
+    } else if (isEdit && operationBase?.fechaLimiteDevolucion) {
+      payload.fechaLimiteDevolucion = null;
     }
     if (isImport) {
       const returnDepotId = String(formData.depositoDevolucionId ?? "").trim();
@@ -1300,10 +1694,25 @@ export const useOperationForm = (
 
     try {
       if (isEdit && operationBase) {
-        await updateOperation(operationBase.id, payload);
+        const updated = await updateOperation(operationBase.id, payload);
+        if (!updated) {
+          setErrors({
+            global: "No se pudo guardar la operación. Revisa el mensaje e inténtalo de nuevo.",
+          });
+          return;
+        }
       } else {
-        // 2. Usa la mutación en lugar del servicio directo
-        await createOperation(payload);
+        const created = await createOperation(payload);
+        if (!created) {
+          setErrors({
+            global: "No se pudo crear la operación. Revisa el mensaje e inténtalo de nuevo.",
+          });
+          return;
+        }
+        if (createAndAssign && onCreatedForDispatch) {
+          onCreatedForDispatch(created);
+          return;
+        }
       }
       onClose();
     } catch (error) {
@@ -1318,10 +1727,17 @@ export const useOperationForm = (
     initialValues,
     handleSubmit,
     handleFormChange,
+    setFieldsOnChange,
     errors,
     isLoadingOperations:
-      isLoadingOperations || isLoadingLocations || shippingLinesQuery.isLoading,
+      isLoadingOperations ||
+      isLoadingLocations ||
+      isLoadingVehicleTypes ||
+      shippingLinesQuery.isLoading ||
+      relatedParentOperationsQuery.isLoading,
     shippingLinesError: shippingLinesQuery.isError,
+    vehicleTypesError,
+    relatedOperationsError: relatedParentOperationsQuery.isError,
     suggestedPrice,
     isCalculatingPrice,
   };

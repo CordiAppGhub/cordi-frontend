@@ -215,7 +215,13 @@ export function useDriverPortal() {
   });
 
   const reportDeviationMutation = useMutation({
-    mutationFn: ({ operationId, file }: { operationId: number; file: File }) =>
+    mutationFn: ({
+      operationId,
+      file,
+    }: {
+      operationId: number;
+      file: File | File[];
+    }) =>
       driverPortalService.reportDeviation(operationId, file),
     onSuccess: async () => {
       showToast.success(
@@ -339,7 +345,7 @@ export function useDriverPortal() {
 
   const reportDeviation = async (
     operationId: number,
-    file: File,
+    file: File | File[],
   ): Promise<void> => {
     await reportDeviationMutation.mutateAsync({ operationId, file });
   };

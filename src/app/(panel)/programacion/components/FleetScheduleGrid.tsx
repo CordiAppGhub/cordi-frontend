@@ -11,12 +11,11 @@ import {
   Unlink,
 } from 'lucide-react';
 import { Button } from '@/components/atoms/button/button';
-import { Drawer } from '@/components/Drawer';
 import { useProgramacion } from '../hooks/useProgramacion';
-import { LiveFleetSelector } from '@/components/organisms/live-fleet-selector/live-fleet-selector';
 import { userService } from '@/services/userService';
-import type { FleetLiveVehicle } from '@/services/fleet-live.service';
 import type { ScheduleOperationsFilters } from '@/services/operation.service';
+import { OperationDispatchDrawer } from '@/app/(panel)/operations/components/actions/operation-dispatch-drawer';
+import { useAuthStore } from '@/store/use-auth.store';
 import Swal from 'sweetalert2';
 import styles from './fleet-schedule.module.css';
 
@@ -54,6 +53,7 @@ export default function FleetScheduleGrid() {
   );
   const [selectedOperationId, setSelectedOperationId] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
+  const { user } = useAuthStore();
   useEffect(() => {
     const initial = setTimeout(() => setNow(Date.now()), 0);
     const timer = setInterval(() => setNow(Date.now()), 60000);
@@ -71,8 +71,6 @@ export default function FleetScheduleGrid() {
     operations,
     isLoadingOperations,
     operationsError,
-    assignVehicle,
-    isAssigningVehicle,
     cancelOperation,
     isCancelling,
     unassignVehicle,
@@ -91,32 +89,6 @@ export default function FleetScheduleGrid() {
     ) ?? null;
 
   const closeAssignDrawer = () => setSelectedOperationId(null);
-
-  const canSelectVehicle = (vehicle: FleetLiveVehicle) =>
-    vehicle.ownershipType === 'PROPIO' &&
-    Boolean(vehicle.driverId) &&
-    Boolean(vehicle.trailerId);
-
-  const handleSelectVehicle = async (vehicle: FleetLiveVehicle) => {
-    if (!selectedOperation) return;
-
-    let result = await assignVehicle(selectedOperation.id, vehicle.id);
-
-    if (result.status === 'overlap') {
-      const confirmation = await Swal.fire({
-        title: 'Cruce de citas',
-        text: `${result.overlap.message} ¿Asignar el vehículo ${vehicle.plate} de todos modos?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, forzar asignación',
-        cancelButtonText: 'Volver',
-      });
-      if (!confirmation.isConfirmed) return;
-      result = await assignVehicle(selectedOperation.id, vehicle.id, true);
-    }
-
-    if (result.status === 'assigned') closeAssignDrawer();
-  };
 
   const handleCancel = async (operationId: number) => {
     await cancelOperation(operationId);
@@ -393,26 +365,13 @@ export default function FleetScheduleGrid() {
         </div>
       )}
 
-      <Drawer
-        isOpen={selectedOperation !== null}
+      <OperationDispatchDrawer
+        key={selectedOperation?.id ?? 'closed'}
+        operation={selectedOperation}
+        isAnalyst={user?.role === 'ANALISTA'}
         onClose={closeAssignDrawer}
-        title={selectedOperation ? `Asignar vehículo · Solicitud #${selectedOperation.id}` : 'Asignar vehículo'}
-      >
-        {selectedOperation && (
-          <>
-            <p className={styles.drawerSummary}>
-              <strong>{selectedOperation.client?.razonSocial || 'Cliente sin nombre'}</strong>
-              {' · '}
-              {selectedOperation.type.replace(/_/g, ' ')}
-            </p>
-            <LiveFleetSelector
-              canSelectVehicle={canSelectVehicle}
-              isSubmitting={isAssigningVehicle}
-              onSelectVehicle={(vehicle) => void handleSelectVehicle(vehicle)}
-            />
-          </>
-        )}
-      </Drawer>
+        onAssigned={closeAssignDrawer}
+      />
     </section>
   );
 }

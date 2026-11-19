@@ -31,7 +31,9 @@ export function OperationResourceModal({
   onSave,
 }: Props) {
   const [ownershipType, setOwnershipType] = useState<'PROPIO' | 'TERCERO'>(
-    operation?.vehicle?.ownershipType === 'TERCERO' ? 'TERCERO' : 'PROPIO',
+    isAnalyst || operation?.vehicle?.ownershipType === 'TERCERO'
+      ? 'TERCERO'
+      : 'PROPIO',
   );
   const [driverId, setDriverId] = useState(
     operation?.driverId ? String(operation.driverId) : '',
@@ -41,6 +43,9 @@ export function OperationResourceModal({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [plate, setPlate] = useState(operation?.vehicle?.plate ?? '');
+  const [trailerPlate, setTrailerPlate] = useState(
+    operation?.trailer?.plate ?? '',
+  );
   const [driverName, setDriverName] = useState(operation?.driver?.name ?? '');
   const [driverCedula, setDriverCedula] = useState(operation?.driver?.cedula ?? '');
   const [driverPhone, setDriverPhone] = useState(operation?.driver?.telefono ?? '');
@@ -50,7 +55,7 @@ export function OperationResourceModal({
   const driversQuery = useQuery({
     queryKey: ['drivers'],
     queryFn: driversService.getAll,
-    enabled: Boolean(operation),
+    enabled: Boolean(operation) && !isAnalyst,
   });
   const vehiclesQuery = useQuery({
     queryKey: ['vehicles'],
@@ -70,6 +75,9 @@ export function OperationResourceModal({
         : {
             ownershipType,
             plate: plate.trim(),
+            ...(trailerPlate.trim()
+              ? { trailerPlate: trailerPlate.trim() }
+              : {}),
             driverName: driverName.trim(),
             driverCedula: driverCedula.trim(),
             driverPhone: driverPhone.trim(),
@@ -91,9 +99,7 @@ export function OperationResourceModal({
   const activeDrivers = (driversQuery.data ?? []).filter(
     (driver) => driver.isActive || driver.id === operation?.driverId,
   );
-  const selectableDrivers = isAnalyst
-    ? (driversQuery.data ?? []).filter((driver) => driver.isAvailable)
-    : activeDrivers;
+  const selectableDrivers = activeDrivers;
   const availableVehicles = (vehiclesQuery.data ?? []).filter((vehicle) =>
     vehicle.ownershipType === 'PROPIO' &&
     (vehicle.status === 'AVAILABLE' ||
@@ -108,9 +114,10 @@ export function OperationResourceModal({
     Number.isFinite(Number(agreedFreight)) &&
     Number(agreedFreight) > 0;
   const isLoadingResources =
-    driversQuery.isLoading || (!isAnalyst && vehiclesQuery.isLoading);
+    !isAnalyst &&
+    (driversQuery.isLoading || vehiclesQuery.isLoading);
   const hasResourceError =
-    driversQuery.isError || (!isAnalyst && vehiclesQuery.isError);
+    !isAnalyst && (driversQuery.isError || vehiclesQuery.isError);
 
   return (
     <SuperModal
@@ -118,9 +125,9 @@ export function OperationResourceModal({
       onClose={onClose}
       title={
         operation
-          ? `${isAnalyst ? 'Asignar conductor a' : 'Reasignar operación'} #${operation.id}`
+          ? `${isAnalyst ? 'Asignar flota a' : 'Reasignar operación'} #${operation.id}`
           : isAnalyst
-            ? 'Asignar conductor'
+            ? 'Asignar flota de tercero'
             : 'Reasignar operación'
       }
       width="620px"
@@ -137,7 +144,9 @@ export function OperationResourceModal({
             <span className={styles.statusBadge}>{operation.status?.replace(/_/g, ' ')}</span>
           </div>
 
-          {!isAnalyst && <div className={styles.ownershipToggle} role="group" aria-label="Tipo de flota">
+          {isAnalyst ? (
+            <strong className={styles.externalFleetLabel}>Flota de tercero</strong>
+          ) : <div className={styles.ownershipToggle} role="group" aria-label="Tipo de flota">
             <button
               type="button"
               aria-pressed={ownershipType === 'PROPIO'}
@@ -160,6 +169,7 @@ export function OperationResourceModal({
                 setOwnershipType('TERCERO');
                 if (operation.vehicle?.ownershipType !== 'TERCERO') {
                   setPlate('');
+                  setTrailerPlate('');
                   setDriverName('');
                   setDriverCedula('');
                   setDriverPhone('');
@@ -173,20 +183,20 @@ export function OperationResourceModal({
 
           <p className={styles.description}>
             {isAnalyst
-              ? 'Selecciona un conductor disponible que no tenga otra operación pendiente. La asignación no cambiará el vehículo.'
+              ? 'Registra la flota externa, el conductor y el flete negociado para esta operación.'
               : ownershipType === 'PROPIO'
               ? 'Selecciona recursos registrados. El flete se calcula con la tarifa de Cordivehículos.'
               : 'Registra el vehículo y conductor externo para este viaje e ingresa el flete negociado.'}
           </p>
 
-          {(isAnalyst || ownershipType === 'PROPIO') && isLoadingResources && (
+          {!isAnalyst && ownershipType === 'PROPIO' && isLoadingResources && (
             <div className={styles.loadingState} role="status">
               <Loader2 size={16} className={styles.spinner} />
-              {isAnalyst ? 'Cargando conductores disponibles…' : 'Cargando conductores y vehículos…'}
+              Cargando conductores y vehículos…
             </div>
           )}
 
-          {(isAnalyst || ownershipType === 'PROPIO') && hasResourceError && (
+          {!isAnalyst && ownershipType === 'PROPIO' && hasResourceError && (
             <div className={styles.errorState} role="alert">
               <AlertCircle size={17} />
               <span>No se pudieron cargar todos los recursos. Puedes volver a intentarlo.</span>
@@ -205,38 +215,7 @@ export function OperationResourceModal({
             </div>
           )}
 
-          {isAnalyst ? (
-            <div className={styles.fieldsGrid}>
-              <label className={`${styles.field} ${styles.fullWidth}`} htmlFor={`operation-driver-${operation.id}`}>
-                <span className={styles.fieldLabel}><UserRound size={15} /> Conductor disponible</span>
-                <span className={styles.selectWrap}>
-                  <select
-                    id={`operation-driver-${operation.id}`}
-                    value={driverId}
-                    onChange={(event) => setDriverId(event.target.value)}
-                    disabled={isLoadingResources || driversQuery.isError}
-                    className={styles.select}
-                  >
-                    <option value="">Selecciona un conductor</option>
-                    {selectableDrivers.map((driver) => (
-                      <option key={driver.id} value={driver.id}>
-                        {driver.name || driver.cedula || `Conductor #${driver.id}`}
-                        {driver.assignedVehiclePlate
-                          ? ` · Vehículo ${driver.assignedVehiclePlate}`
-                          : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={15} aria-hidden="true" />
-                </span>
-                <span className={styles.fieldHint}>
-                  {driversQuery.data && selectableDrivers.length === 0
-                    ? 'No hay conductores disponibles sin operaciones pendientes.'
-                    : `${selectableDrivers.length} conductor(es) disponible(s).`}
-                </span>
-              </label>
-            </div>
-          ) : ownershipType === 'PROPIO' ? <div className={styles.fieldsGrid}>
+          {!isAnalyst && ownershipType === 'PROPIO' ? <div className={styles.fieldsGrid}>
             <label className={styles.field} htmlFor={`operation-driver-${operation.id}`}>
               <span className={styles.fieldLabel}><UserRound size={15} /> Conductor</span>
               <span className={styles.selectWrap}>
@@ -316,6 +295,10 @@ export function OperationResourceModal({
               <input className={styles.textInput} value={plate} onChange={(event) => setPlate(event.target.value)} required />
             </label>
             <label className={styles.field}>
+              <span className={styles.fieldLabel}><Truck size={15} /> Placa de tráiler (opcional)</span>
+              <input className={styles.textInput} value={trailerPlate} onChange={(event) => setTrailerPlate(event.target.value)} />
+            </label>
+            <label className={styles.field}>
               <span className={styles.fieldLabel}><UserRound size={15} /> Nombre del conductor</span>
               <input className={styles.textInput} value={driverName} onChange={(event) => setDriverName(event.target.value)} required />
             </label>
@@ -357,15 +340,14 @@ export function OperationResourceModal({
               onClick={() => void save()}
               disabled={
                 isSaving ||
-                  (isAnalyst && !driverId) ||
-                (ownershipType === 'PROPIO' &&
+                  (!isAnalyst && ownershipType === 'PROPIO' &&
                   (isLoadingResources || hasResourceError)) ||
                 (ownershipType === 'TERCERO' && !hasValidExternalValues)
               }
               className={styles.saveButton}
             >
               {isSaving && <Loader2 size={15} className={styles.spinner} />}
-              Guardar reasignación
+              {isAnalyst ? 'Asignar flota de tercero' : 'Guardar reasignación'}
             </button>
           </div>
         </div>

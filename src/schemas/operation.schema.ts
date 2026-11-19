@@ -22,6 +22,16 @@ const containerTypes = [
   "ISO_TANK_20",
 ] as const;
 
+const trailerTypes = [
+  "PLANCHA",
+  "GRILLO",
+  "TANQUE",
+  "PLATAFORMA",
+  "FURGON",
+  "CAMA_BAJA",
+  "PORTACONTENEDOR",
+] as const;
+
 const optionalPositiveNumber = z.preprocess(
   (value) =>
     (typeof value === "string" && value.trim() === "") ||
@@ -40,6 +50,16 @@ const optionalPositiveInteger = z.preprocess(
       ? undefined
       : Number(value),
   z.number().int().positive().optional(),
+);
+
+const optionalNonNegativeInteger = z.preprocess(
+  (value) =>
+    (typeof value === "string" && value.trim() === "") ||
+    value === null ||
+    value === undefined
+      ? undefined
+      : Number(value),
+  z.number().int().nonnegative().optional(),
 );
 
 const optionalTrimmedString = z.string().trim().optional().or(z.literal(""));
@@ -86,10 +106,11 @@ const cargoFields = z.object({
     .optional(),
   destinoCustomAddress: z.string().optional(),
   vehicleCapacityId: optionalPositiveInteger,
+  requiredTrailerType: z.enum(trailerTypes).optional().or(z.literal("")),
   cargoDescription: z.string().trim().optional(),
   weight: optionalPositiveNumber,
   dimensions: z.string().trim().optional(),
-  packageType: z.string().trim().optional(),
+  packageType: z.string().trim().nullish(),
   packageCount: optionalPositiveInteger,
   volumeM3: optionalPositiveNumber,
   programarDesvio: z.preprocess(
@@ -441,27 +462,6 @@ const validateCargoFields = (
       message: "El peso es obligatorio",
     });
   }
-  if (!data.packageType?.trim()) {
-    context.addIssue({
-      code: "custom",
-      path: ["packageType"],
-      message: "El tipo de empaque es obligatorio",
-    });
-  }
-  if (!data.packageCount) {
-    context.addIssue({
-      code: "custom",
-      path: ["packageCount"],
-      message: "El número de bultos o estibas es obligatorio",
-    });
-  }
-  if (!data.volumeM3) {
-    context.addIssue({
-      code: "custom",
-      path: ["volumeM3"],
-      message: "El volumen es obligatorio",
-    });
-  }
 };
 
 const validateShippingLine = (
@@ -496,6 +496,13 @@ export const operationSchema = z
     fechaCitaOrigen: z.string().optional(),
     fechaCitaDestino: z.string().optional(),
     fechaRetiro: z.string().optional(),
+    destinoTemporalId: optionalPositiveInteger,
+    depositoDevolucionId: optionalPositiveInteger,
+    fechaLimiteFisico: z.string().optional(),
+    diasLibresDocumental: optionalNonNegativeInteger,
+    fechaLimiteDocumental: z.string().optional(),
+    diasLibresDevolucion: optionalNonNegativeInteger,
+    fechaLimiteDevolucion: z.string().optional(),
     documentoTransporte: z.string().optional(),
     observaciones: z.string().optional(),
     isAnticipada: z.boolean().optional(),

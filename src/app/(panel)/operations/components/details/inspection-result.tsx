@@ -49,7 +49,9 @@ export function InspectionResult({ operation }: Props) {
           ...(isRejected
             ? {
                 newLocationId: Number(data.newLocationId),
-                comodato: data.comodato?.item(0) ?? undefined,
+                comodato: data.comodato
+                  ? Array.from(data.comodato)
+                  : undefined,
               }
             : {}),
           ...(data.observations.trim()
@@ -166,10 +168,11 @@ export function InspectionResult({ operation }: Props) {
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span>Fotografía del comodato *</span>
+              <span>Soportes del comodato (imagen o PDF) *</span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
+                multiple
                 {...register("comodato")}
               />
               {errors.comodato && (

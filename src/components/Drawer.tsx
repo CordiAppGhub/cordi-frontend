@@ -8,9 +8,16 @@ interface DrawerProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  className?: string;
 }
 
-export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children }) => {
+export const Drawer: React.FC<DrawerProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className = '',
+}) => {
   // Bloquear el scroll del fondo cuando el drawer está abierto
   useEffect(() => {
     if (isOpen) {
@@ -47,7 +54,7 @@ export const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose, title, children
       }}
     >
       <div 
-        className={styles.drawer} 
+        className={`${styles.drawer} ${className}`} 
         onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer click dentro
       >
         <div className={styles.header}>

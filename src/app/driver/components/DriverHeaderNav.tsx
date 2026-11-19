@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Bell, X } from 'lucide-react';
-import { TabOption, Tabs } from '@/components/molecules/tabs/tabs';
+import { Tabs, type TabOption } from '@/components/molecules/tabs/tabs';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import { dashboardService } from '@/services/dashboard.service';
 import styles from '@/components/organisms/navbar/navbar.module.css';
-import React from 'react';
 
 export type DriverTab = 'current' | 'history' | 'novedades' | 'profile';
 

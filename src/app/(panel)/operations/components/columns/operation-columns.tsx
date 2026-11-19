@@ -509,23 +509,36 @@ export const getOperationsColumns = (
             )}
 
             {canReassign &&
+              ['CREADO', 'PROGRAMADO', 'LISTA_PARA_CARGUE', 'ASIGNADO'].includes(row.status) &&
               (row.status === 'LISTA_PARA_CARGUE' ||
-                (isAnalyst ? !row.driverId : Boolean(row.vehicleId))) &&
-              row.status !== 'FINALIZADO' &&
-              row.status !== 'CANCELADO' && (
+                (isAnalyst ? !row.driverId : true)) && (
                 <button
                   type="button"
                   onClick={() => onReassign(row)}
-                  title={isAnalyst ? 'Asignar conductor disponible' : 'Reasignar conductor o vehículo'}
-                  aria-label={`${isAnalyst ? 'Asignar conductor a' : 'Reasignar recursos de'} la operación ${row.id}`}
+                  title={
+                    row.vehicleId || row.driverId
+                      ? isAnalyst ? 'Reasignar tercero' : 'Reasignar flota'
+                      : isAnalyst ? 'Asignar tercero' : 'Asignar flota'
+                  }
+                  aria-label={`${row.vehicleId || row.driverId
+                    ? isAnalyst ? 'Reasignar tercero a' : 'Reasignar flota de'
+                    : isAnalyst ? 'Asignar tercero a' : 'Asignar flota a'
+                  } la operación ${row.id}`}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                    gap: '5px', width: 'auto', minHeight: '32px', padding: '0 8px',
+                    borderRadius: '8px', border: 'none',
                     backgroundColor: '#eff6ff', color: '#2563eb',
-                    cursor: 'pointer', transition: 'all 0.2s'
+                    cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                    fontSize: '0.7rem', fontWeight: 700,
                   }}
                 >
                   <RefreshCw size={16} strokeWidth={2.5} />
+                  <span>
+                    {row.vehicleId || row.driverId
+                      ? isAnalyst ? 'Reasignar Tercero' : 'Reasignar Flota'
+                      : isAnalyst ? 'Asignar Tercero' : 'Asignar Flota'}
+                  </span>
                 </button>
               )}
 

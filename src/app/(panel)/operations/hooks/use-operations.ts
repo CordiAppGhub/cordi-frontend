@@ -240,12 +240,13 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   }, [fetchOperationsQuery]);
 
   // Envoltorio para crear operación
-  const createOperation = async (data: Record<string, unknown>): Promise<boolean> => {
+  const createOperation = async (
+    data: Record<string, unknown>,
+  ): Promise<Operation | null> => {
     try {
-      await createMutation.mutateAsync(data);
-      return true;
+      return await createMutation.mutateAsync(data);
     } catch {
-      return false;
+      return null;
     }
   };
 

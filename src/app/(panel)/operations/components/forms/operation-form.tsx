@@ -1,27 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { SuperForm } from "@/components/organisms/form/form";
 import { useOperationForm } from "../../hooks/use-operation-form";
-import { Operation } from "@/types/operation-types";
+import type { Operation } from "@/types/operation-types";
 import { useAuthStore } from "@/store/use-auth.store";
 import { Drawer } from "@/components/Drawer";
 import { Tabs } from "@/components/molecules/tabs/tabs";
+import { Button } from "@/components/atoms/button/button";
 import "react-datepicker/dist/react-datepicker.css";
+import styles from "./operation-form.module.css";
 
 interface OperationFormProps {
   isOpen: boolean; // El componente padre debe controlar si está abierto o no
   onClose: () => void;
   scheduleBase?: Operation | null;
+  onCreatedForDispatch?: (operation: Operation) => void;
 }
 
 export const OperationForm: React.FC<OperationFormProps> = ({
   isOpen,
   onClose,
   scheduleBase,
+  onCreatedForDispatch,
 }) => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState("general");
+  const submitForDispatch = useRef(false);
 
   const {
     categorizedFields,
@@ -29,12 +34,15 @@ export const OperationForm: React.FC<OperationFormProps> = ({
     initialValues,
     handleSubmit,
     handleFormChange,
+    setFieldsOnChange,
     errors,
     isLoadingOperations,
     suggestedPrice,
     isCalculatingPrice,
     shippingLinesError,
-  } = useOperationForm(onClose, scheduleBase);
+    vehicleTypesError,
+    relatedOperationsError,
+  } = useOperationForm(onClose, scheduleBase, onCreatedForDispatch);
 
   const tabsConfig = [
     { id: "general", label: isDevolucion ? "Devolución" : "General & Ruta" },
@@ -76,10 +84,27 @@ export const OperationForm: React.FC<OperationFormProps> = ({
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {errors.global && (
+          <div role="alert" style={{ color: "#b91c1c" }}>
+            {errors.global}
+          </div>
+        )}
         {shippingLinesError && !scheduleBase && !isDevolucion && (
           <div role="alert" style={{ color: "#b91c1c" }}>
             No se pudieron cargar las líneas navieras. Cierra y vuelve a abrir
             el formulario para reintentar.
+          </div>
+        )}
+        {vehicleTypesError && !scheduleBase && (
+          <div role="alert" style={{ color: "#b91c1c" }}>
+            No se pudieron cargar las configuraciones vehiculares. Cierra y
+            vuelve a abrir el formulario para reintentar.
+          </div>
+        )}
+        {relatedOperationsError && isDevolucion && (
+          <div role="alert" style={{ color: "#b91c1c" }}>
+            No se pudieron cargar las operaciones padre disponibles. Puedes
+            reintentar cerrando y abriendo el formulario.
           </div>
         )}
 
@@ -154,10 +179,18 @@ export const OperationForm: React.FC<OperationFormProps> = ({
         {/* El Formulario dinámico */}
         <SuperForm
           fields={currentFields} // Cambia dinámicamente según el Tab
-          onSubmit={handleSubmit}
+          onSubmit={async (values) => {
+            const shouldDispatch = submitForDispatch.current;
+            submitForDispatch.current = false;
+            await handleSubmit(values, shouldDispatch);
+          }}
+          onInvalid={() => {
+            submitForDispatch.current = false;
+          }}
           defaultValues={initialValues}
           onCancel={onClose}
           onChange={handleFormChange}
+          setFieldsOnChange={setFieldsOnChange}
           clearFieldsOnChange={{
             destinoTemporalTipo: ["destinoTemporalId"],
             isAnticipada: ["destinoTemporalTipo", "destinoTemporalId"],
@@ -173,6 +206,43 @@ export const OperationForm: React.FC<OperationFormProps> = ({
                 : "Crear Operación"
           }
           cancelText="Cancelar"
+          renderFooter={() => (
+            <div className={styles.formActions}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
+                disabled={isLoadingOperations}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                isLoading={isLoadingOperations}
+                onClick={() => {
+                  submitForDispatch.current = false;
+                }}
+              >
+                {scheduleBase
+                  ? "Guardar cambios"
+                  : user?.role === "ANALISTA"
+                    ? "Enviar a flota"
+                    : "Crear Operación"}
+              </Button>
+              {!scheduleBase && onCreatedForDispatch && (
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={isLoadingOperations}
+                  onClick={() => {
+                    submitForDispatch.current = true;
+                  }}
+                >
+                  Crear y Asignar
+                </Button>
+              )}
+            </div>
+          )}
         />
       </div>
     </Drawer>

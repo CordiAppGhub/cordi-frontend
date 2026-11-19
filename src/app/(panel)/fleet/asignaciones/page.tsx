@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import AssignDriverModal from '@/app/(panel)/fleet/asignaciones/components/AssignDriverModal';
@@ -13,7 +12,6 @@ import { TruckLoader } from '@/components/TruckLoader';
 import styles from './assignments.module.css';
 
 export default function AssignmentsPage() {
-    const router = useRouter();
     const { activeAssignments, isLoading, unassignVehicle, assignDriver } = useAssignments();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,10 +21,6 @@ export default function AssignmentsPage() {
         setSelectedVehicleForModal(vehicleId);
         setIsModalOpen(true);
     }, []);
-
-    const handleNewOperation = useCallback((vehicleId: number, driverId: number) => {
-        router.push(`/operations/new?vehicleId=${vehicleId}&driverId=${driverId}`);
-    }, [router]);
 
     const assignmentColumns = useMemo<ColumnDef<VehicleAssignment>[]>(() => [
         {
@@ -79,14 +73,6 @@ export default function AssignmentsPage() {
             renderCell: (row) => (
                 <div className={styles.actions}>
                     <Button
-                        title="Nueva Operación"
-                        variant="secondary"
-                        onClick={() => handleNewOperation(row.vehicle.id, row.driver.id)}
-                    >
-                        Operación
-                    </Button>
-
-                    <Button
                         title="Reasignar"
                         variant="secondary"
                         onClick={() => handleReassign(row.vehicle.id)}
@@ -104,16 +90,17 @@ export default function AssignmentsPage() {
                 </div>
             )
         }
-    ], [handleNewOperation, handleReassign, unassignVehicle]);
+    ], [handleReassign, unassignVehicle]);
 
     return (
         <div className={styles.page}>
             <div className={styles.header}>
                 <h1 className={styles.title}>
-                    Centro de Asignaciones
+                    Vínculo Vehículo–Conductor
                 </h1>
                 <p className={styles.subtitle}>
-                    Control en tiempo real de qué conductor maneja qué vehículo.
+                    Configuración permanente de flota. No asigna recursos a viajes;
+                    el despacho de operaciones se realiza desde Solicitudes de flota.
                 </p>
             </div>
 

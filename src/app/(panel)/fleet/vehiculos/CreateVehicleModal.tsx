@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import { Button } from '@/components/atoms/button/button';
 import { Input } from '@/components/atoms/input/input';
@@ -76,6 +76,7 @@ export default function CreateVehicleModal({
     reset,
     setValue,
     getValues,
+    control,
     formState: { errors },
   } = useForm<CreateVehicleFormValues>({
     resolver: zodResolver(createVehicleSchema),
@@ -288,6 +289,7 @@ export default function CreateVehicleModal({
 
   const inputError = (field: keyof CreateVehicleFormValues) =>
     errors[field]?.message;
+  const capacityKg = useWatch({ control, name: 'cargoCapacity' });
   const isProcessingDocuments =
     documentLoading.insurance || documentLoading.tecnomecanica;
 
@@ -325,8 +327,12 @@ export default function CreateVehicleModal({
                 <Select
                   options={[
                     { value: 'PLANCHA', label: 'Plancha' },
+                    { value: 'PLATAFORMA', label: 'Plataforma' },
                     { value: 'GRILLO', label: 'Grillo' },
                     { value: 'TANQUE', label: 'Tanque' },
+                    { value: 'FURGON', label: 'Furgón' },
+                    { value: 'CAMA_BAJA', label: 'Cama baja' },
+                    { value: 'PORTACONTENEDOR', label: 'Portacontenedor' },
                   ]}
                   {...register('trailerType')}
                   error={inputError('trailerType')}
@@ -451,7 +457,7 @@ export default function CreateVehicleModal({
           </label>}
 
           {assetType === 'vehicle' && <label className={styles.field}>
-            <span>Capacidad de carga (kg o toneladas)</span>
+            <span>Capacidad de carga (kg)</span>
             <Input
               type="number"
               {...register('cargoCapacity', { valueAsNumber: true })}
@@ -460,6 +466,24 @@ export default function CreateVehicleModal({
               placeholder="Ej. 34000"
               error={inputError('cargoCapacity')}
             />
+          </label>}
+          {assetType === 'trailer' && <label className={styles.field}>
+            <span>Capacidad de carga (kg)</span>
+            <Input
+              type="number"
+              {...register('cargoCapacity', { valueAsNumber: true })}
+              min="0.01"
+              step="any"
+              placeholder="Ej. 32000"
+              error={inputError('cargoCapacity')}
+            />
+            {typeof capacityKg === 'number' &&
+              Number.isFinite(capacityKg) &&
+              capacityKg > 0 && (
+                <span className={styles.helper}>
+                  = {(capacityKg / 1000).toFixed(1)} Ton
+                </span>
+              )}
           </label>}
 
           {assetType === 'vehicle' && <label className={styles.field}>

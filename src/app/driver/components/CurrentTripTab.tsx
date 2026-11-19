@@ -1,10 +1,10 @@
 // src/app/driver/components/CurrentTripTab.tsx
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import styles from "../driver.module.css";
 import { OperationWorkflow } from "./workflow/operation-workflow";
-import {
+import type {
   DriverPortalData,
   Operation,
   OperationContainerStatus,
@@ -37,7 +37,10 @@ interface CurrentTripTabProps {
     sealNumber: string,
   ) => Promise<void>;
   onReportDeviation: () => void;
-  onReportExtra: (operationId: number) => void;
+  onReportExtra: (
+    operationId: number,
+    defaultType?: "EN_PISO",
+  ) => void;
   onOpenOcrModal: () => void;
   onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
@@ -76,6 +79,7 @@ export function CurrentTripTab({
   onReportTrailerLocation,
   isUncouplingTrailer,
 }: CurrentTripTabProps) {
+  const containerCardRef = useRef<HTMLElement | null>(null);
   const deviationOcr =
     activeOperation?.historialNovedades?.[0]?.metadata?.comodatoOcr;
   const isAmparoImportBlocked = (operation: Operation) =>
@@ -374,6 +378,7 @@ export function CurrentTripTab({
           <OperationWorkflow
             key={`${activeOperation.id}-${activeOperation.containerStatus || "PENDIENTE"}-${activeOperation.cargoStatus || "PENDIENTE"}-${activeOperation.sealNumber || ""}`}
             operation={activeOperation}
+            containerCardRef={containerCardRef}
             isLoading={processingState}
             blockingOperationId={blockingOperationId}
             onUpdateState={onUpdateState}

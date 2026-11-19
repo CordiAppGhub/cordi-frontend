@@ -56,14 +56,16 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
       {/* 2. MÉTRICAS (Fondo gris tenue y borde interno) */}
       <div className={styles.metricsBox}>
         <div className={styles.metricItem}>
-          <span className={styles.metricLabel}>Capacidad</span>
+          <span className={styles.metricLabel}>Capacidad (kg)</span>
           <span className={styles.metricValue}>
             {vehicle.cargoCapacity ? `${vehicle.cargoCapacity.toLocaleString()} kg` : '--'}
           </span>
         </div>
         <div className={styles.metricItem}>
-          <span className={styles.metricLabel}>Eficiencia</span>
-          <span className={`${styles.metricValue} ${styles.metricHighlight}`}>11.2 km/gal</span>
+          <span className={styles.metricLabel}>Ejes</span>
+          <span className={`${styles.metricValue} ${styles.metricHighlight}`}>
+            {vehicle.axles ?? '--'}
+          </span>
         </div>
         <div className={styles.metricItem}>
           <span className={styles.metricLabel}>Conductor</span>

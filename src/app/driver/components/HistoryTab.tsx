@@ -1,10 +1,20 @@
 'use client';
 
-import React from 'react';
 import { TruckLoader } from '@/components/TruckLoader';
 
+interface DriverHistoryOperation {
+  id: number;
+  type: string;
+  status: string;
+  clientName: string;
+  origenName: string;
+  destinoName: string;
+  createdAt: string;
+  fleteAPagar: number | string | null;
+}
+
 interface HistoryTabProps {
-  history: any[];
+  history: DriverHistoryOperation[];
   loadingHistory: boolean;
 }
 
@@ -22,7 +32,7 @@ export function HistoryTab({ history, loadingHistory }: HistoryTabProps) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {history.map((op: any) => (
+          {history.map((op) => (
             <div 
               key={op.id} 
               style={{ 

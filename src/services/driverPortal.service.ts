@@ -115,9 +115,15 @@ export const driverPortalService = {
     });
   },
 
-  reportDeviation: async (operationId: number, file: File): Promise<void> => {
+  reportDeviation: async (
+    operationId: number,
+    file: File | File[],
+  ): Promise<void> => {
     const formData = new FormData();
-    formData.append("file", file);
+    const files = Array.isArray(file) ? file : [file];
+    for (const item of files) {
+      formData.append(files.length === 1 ? "file" : "files", item);
+    }
     formData.append("reason", "AVERIA_NO_APTO");
 
     await api.post(`/portal/operations/${operationId}/diversion`, formData, {

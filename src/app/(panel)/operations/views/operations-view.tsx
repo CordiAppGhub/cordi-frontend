@@ -26,7 +26,7 @@ import { useAuthStore } from '@/store/use-auth.store';
 import { OperationFilters } from '../components/filters/operation-filters';
 import { Loader } from 'lucide-react';
 import { OperationAmparosPanel } from '../components/amparados/operation-amparos-panel';
-import { OperationResourceModal } from '../components/actions/operation-resource-modal';
+import { OperationDispatchDrawer } from '../components/actions/operation-dispatch-drawer';
 import { OperationHistoryView } from './history/operation-history-view';
 import { PendingDriverExtraReports } from '../components/actions/pending-driver-extra-reports';
 import { useOperationHistoryStore } from '@/store/use-operation-history.store';
@@ -222,8 +222,6 @@ export function OperationsView() {
     setFilters,
     setDriverAccess,
     isSettingDriverAccess,
-    updateOperation,
-    assignExternalResources,
     unassignVehicle,
     isUnassigningVehicle,
   } = useTrafico();
@@ -242,7 +240,7 @@ export function OperationsView() {
   // 🚀 ESTADOS PARA EL MODAL DE EDICIÓN / COMPLETAR DATOS
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [operationToEdit, setOperationToEdit] = useState<Operation | null>(null);
-  const [operationToReassign, setOperationToReassign] = useState<Operation | null>(null);
+  const [operationToDispatch, setOperationToDispatch] = useState<Operation | null>(null);
 
   // 🚀 ESTADO PARA LA TRAZABILIDAD INTELIGENTE MULTIDIMENSIONAL
   const [traceContext, setTraceContext] = useState<{
@@ -255,7 +253,7 @@ export function OperationsView() {
     setIsEditModalOpen(true);
   };
 
-  const handleOpenReassign = (operation: Operation) => setOperationToReassign(operation);
+  const handleOpenReassign = (operation: Operation) => setOperationToDispatch(operation);
   const handleReportNovedad = (operation: Operation) => setNovedadOperation(operation);
   const handleDeleteOperation = async (operation: Operation) => {
     const result = await Swal.fire({
@@ -349,6 +347,7 @@ export function OperationsView() {
     (operation) => { void handleDeleteOperation(operation); },
     user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA',
     isDeletingOperation,
+    user?.role === 'ANALISTA',
   ).filter((column) =>
     [
       'numeroPedido',
@@ -537,26 +536,14 @@ export function OperationsView() {
           fetchOperations();
         }}
       />
-      <OperationResourceModal
-        key={operationToReassign?.id ?? 'closed'}
-        operation={operationToReassign}
-        onClose={() => setOperationToReassign(null)}
-        onSave={async (operationId, resources) => {
-          const saved =
-            resources.ownershipType === 'TERCERO'
-              ? await assignExternalResources(operationId, {
-                  plate: resources.plate,
-                  driverName: resources.driverName,
-                  driverCedula: resources.driverCedula,
-                  driverPhone: resources.driverPhone,
-                  agreedFreight: resources.agreedFreight,
-                })
-              : await updateOperation(operationId, {
-                  driverId: resources.driverId,
-                  vehicleId: resources.vehicleId,
-                });
-          if (saved) await fetchOperations();
-          return saved;
+      <OperationDispatchDrawer
+        key={operationToDispatch?.id ?? 'closed'}
+        operation={operationToDispatch}
+        isAnalyst={user?.role === 'ANALISTA'}
+        onClose={() => setOperationToDispatch(null)}
+        onAssigned={() => {
+          setOperationToDispatch(null);
+          void fetchOperations();
         }}
       />
 

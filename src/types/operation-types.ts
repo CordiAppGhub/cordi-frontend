@@ -19,6 +19,12 @@ export interface Evidence {
   estadoRevision: "PENDIENTE" | "APROBADO" | "DEVUELTO";
   notaAnalista?: string;
   formato?: string;
+  assets?: Array<{
+    url: string;
+    mimeType?: string | null;
+    fileName?: string | null;
+    order?: number;
+  }>;
 }
 
 export interface NovedadHistorial {
@@ -46,12 +52,14 @@ export interface Vehicle {
   status?: string;
   affiliation?: string;
   ownershipType?: "PROPIO" | "TERCERO";
+  axles?: number | null;
+  cargoCapacity?: number | null;
 }
 
 export interface Trailer {
   id: string;
   plate: string;
-  trailerType?: "PLANCHA" | "GRILLO" | "TANQUE";
+  trailerType?: TrailerType;
   axles?: 2 | 3 | null;
   capacity?: number | null;
   status?: string;
@@ -89,6 +97,7 @@ export interface SubOperation {
   type: string;
   status: string;
   createdAt: string;
+  fechaCierreFisico?: string | null;
   origen?: LogisticNode | null;
   destino?: LogisticNode | null;
   nuevoDestinoId?: number | null;
@@ -132,6 +141,16 @@ export interface Operation {
   tipoCarga?: "CONTENERIZADA" | "SUELTA";
   vehicleCapacityId?: number | null;
   vehicleType?: { id: number; code: string; name: string } | null;
+  requiredTrailerType?: TrailerType | null;
+  cargoVehicleType?: {
+    id: number;
+    code: string;
+    name: string;
+    tractorAxles: number | null;
+    trailerAxles: number | null;
+    requiresTrailer: boolean;
+    maxPayloadKg: number | null;
+  } | null;
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
   status:
     | "CREADO"
@@ -276,12 +295,23 @@ export interface Operation {
 
   parentId?: number | null;
   children?: SubOperation[];
+  childOperations?: Array<{
+    id: number;
+    type: string;
+    status?: string;
+    fechaCierreFisico?: string | null;
+  }>;
 
   // CITAS Y TIEMPOS OPERATIVOS
   fechaCitaOrigen?: string | null;
   fechaCitaDestino?: string | null;
   fechaCitaDesvio?: string | null;
   fechaRetiro?: string | null;
+  fechaLimiteFisico?: string | null;
+  diasLibresDocumental?: number | null;
+  fechaLimiteDocumental?: string | null;
+  diasLibresDevolucion?: number | null;
+  fechaLimiteDevolucion?: string | null;
   fechaAsignacion?: string | null;
   fechaCierreFisico?: string | null;
   fechaCierreDocumental?: string | null;
@@ -326,3 +356,5 @@ export interface OperationsClientGroup {
     lastPage: number;
   };
 }
+import type { TrailerType } from "@/types/vehicles";
+

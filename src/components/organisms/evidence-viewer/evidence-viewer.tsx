@@ -84,7 +84,7 @@ export function EvidenceViewer({ evidence }: { evidence: EvidenceAttachmentSourc
       ))}
       {documents.map((document, index) => (
         <a key={document.url} className={styles.document} href={document.url} target="_blank" rel="noopener noreferrer">
-          <FileText size={20} /> Abrir PDF {documents.length > 1 ? index + 1 : ''} <ExternalLink size={14} />
+          <FileText size={20} /> Ver soporte PDF {documents.length > 1 ? index + 1 : ''} <ExternalLink size={14} />
         </a>
       ))}
       {selectedIndex !== null && selectedIndex < images.length && (

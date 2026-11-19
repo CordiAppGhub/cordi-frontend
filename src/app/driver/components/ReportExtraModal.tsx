@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { Button } from '@/components/atoms/button/button';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import {
@@ -22,12 +23,14 @@ const reportTypeLabels = {
 
 interface ReportExtraModalProps {
   operationId: number | null;
+  defaultType?: CreateDriverExtraReportFormData['type'];
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export function ReportExtraModal({
   operationId,
+  defaultType,
   onClose,
   onSuccess,
 }: ReportExtraModalProps) {
@@ -45,6 +48,18 @@ export function ReportExtraModal({
       description: '',
     },
   });
+
+  useEffect(() => {
+    if (operationId === null) return;
+    reset({
+      type: defaultType ?? 'STAND_BY',
+      durationHours: '',
+      description:
+        defaultType === 'EN_PISO'
+          ? 'Contenedor bajado a piso; adjunto evidencia fotográfica.'
+          : '',
+    });
+  }, [defaultType, operationId, reset]);
 
   const submit = async (values: CreateDriverExtraReportFormData) => {
     if (!operationId) return;

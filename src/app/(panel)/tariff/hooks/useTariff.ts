@@ -56,6 +56,7 @@ export function useTariffs() {
   const {
     data: vehicleTypes = [],
     isLoading: isLoadingVehicleTypes,
+    isError: vehicleTypesError,
   } = useQuery({
     queryKey: ['cargo-vehicle-types'],
     queryFn: tariffService.getCargoVehicleTypes,
@@ -291,6 +292,7 @@ export function useTariffs() {
     vehicleTariffs,
     vehicleTypes,
     isLoadingVehicles,
+    vehicleTypesError,
     fetchVehicleTariffs,
     createVehicleTariff,
     patioTariffs,

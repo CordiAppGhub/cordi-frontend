@@ -6,6 +6,11 @@ export interface EvidenceAttachmentSource {
   anomalyPhotosUrl?: string[];
   deliveryDocsUrl?: string[];
   tirillaEirUrl?: string | null;
+  assets?: Array<{
+    url: string;
+    mimeType?: string | null;
+    order?: number;
+  }>;
 }
 
 export interface EvidenceAttachment {
@@ -22,6 +27,14 @@ export function getEvidenceAttachments(evidence: EvidenceAttachmentSource): Evid
     const existing = attachments.get(value);
     attachments.set(value, { url: value, isPdf: isPdf || Boolean(existing?.isPdf) });
   };
+  [...(evidence.assets ?? [])]
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+    .forEach((asset) =>
+      add(
+        asset.url,
+        asset.mimeType?.toLowerCase() === 'application/pdf',
+      ),
+    );
   add(evidence.url, evidence.formato?.toLowerCase() === 'pdf');
   evidence.photosUrl?.forEach((url) => add(url));
   evidence.anomalyPhotosUrl?.forEach((url) => add(url));

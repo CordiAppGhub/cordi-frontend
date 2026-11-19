@@ -1,20 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './operation-traceability.module.css';
 
 import { useTrafico } from '../../hooks/use-operations';
-import { Evidence, Operation } from '@/types/operation-types';
+import type { Evidence, Operation } from '@/types/operation-types';
 import { useOperationTimeline } from '../../hooks/use-operation-timeline';
 import { socket } from '@/lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
+import { Button } from '@/components/atoms/button/button';
 import { OperationTimeline } from '../timeline/operation-timeline';
 import { EvidenceViewer, ImageViewer } from '@/components/organisms/evidence-viewer/evidence-viewer';
-import { FileText, Activity, AlertTriangle, MapPin, Clock, Truck, Check, CheckCircle2, XCircle, RotateCcw, FileCheck } from 'lucide-react'; 
+import { FileText, Activity, AlertTriangle, MapPin, Clock, Truck, Check, CheckCircle2, XCircle, RotateCcw, FileCheck, Download } from 'lucide-react'; 
 import { TruckLoader } from '@/components/TruckLoader';
 import { ContainerStatusLabels } from '@/constants/enum-mapping-types';
-import { closeDocumentally, reviewEvidence, correctContainerState } from '@/services/operation.service';
+import { closeDocumentally, reviewEvidence, correctContainerState, operationService } from '@/services/operation.service';
 import Swal from 'sweetalert2';
 import { showToast } from '@/utils/alerts';
 import { InspectionResult } from './inspection-result';
@@ -105,47 +106,64 @@ function getDocumentaryClosureMissingRequirements(operation: Operation): string[
 export function OperationTraceability({ operationId }: Props) {
   const queryClient = useQueryClient();
   const role = useAuthStore((state) => state.user?.role);
+  const [displayedOperationId, setDisplayedOperationId] =
+    useState(operationId);
   const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidences'>('details');
   const [isReviewing, setIsReviewing] = useState<number | null>(null);
   const [isClosingDocumentally, setIsClosingDocumentally] = useState(false);
   const [isCorrectingContainer, setIsCorrectingContainer] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const { currentOperation, isLoadingCurrent, fetchOperationById } = useTrafico();
-  const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useOperationTimeline(operationId);
+  const { data: timelineEvents = [], isLoading: isLoadingTimeline } =
+    useOperationTimeline(displayedOperationId);
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!operationId) return;
-    fetchOperationById(operationId);
+    setDisplayedOperationId(operationId);
+  }, [operationId]);
 
-    const updateEvent = `operation_${operationId}_updated`;
-    const evidenceEvent = `operation_${operationId}_evidence`;
+  useEffect(() => {
+    if (!displayedOperationId) return;
+    fetchOperationById(displayedOperationId);
+
+    const updateEvent = `operation_${displayedOperationId}_updated`;
+    const evidenceEvent = `operation_${displayedOperationId}_evidence`;
 
     const handleUpdate = (newData: Partial<Operation> & { isRollback?: boolean }) => {
       queryClient.setQueryData<Operation | undefined>(
-        ['trafico-detail', operationId],
+        ['trafico-detail', displayedOperationId],
         (currentOperation) =>
           currentOperation ? { ...currentOperation, ...newData } : currentOperation,
       );
-      queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] });
+      queryClient.invalidateQueries({
+        queryKey: ['operation-timeline', displayedOperationId],
+      });
       if (newData.isRollback) {
-        queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] });
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        });
       }
     };
 
     const handleNewEvidence = (newEvidence: Evidence) => {
-      queryClient.setQueryData<Operation | undefined>(['trafico-detail', operationId], (oldData) => {
+      queryClient.setQueryData<Operation | undefined>(
+        ['trafico-detail', displayedOperationId],
+        (oldData) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
           evidences: [...(oldData.evidences || []), newEvidence],
         };
+        },
+      );
+      queryClient.invalidateQueries({
+        queryKey: ['trafico-detail', displayedOperationId],
       });
       queryClient.invalidateQueries({
-        queryKey: ['trafico-detail', operationId],
+        queryKey: ['operation-timeline', displayedOperationId],
       });
-      queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] });
     };
 
     socket.on(updateEvent, handleUpdate);
@@ -155,7 +173,7 @@ export function OperationTraceability({ operationId }: Props) {
       socket.off(updateEvent, handleUpdate);
       socket.off(evidenceEvent, handleNewEvidence);
     };
-  }, [operationId, fetchOperationById, queryClient]);
+  }, [displayedOperationId, fetchOperationById, queryClient]);
 
   if (isLoadingCurrent) return <TruckLoader variant="compact" message="Cargando detalles de la operación..." />;
   if (!currentOperation) return <div className={styles.emptyState}>No se encontró la operación.</div>;
@@ -245,15 +263,19 @@ export function OperationTraceability({ operationId }: Props) {
     if (!reason.isConfirmed || !reason.value?.trim()) return;
     setIsCorrectingContainer(true);
     try {
-      await correctContainerState(operationId, {
+      await correctContainerState(displayedOperationId, {
         expectedStatus,
         targetStatus: target.value,
         cargoStatus: cargo.value,
         reason: reason.value.trim(),
       });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] }),
-        queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] }),
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['operation-timeline', displayedOperationId],
+        }),
       ]);
       showToast.success('Estado del contenedor corregido.');
     } finally {
@@ -270,6 +292,15 @@ export function OperationTraceability({ operationId }: Props) {
   const comodatoEvidences = currentOperation.evidences?.filter((evidence) =>
     evidence.type.toLowerCase().includes('comodato'),
   ) ?? [];
+  const comodatoEvidenceUrls = new Set(
+    comodatoEvidences.flatMap((evidence) => [
+      evidence.url,
+      ...(evidence.assets ?? []).map((asset) => asset.url),
+    ]).filter((url): url is string => Boolean(url)),
+  );
+  const legacyComodatoUrls = (currentOperation.deviations ?? [])
+    .map((deviation) => deviation.comodatoUrl)
+    .filter((url) => Boolean(url) && !comodatoEvidenceUrls.has(url));
   const deviationDestination = currentOperation.nuevoDestino?.name;
   const deviationAppointment = currentOperation.fechaCitaDesvio;
 
@@ -279,6 +310,69 @@ export function OperationTraceability({ operationId }: Props) {
     return new Date(dateString).toLocaleString('es-CO', {
       month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
     });
+  };
+
+  const getDeadlineStatus = (
+    deadline?: string | Date | null,
+    completedAt?: string | Date | null,
+  ): 'ontime' | 'upcoming' | 'overdue' | null => {
+    if (!deadline) return null;
+    const deadlineTime = new Date(deadline).getTime();
+    if (Number.isNaN(deadlineTime)) return null;
+    if (completedAt) {
+      const completionTime = new Date(completedAt).getTime();
+      if (!Number.isNaN(completionTime)) {
+        return completionTime <= deadlineTime ? 'ontime' : 'overdue';
+      }
+    }
+    const remaining = deadlineTime - Date.now();
+    if (remaining < 0) return 'overdue';
+    if (remaining <= 3 * 24 * 60 * 60 * 1000) return 'upcoming';
+    return 'ontime';
+  };
+
+  const getDeadlineLabel = (status: ReturnType<typeof getDeadlineStatus>) => {
+    if (status === 'ontime') return 'Al día';
+    if (status === 'upcoming') return 'Próximo a vencer';
+    if (status === 'overdue') return 'Vencido';
+    return 'Sin fecha límite';
+  };
+
+  const linkedReturnOperation = currentOperation.childOperations?.find(
+    (childOperation) => childOperation.type === 'DEVOLUCION_VACIO',
+  );
+  const relatedParentId = currentOperation.relatedOperationId;
+  const returnClosureDate =
+    currentOperation.type === 'DEVOLUCION_VACIO'
+      ? currentOperation.fechaCierreFisico
+      : linkedReturnOperation
+        ? linkedReturnOperation.fechaCierreFisico
+        : currentOperation.containerStatus === 'EN_PISO'
+          ? null
+          : currentOperation.fechaCierreFisico;
+  const showsEmptyReturnDeadline = [
+    'IMPORTACION',
+    'EXPORTACION',
+    'DEVOLUCION_VACIO',
+  ].includes(currentOperation.type);
+
+  const handleDownloadEvidencePdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const blob = await operationService.getEvidencePdf(displayedOperationId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `operacion-${displayedOperationId}-evidencias.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      showToast.error(error, 'No se pudo descargar el PDF de evidencias.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const formatDuration = (start?: string | null, end?: string | null) => {
@@ -314,7 +408,7 @@ export function OperationTraceability({ operationId }: Props) {
       await reviewEvidence(evidenceId, { estadoRevision: 'APROBADO', notaAnalista });
       showToast.success('Soporte aprobado correctamente');
       queryClient.setQueryData<Operation | undefined>(
-        ['trafico-detail', operationId],
+        ['trafico-detail', displayedOperationId],
         (oldData) => {
           if (!oldData || !oldData.evidences) return oldData;
           return {
@@ -325,8 +419,12 @@ export function OperationTraceability({ operationId }: Props) {
           };
         },
       );
-      queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] });
-      queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] });
+      queryClient.invalidateQueries({
+        queryKey: ['trafico-detail', displayedOperationId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['operation-timeline', displayedOperationId],
+      });
     } catch {
       showToast.error('No se pudo aprobar el soporte');
     } finally {
@@ -362,7 +460,7 @@ export function OperationTraceability({ operationId }: Props) {
         });
         showToast.success('Soporte devuelto con observaciones');
         queryClient.setQueryData<Operation | undefined>(
-          ['trafico-detail', operationId],
+          ['trafico-detail', displayedOperationId],
           (oldData) => {
             if (!oldData || !oldData.evidences) return oldData;
             return {
@@ -373,8 +471,12 @@ export function OperationTraceability({ operationId }: Props) {
             };
           },
         );
-        queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] });
-        queryClient.invalidateQueries({ queryKey: ['operation-timeline', operationId] });
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['operation-timeline', displayedOperationId],
+        });
       } catch {
         showToast.error('No se pudo devolver el soporte');
       } finally {
@@ -387,10 +489,10 @@ export function OperationTraceability({ operationId }: Props) {
     if (documentaryClosureMissing.length > 0 || isClosingDocumentally) return;
     const confirmation = await Swal.fire({
       title: 'Aprobar cierre documental',
-      text: 'Al aprobar, la operación quedará FINALIZADA y no se podrá reabrir desde este flujo.',
+      text: 'Se registrará la validación administrativa sin cambiar el estado del viaje físico.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Aprobar y finalizar',
+      confirmButtonText: 'Aprobar cierre documental',
       cancelButtonText: 'Volver',
       confirmButtonColor: '#15803d',
     });
@@ -398,21 +500,25 @@ export function OperationTraceability({ operationId }: Props) {
 
     setIsClosingDocumentally(true);
     try {
-      const updatedOperation = await closeDocumentally(operationId);
+      const updatedOperation = await closeDocumentally(displayedOperationId);
       queryClient.setQueryData<Operation | undefined>(
-        ['trafico-detail', operationId],
+        ['trafico-detail', displayedOperationId],
         (oldOperation) =>
           oldOperation
             ? { ...oldOperation, ...updatedOperation }
             : updatedOperation,
       );
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] }),
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        }),
         queryClient.invalidateQueries({ queryKey: ['trafico'] }),
         queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
         queryClient.invalidateQueries({ queryKey: ['operations'] }),
       ]);
-      showToast.success('Cierre documental aprobado. La operación fue finalizada.');
+      showToast.success(
+        'Cierre documental aprobado. El estado físico del viaje se conservó.',
+      );
     } catch (error: unknown) {
       showToast.error(error, 'No se pudo aprobar el cierre documental.');
     } finally {
@@ -734,18 +840,18 @@ export function OperationTraceability({ operationId }: Props) {
                   )}
                 </div>
               )}
-              {comodatoEvidences.map((evidence) =>
-                evidence.url ? (
-                  <a
-                    key={evidence.id}
-                    href={evidence.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ver foto del comodato
-                  </a>
-                ) : null,
-              )}
+              {comodatoEvidences.map((evidence) => (
+                <div key={evidence.id}>
+                  <span className={styles.label}>Soportes adjuntos</span>
+                  <EvidenceViewer evidence={evidence} />
+                </div>
+              ))}
+              {legacyComodatoUrls.map((url) => (
+                <div key={url}>
+                  <span className={styles.label}>Soporte legado</span>
+                  <EvidenceViewer evidence={{ type: 'COMODATO', url }} />
+                </div>
+              ))}
             </div>
           )}
 
@@ -1012,10 +1118,6 @@ export function OperationTraceability({ operationId }: Props) {
                 <strong className={styles.value}>{currentOperation.documentoTransporte || '--'}</strong>
               </div>
               <div className={styles.infoBlock}>
-                <span className={styles.label}>PIN Retiro</span>
-                <strong className={styles.value}>{currentOperation.pinRetiro || '---'}</strong>
-              </div>
-              <div className={styles.infoBlock}>
                 <span className={styles.label}>Precinto (Seal)</span>
                 <strong className={styles.value}>{currentOperation.sealNumber || '---'}</strong>
               </div>
@@ -1036,10 +1138,103 @@ export function OperationTraceability({ operationId }: Props) {
                 <strong className={styles.value}>{formatDate(currentOperation.fechaCierreFisico)}</strong>
               </div>
               <div className={styles.infoBlock}>
+                <span className={styles.label}>límite físico en puerto</span>
+                <strong className={styles.value}>{formatDate(currentOperation.fechaLimiteFisico)}</strong>
+                <span className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteFisico, currentOperation.fechaCierreFisico) ?? 'none'}`]}`}>
+                  {getDeadlineLabel(getDeadlineStatus(currentOperation.fechaLimiteFisico, currentOperation.fechaCierreFisico))}
+                </span>
+              </div>
+              <div className={styles.infoBlock}>
                 <span className={styles.label}>Cierre documental</span>
                 <strong className={styles.value}>{formatDate(currentOperation.fechaCierreDocumental)}</strong>
               </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Límite de cierre documental</span>
+                <strong className={styles.value}>{formatDate(currentOperation.fechaLimiteDocumental)}</strong>
+                {currentOperation.diasLibresDocumental != null && (
+                  <small>{currentOperation.diasLibresDocumental} días libres documentales</small>
+                )}
+                <span className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteDocumental, currentOperation.fechaCierreDocumental) ?? 'none'}`]}`}>
+                  {getDeadlineLabel(getDeadlineStatus(currentOperation.fechaLimiteDocumental, currentOperation.fechaCierreDocumental))}
+                </span>
+              </div>
+              {showsEmptyReturnDeadline && (
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>
+                    Límite devolución de vacío
+                  </span>
+                  <strong className={styles.value}>
+                    {formatDate(currentOperation.fechaLimiteDevolucion)}
+                  </strong>
+                  {currentOperation.diasLibresDevolucion != null && (
+                    <small>
+                      {currentOperation.diasLibresDevolucion} días libres de
+                      naviera
+                    </small>
+                  )}
+                  <span
+                    className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteDevolucion, returnClosureDate) ?? 'none'}`]}`}
+                  >
+                    {getDeadlineLabel(
+                      getDeadlineStatus(
+                        currentOperation.fechaLimiteDevolucion,
+                        returnClosureDate,
+                      ),
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
+            {currentOperation.containerStatus === 'EN_PISO' && (
+              <div
+                className={
+                  linkedReturnOperation
+                    ? styles.returnProgramNotice
+                    : styles.returnProgramWarning
+                }
+                role={linkedReturnOperation ? 'status' : 'alert'}
+              >
+                {linkedReturnOperation ? (
+                  <>
+                    <span>
+                      Devolución de vacío vinculada: operación #
+                      {linkedReturnOperation.id}
+                      {linkedReturnOperation.fechaCierreFisico
+                        ? ` · cierre físico ${formatDate(linkedReturnOperation.fechaCierreFisico)}`
+                        : ' · pendiente de cierre físico'}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setDisplayedOperationId(linkedReturnOperation.id)
+                      }
+                    >
+                      Ver devolución #{linkedReturnOperation.id}
+                    </Button>
+                  </>
+                ) : (
+                  <span>
+                    El contenedor está en piso y todavía no tiene una operación
+                    DEVOLUCION_VACIO vinculada.
+                    {currentOperation.fechaLimiteDevolucion
+                      ? ` Límite de devolución: ${formatDate(currentOperation.fechaLimiteDevolucion)}.`
+                      : ''}
+                  </span>
+                )}
+              </div>
+            )}
+            {currentOperation.type === 'DEVOLUCION_VACIO' &&
+              relatedParentId && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setDisplayedOperationId(relatedParentId)}
+                >
+                  Volver a operación padre #
+                  {relatedParentId}
+                </Button>
+              )}
             {currentOperation.observaciones && (
               <div className={styles.infoBlock}>
                 <span className={styles.label}>Observaciones</span>
@@ -1054,7 +1249,8 @@ export function OperationTraceability({ operationId }: Props) {
             )}
           </div>
 
-          {currentOperation.status === 'CIERRE_FISICO' && (
+          {currentOperation.status === 'CIERRE_FISICO' &&
+            !currentOperation.fechaCierreDocumental && (
             <section className={styles.documentaryClosure}>
               <h3 className={styles.sectionTitle}>
                 <FileCheck size={18} color="#64748b" /> Cierre documental pendiente
@@ -1097,6 +1293,15 @@ export function OperationTraceability({ operationId }: Props) {
                 className={styles.btnViewEvidence}
               >
                 Abrir Galería Completa
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDownloadEvidencePdf()}
+                className={styles.btnViewEvidence}
+                disabled={isDownloadingPdf}
+              >
+                <Download size={15} />
+                {isDownloadingPdf ? 'Generando PDF…' : 'Descargar PDF Evidencias'}
               </button>
             </div>
 
