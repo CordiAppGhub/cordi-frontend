@@ -1,55 +1,52 @@
 .history {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.header h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.15rem;
-}
-
-.header p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 0.88rem;
-}
-
-.resultCount {
-  flex: none;
-  padding: 7px 12px;
-  border: 1px solid #dbeafe;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 0.8rem;
-  font-weight: 700;
+  gap: 0;
 }
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  align-items: end;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
   background: #fff;
+}
+
+.primaryFilters,
+.advancedFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.advancedFilters {
+  padding-top: 12px;
+  border-top: 1px dashed #cbd5e1;
 }
 
 .filterField {
   display: flex;
   min-width: 0;
+  flex: 0 1 190px;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.searchField {
+  flex: 0 1 250px;
+  min-width: 210px;
+  max-width: 260px;
+}
+
+.modalityField {
+  flex-basis: 170px;
+  max-width: 190px;
+}
+
+.dateField {
+  flex-basis: 150px;
+  max-width: 150px;
 }
 
 .filterField span {
@@ -58,20 +55,22 @@
   font-weight: 700;
 }
 
-.filterField input {
+.filterField input,
+.filterField select {
   width: 100%;
   min-width: 0;
-  height: 38px;
+  height: 36px;
   padding: 0 10px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
   background: #fff;
   color: #0f172a;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
 }
 
-.filterField input:focus {
+.filterField input:focus,
+.filterField select:focus {
   border-color: #2563eb;
   outline: 3px solid rgb(37 99 235 / 12%);
 }
@@ -88,7 +87,7 @@
 .searchSelect input {
   width: 100%;
   min-width: 0;
-  height: 38px;
+  height: 36px;
   padding: 0 10px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
@@ -153,7 +152,8 @@
 .filterActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .searchButton,
@@ -170,6 +170,18 @@
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.filterActions .clearButton {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+.filterActions .searchButton {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 0.76rem;
 }
 
 .searchButton {
@@ -200,8 +212,6 @@
 
 .tableCard {
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
   background: #fff;
 }
 
@@ -281,22 +291,22 @@
 }
 
 @media (max-width: 900px) {
-  .filters {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  .searchField {
+    flex: 1 1 100%;
+    max-width: none;
   }
 }
 
 @media (max-width: 560px) {
-  .header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .filters {
-    grid-template-columns: 1fr;
+  .filterField,
+  .dateField,
+  .modalityField {
+    flex: 1 1 calc(50% - 10px);
+    max-width: none;
   }
 
   .filterActions {
-    grid-column: 1;
+    flex: 1 1 100%;
+    margin-left: 0;
   }
 }

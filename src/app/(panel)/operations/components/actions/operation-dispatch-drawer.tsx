@@ -163,7 +163,7 @@ const hasPotentialOverlap = (
   );
 };
 
-const getLooseCargoCompatibility = (
+const getVehicleAxleCompatibility = (
   operation: Operation,
   vehicle: FleetLiveVehicle,
   trailer: FleetLiveTrailer | null,
@@ -171,44 +171,38 @@ const getLooseCargoCompatibility = (
   const isContainerized = operation.isContainerized === true;
   const configuration = operation.cargoVehicleType;
   const reasons: string[] = [];
-  if (!isContainerized) {
-    if (!configuration) {
-      reasons.push('Configuración vehicular requerida no disponible');
-    } else {
-      if (configuration.tractorAxles !== null) {
-        if (vehicle.axles === null) {
-          reasons.push(
-            `Ejes del cabezote sin registrar (se requieren ${configuration.tractorAxles})`,
-          );
-        } else if (vehicle.axles !== configuration.tractorAxles) {
-          reasons.push(
-            `Cabezote de ${vehicle.axles} ejes; se requieren ${configuration.tractorAxles}`,
-          );
-        }
-      }
+  if (vehicle.axles !== 2 && vehicle.axles !== 3) {
+    reasons.push('Ejes del cabezote sin registrar (se requieren 2 o 3)');
+  }
+  if (!isContainerized && !configuration) {
+    reasons.push('Configuración vehicular requerida no disponible');
+  }
+  if (configuration) {
+    if (
+      configuration.tractorAxles !== null &&
+      vehicle.axles !== configuration.tractorAxles
+    ) {
+      reasons.push(
+        `Cabezote de ${vehicle.axles ?? 'ejes no registrados'}; se requieren ${configuration.tractorAxles}`,
+      );
+    }
+
+    if (!isContainerized) {
       if (configuration.requiresTrailer && !trailer) {
         reasons.push('La configuración requiere un tráiler');
       } else if (!configuration.requiresTrailer && trailer) {
         reasons.push('La configuración requiere un vehículo rígido sin tráiler');
       }
-      if (
-        trailer &&
-        configuration.trailerAxles !== null &&
-        trailer.axles !== configuration.trailerAxles
-      ) {
-        reasons.push(
-          `Tráiler de ${trailer.axles ?? 'ejes no registrados'}; se requieren ${configuration.trailerAxles}`,
-        );
-      }
-      if (
-        configuration.maxPayloadKg !== null &&
-        operation.weight != null &&
-        operation.weight > configuration.maxPayloadKg
-      ) {
-        reasons.push(
-          `Peso superior al máximo de ${configuration.maxPayloadKg.toLocaleString('es-CO')} kg`,
-        );
-      }
+    }
+
+    if (
+      trailer &&
+      configuration.trailerAxles !== null &&
+      trailer.axles !== configuration.trailerAxles
+    ) {
+      reasons.push(
+        `Tráiler de ${trailer.axles ?? 'ejes no registrados'}; se requieren ${configuration.trailerAxles}`,
+      );
     }
   }
 
@@ -224,28 +218,9 @@ const getLooseCargoCompatibility = (
     }
   }
 
-  const effectiveCapacityKg = isContainerized
-    ? vehicle.cargoCapacity
-    : trailer?.capacity && vehicle.cargoCapacity !== null
-      ? Math.min(vehicle.cargoCapacity, trailer.capacity)
-      : vehicle.cargoCapacity;
-  if (!isContainerized) {
-    if (effectiveCapacityKg === null || effectiveCapacityKg <= 0) {
-      reasons.push('Capacidad de carga no registrada');
-    } else if (
-      operation.weight != null &&
-      operation.weight > effectiveCapacityKg
-    ) {
-      reasons.push(
-        `Peso de ${operation.weight.toLocaleString('es-CO')} kg superior a la capacidad efectiva de ${effectiveCapacityKg.toLocaleString('es-CO')} kg`,
-      );
-    }
-  }
-
   return {
     compatible: reasons.length === 0,
     reasons,
-    effectiveCapacityKg,
   };
 };
 
@@ -296,17 +271,13 @@ export function OperationDispatchDrawer({
           operation?.cargoVehicleType?.requiresTrailer ?? false,
         trailerAxles: operation?.cargoVehicleType?.trailerAxles ?? null,
         requiredTrailerType: operation?.requiredTrailerType ?? null,
-        maxPayloadKg: operation?.cargoVehicleType?.maxPayloadKg ?? null,
-        weightKg: operation?.weight ?? null,
       }),
     [
-      operation?.cargoVehicleType?.maxPayloadKg,
       operation?.cargoVehicleType?.requiresTrailer,
       operation?.cargoVehicleType?.tractorAxles,
       operation?.cargoVehicleType?.trailerAxles,
       operation?.isContainerized,
       operation?.requiredTrailerType,
-      operation?.weight,
     ],
   );
 
@@ -504,8 +475,8 @@ export function OperationDispatchDrawer({
       Boolean(operation?.requiredTrailerType);
     const hasRequiredTrailer = !requiresTrailer || hasTrailer;
     const compatibility = operation
-      ? getLooseCargoCompatibility(operation, vehicle, trailer ?? null)
-      : { compatible: true, reasons: [], effectiveCapacityKg: vehicle.cargoCapacity };
+      ? getVehicleAxleCompatibility(operation, vehicle, trailer ?? null)
+      : { compatible: true, reasons: [] };
     return {
       driver,
       trailer,
@@ -928,12 +899,6 @@ export function OperationDispatchDrawer({
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              Capacidad efectiva: {formatCapacity(
-                                eligibility.compatibility.effectiveCapacityKg,
-                              )}
-                            </span>
-                            <span>
-                              <Truck size={15} aria-hidden="true" />
                               Cabezote: {vehicle.axles ?? '—'} ejes · Tráiler:{' '}
                               {eligibility.trailer
                                 ? `${eligibility.trailer.trailerType ? TRAILER_TYPE_LABELS[eligibility.trailer.trailerType] : 'Tipo sin registrar'} · ${eligibility.trailer.axles ?? '—'} ejes`
@@ -1032,24 +997,24 @@ export function OperationDispatchDrawer({
                       aria-invalid={Boolean(externalForm.formState.errors.trailerPlate)}
                     />
                   </FormField>
+                  <FormField
+                    label="Ejes del cabezote *"
+                    error={externalForm.formState.errors.tractorAxles?.message}
+                  >
+                    <select
+                      {...externalForm.register('tractorAxles', {
+                        setValueAs: (value: string) =>
+                          value === '' ? undefined : Number(value),
+                      })}
+                      aria-invalid={Boolean(externalForm.formState.errors.tractorAxles)}
+                    >
+                      <option value="">Selecciona ejes</option>
+                      <option value="2">2 ejes</option>
+                      <option value="3">3 ejes</option>
+                    </select>
+                  </FormField>
                   {operation.isContainerized !== true && (
                     <>
-                      <FormField
-                        label="Ejes del cabezote *"
-                        error={externalForm.formState.errors.tractorAxles?.message}
-                      >
-                        <select
-                          {...externalForm.register('tractorAxles', {
-                            setValueAs: (value: string) =>
-                              value === '' ? undefined : Number(value),
-                          })}
-                          aria-invalid={Boolean(externalForm.formState.errors.tractorAxles)}
-                        >
-                          <option value="">Selecciona ejes</option>
-                          <option value="2">2 ejes</option>
-                          <option value="3">3 ejes</option>
-                        </select>
-                      </FormField>
                       <FormField
                         label={
                           operation.cargoVehicleType?.requiresTrailer ||
@@ -1091,7 +1056,7 @@ export function OperationDispatchDrawer({
                         </select>
                       </FormField>
                       <FormField
-                        label="Capacidad de carga (kg) *"
+                        label="Capacidad de carga (kg) · opcional"
                         error={externalForm.formState.errors.cargoCapacityKg?.message}
                       >
                         <input

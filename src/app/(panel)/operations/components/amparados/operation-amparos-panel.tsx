@@ -18,6 +18,7 @@ import {
   AmparoSuggestion,
   AmparoSuggestionOperation,
 } from "@/services/operation.service";
+import { TRAILER_TYPE_LABELS, type Vehicle } from "@/types/vehicles";
 import { useAmparos } from "../../hooks/use-amparos";
 
 interface Props {
@@ -74,6 +75,52 @@ const getCounterpartAnalystName = (
   return "responsable de la otra operación";
 };
 
+const getAmparoAxleIssues = (
+  vehicle: Vehicle,
+  suggestion: AmparoSuggestion,
+): string[] => {
+  const issues: string[] = [];
+  if (vehicle.axles !== 2 && vehicle.axles !== 3) {
+    issues.push("ejes del cabezote sin registrar (se requieren 2 o 3)");
+  }
+
+  for (const operation of [
+    suggestion.exportOperation,
+    suggestion.importOperation,
+  ]) {
+    const configuration = operation.cargoVehicleType;
+    if (
+      configuration?.tractorAxles != null &&
+      vehicle.axles !== configuration.tractorAxles
+    ) {
+      issues.push(
+        `operación #${operation.id}: cabezote de ${configuration.tractorAxles} ejes`,
+      );
+    }
+    if (configuration?.requiresTrailer && !vehicle.currentTrailer) {
+      issues.push(`operación #${operation.id}: requiere tráiler`);
+    }
+    if (
+      configuration?.trailerAxles != null &&
+      vehicle.currentTrailer?.axles !== configuration.trailerAxles
+    ) {
+      issues.push(
+        `operación #${operation.id}: tráiler de ${configuration.trailerAxles} ejes`,
+      );
+    }
+    if (
+      operation.requiredTrailerType &&
+      vehicle.currentTrailer?.trailerType !== operation.requiredTrailerType
+    ) {
+      issues.push(
+        `operación #${operation.id}: tráiler tipo ${TRAILER_TYPE_LABELS[operation.requiredTrailerType]}`,
+      );
+    }
+  }
+
+  return [...new Set(issues)];
+};
+
 export function OperationAmparosPanel({ enabled }: Props) {
   const user = useAuthStore((state) => state.user);
   const [isOpen, setIsOpen] = useState(false);
@@ -110,10 +157,24 @@ export function OperationAmparosPanel({ enabled }: Props) {
 
   const suggestions = suggestionsQuery.data ?? [];
   const groupedSuggestions = groupSuggestions(suggestions);
+  const selectedVehicle = (vehiclesQuery.data ?? []).find(
+    (vehicle) => String(vehicle.id) === vehicleId,
+  );
+  const selectedVehicleIssues =
+    selectedVehicle && selectedSuggestion
+      ? getAmparoAxleIssues(selectedVehicle, selectedSuggestion)
+      : [];
+  const compatibleVehicleCount = selectedSuggestion
+    ? (vehiclesQuery.data ?? []).filter(
+        (vehicle) =>
+          getAmparoAxleIssues(vehicle, selectedSuggestion).length === 0,
+      ).length
+    : 0;
 
   const handleConfirm = () => {
     if (!selectedSuggestion || selectedSuggestion.conflictingDrivers ||
-        (!selectedSuggestion.hasAssignedDriver && !driverId) || !vehicleId) return;
+        (!selectedSuggestion.hasAssignedDriver && !driverId) || !vehicleId ||
+        !selectedVehicle || selectedVehicleIssues.length > 0) return;
     if (user?.role === "ANALISTA" && !agreementConfirmed) return;
 
     confirmMutation.mutate({
@@ -190,11 +251,13 @@ export function OperationAmparosPanel({ enabled }: Props) {
           </button>
         </div>
       ) : suggestions.length === 0 ? (
-        <p className={styles.panelMessage}>
-          No hay amparos disponibles. Las citas deben ser el mismo día y en el
-          mismo puerto. Las devoluciones pendientes también deben coincidir en
-          tipo de contenedor.
-        </p>
+        isOpen && (
+          <p className={styles.panelMessage}>
+            No hay amparos disponibles. Las citas deben ser el mismo día y en el
+            mismo puerto. Las devoluciones pendientes también deben coincidir en
+            tipo de contenedor.
+          </p>
+        )
       ) : (
         isOpen && (
           <ul className={styles.suggestionList}>
@@ -425,11 +488,26 @@ export function OperationAmparosPanel({ enabled }: Props) {
                   </option>
                 )}
                 {(vehiclesQuery.data ?? []).map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.plate}
+                  <option
+                    key={vehicle.id}
+                    value={vehicle.id}
+                    disabled={
+                      getAmparoAxleIssues(vehicle, selectedSuggestion).length > 0
+                    }
+                  >
+                    {vehicle.plate} · Cabezote {vehicle.axles ?? "—"} ejes
                   </option>
                 ))}
               </select>
+              {selectedVehicleIssues.length > 0 ? (
+                <span role="alert">
+                  No compatible por ejes: {selectedVehicleIssues.join("; ")}.
+                </span>
+              ) : compatibleVehicleCount === 0 && !vehiclesQuery.isLoading ? (
+                <span role="alert">
+                  No hay vehículos con ejes compatibles para ambas operaciones.
+                </span>
+              ) : null}
             </label>
 
             <div className={styles.modalActions}>
@@ -450,6 +528,8 @@ export function OperationAmparosPanel({ enabled }: Props) {
                   selectedSuggestion.conflictingDrivers ||
                   (!selectedSuggestion.hasAssignedDriver && !driverId) ||
                   !vehicleId ||
+                  !selectedVehicle ||
+                  selectedVehicleIssues.length > 0 ||
                   (user?.role === "ANALISTA" && !agreementConfirmed) // Valida que el checkbox esté marcado
                 }
                 className={styles.confirmButton}

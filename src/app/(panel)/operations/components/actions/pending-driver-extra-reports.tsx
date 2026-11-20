@@ -34,6 +34,7 @@ export function PendingDriverExtraReports() {
   const [amount, setAmount] = useState('');
   const [cost, setCost] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const openReport = (report: DriverExtraReport) => {
     setSelectedReport(report);
@@ -89,10 +90,10 @@ export function PendingDriverExtraReports() {
     <section
       aria-labelledby="pending-extra-reports-heading"
       style={{
-        marginBottom: 20,
-        padding: 18,
+        margin: 0,
+        padding: '12px 16px',
         border: '1px solid #fed7aa',
-        borderRadius: 12,
+        borderRadius: 10,
         background: '#fff7ed',
       }}
     >
@@ -108,26 +109,51 @@ export function PendingDriverExtraReports() {
           <h2 id="pending-extra-reports-heading" style={{ margin: 0 }}>
             Reportes de cobros extras
           </h2>
-          <p style={{ margin: '5px 0 0', color: '#475569' }}>
-            Revisa la evidencia y define el concepto y valores del recargo.
+          <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 12 }}>
+            Revisa y valoriza los reportes de conductores.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => void reportsQuery.refetch()}
-          disabled={reportsQuery.isFetching}
-        >
-          Actualizar
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!reportsQuery.isLoading && !reportsQuery.isError && (
+            <span
+              style={{
+                padding: '4px 9px',
+                borderRadius: 999,
+                background: '#ffedd5',
+                color: '#9a3412',
+                fontSize: 12,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {reportsQuery.data?.length ?? 0} pendientes
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void reportsQuery.refetch()}
+            disabled={reportsQuery.isFetching}
+          >
+            Actualizar
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? 'Contraer' : 'Ver'}
+          </Button>
+        </div>
       </div>
 
       {reportsQuery.isLoading ? (
-        <p role="status">Cargando reportes pendientes…</p>
+        isExpanded && <p role="status" style={{ marginBottom: 0 }}>Cargando reportes pendientes…</p>
       ) : reportsQuery.isError ? (
-        <p role="alert">No se pudieron cargar los reportes pendientes.</p>
+        isExpanded && <p role="alert" style={{ marginBottom: 0 }}>No se pudieron cargar los reportes pendientes.</p>
       ) : reportsQuery.data?.length ? (
-        <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+        isExpanded && <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
           {reportsQuery.data.map((report) => (
             <article
               key={report.id}
@@ -163,7 +189,7 @@ export function PendingDriverExtraReports() {
           ))}
         </div>
       ) : (
-        <p style={{ marginBottom: 0 }}>No hay reportes pendientes.</p>
+        isExpanded && <p style={{ margin: '10px 0 0', color: '#64748b', fontSize: 13 }}>No hay reportes pendientes.</p>
       )}
 
       <SuperModal

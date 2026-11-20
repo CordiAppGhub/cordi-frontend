@@ -92,35 +92,10 @@ function getDocumentaryClosureMissingRequirements(operation: Operation): string[
   ) {
     missing.push('Número de contenedor');
   }
-  if (  operation.isContainerized === true && !operation.containerType) {
+  if (operation.isContainerized === true && !operation.containerType) {
     missing.push('Tipo de contenedor');
   }
 
-  const requiredEvidenceTypes = operation.isContainerized === true
-    ? operation.type === 'EXPORTACION'
-      ? [operation.amparosExportacion?.length ? 'INGRESO_PUERTO' : 'SALIDA_PUERTO']
-      : operation.type === 'IMPORTACION' ||
-          operation.type === 'DEVOLUCION_VACIO'
-        ? ['TIRILLA_EIR']
-        : ['Soporte de cierre']
-    : [
-        'DELIVERY_DOC',
-        'FOTOS_LLEGADA_CARGA_SUELTA',
-        'FOTOS_DESCARGUE_CARGA_SUELTA',
-      ];
-  for (const evidenceType of requiredEvidenceTypes) {
-    if (
-      !operation.evidences?.some(
-        (evidence) =>
-          evidence.type === evidenceType &&
-          Boolean(evidence.url) &&
-          !evidence.invalidated &&
-          evidence.estadoRevision !== 'DEVUELTO',
-      )
-    ) {
-      missing.push(`Archivo ${evidenceType.replace(/_/g, ' ')}`);
-    }
-  }
   return missing;
 }
 
@@ -233,16 +208,15 @@ export function OperationTraceability({ operationId }: Props) {
     return missing;
   };
   const missingData = getMissingData();
-  const documentaryClosureMissing =
-    currentOperation.status === 'CIERRE_FISICO'
-      ? getDocumentaryClosureMissingRequirements(currentOperation)
-      : [];
+  const isDocumentaryClosurePending =
+    !currentOperation.fechaCierreDocumental &&
+    !['FINALIZADO', 'CANCELADO'].includes(currentOperation.status);
+  const documentaryClosureMissing = isDocumentaryClosurePending
+    ? getDocumentaryClosureMissingRequirements(currentOperation)
+    : [];
   const canCloseDocumentally = ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(
     role ?? '',
   );
-  const isDocumentaryClosurePending =
-    currentOperation.status === 'CIERRE_FISICO' &&
-    !currentOperation.fechaCierreDocumental;
   const containerStatus = currentOperation.containerStatus || 'PENDIENTE';
   const correctionStatus = Object.keys(containerPredecessors)
     .find((status): status is OperationContainerStatus => status === containerStatus);
@@ -725,7 +699,10 @@ export function OperationTraceability({ operationId }: Props) {
     }
     const confirmation = await Swal.fire({
       title: 'Aprobar cierre documental',
-      text: 'Al aprobar el cierre documental, la operación quedará finalizada y pasará al historial.',
+      text:
+        currentOperation.status === 'CIERRE_FISICO'
+          ? 'Al aprobar el cierre documental, la operación quedará finalizada y pasará al historial.'
+          : 'Se registrará el cierre documental. La operación seguirá activa hasta completar el cierre físico.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Aprobar cierre documental',
@@ -758,7 +735,9 @@ export function OperationTraceability({ operationId }: Props) {
         }),
       ]);
       showToast.success(
-        'Cierre documental aprobado. La operación quedó finalizada.',
+        updatedOperation.status === 'FINALIZADO'
+          ? 'Cierre documental aprobado. La operación quedó finalizada.'
+          : 'Cierre documental aprobado. La operación sigue activa hasta completar el cierre físico.',
       );
     } catch (error: unknown) {
       showToast.error(error, 'No se pudo aprobar el cierre documental.');

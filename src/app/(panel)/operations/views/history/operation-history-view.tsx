@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
-import { Eye, Loader, Search, X } from "lucide-react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { Eye, Filter, Loader, Search, X } from "lucide-react";
 import { Button } from "@/components/atoms/button/button";
 import PaginationTable from "@/components/organisms/pagination-table/pagination-table";
 import type { ColumnDef } from "@/types/table";
@@ -13,6 +13,7 @@ import styles from "./operation-history.module.css";
 
 interface OperationHistoryViewProps {
   onOpenOperation: (operationId: number) => void;
+  onCountChange: (count: number) => void;
 }
 
 type DraftFilters = Omit<GetHistoricalOperationsParams, "page" | "limit">;
@@ -25,6 +26,8 @@ const INITIAL_DRAFT_FILTERS: DraftFilters = {
   clientId: undefined,
   analystId: undefined,
   driverId: undefined,
+  search: "",
+  isContainerized: undefined,
 };
 
 function displayName(name?: string | null): string {
@@ -129,6 +132,7 @@ function getHistoryColumns(
 
 export function OperationHistoryView({
   onOpenOperation,
+  onCountChange,
 }: OperationHistoryViewProps) {
   const {
     operations,
@@ -142,6 +146,11 @@ export function OperationHistoryView({
   const [draftFilters, setDraftFilters] =
     useState<DraftFilters>(INITIAL_DRAFT_FILTERS);
   const [selectResetVersion, setSelectResetVersion] = useState(0);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    onCountChange(meta.totalItems);
+  }, [meta.totalItems, onCountChange]);
 
   const updateDraft = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -166,20 +175,89 @@ export function OperationHistoryView({
 
   return (
     <section className={styles.history}>
-      <header className={styles.header}>
-        <div>
-          <h2>Historial de operaciones</h2>
-          <p>
-            Consulta viajes finalizados o cancelados y abre su trazabilidad
-            completa.
-          </p>
-        </div>
-        <span className={styles.resultCount}>
-          {meta.totalItems} operaciones
-        </span>
-      </header>
-
       <form className={styles.filters} onSubmit={submitFilters}>
+        <div className={styles.primaryFilters}>
+          <label className={`${styles.filterField} ${styles.searchField}`}>
+            <span>Buscar</span>
+            <input
+              name="search"
+              type="search"
+              value={draftFilters.search || ""}
+              onChange={updateDraft}
+              placeholder="Placa / contenedor / # Op."
+            />
+          </label>
+          <label className={`${styles.filterField} ${styles.modalityField}`}>
+            <span>Modalidad</span>
+            <select
+              value={
+                draftFilters.isContainerized === undefined
+                  ? ""
+                  : String(draftFilters.isContainerized)
+              }
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  isContainerized:
+                    event.target.value === ""
+                      ? undefined
+                      : event.target.value === "true",
+                }))
+              }
+            >
+              <option value="">Todas</option>
+              <option value="true">Contenerizada</option>
+              <option value="false">Carga Suelta</option>
+            </select>
+          </label>
+          <label className={`${styles.filterField} ${styles.dateField}`}>
+            <span>Desde</span>
+            <input
+              name="startDate"
+              type="date"
+              value={draftFilters.startDate || ""}
+              onChange={updateDraft}
+            />
+          </label>
+          <label className={`${styles.filterField} ${styles.dateField}`}>
+            <span>Hasta</span>
+            <input
+              name="endDate"
+              type="date"
+              value={draftFilters.endDate || ""}
+              onChange={updateDraft}
+            />
+          </label>
+          <div className={styles.filterActions}>
+            <Button type="submit" className={styles.searchButton} disabled={isLoading}>
+              <Search size={15} />
+              Buscar
+            </Button>
+            <Button
+              variant="secondary"
+              type="button"
+              className={styles.clearButton}
+              onClick={resetFilters}
+              disabled={isLoading}
+              title="Limpiar filtros"
+              aria-label="Limpiar filtros"
+            >
+              <X size={16} />
+            </Button>
+            <Button
+              variant="secondary"
+              type="button"
+              className={styles.clearButton}
+              onClick={() => setIsAdvancedOpen((open) => !open)}
+              aria-expanded={isAdvancedOpen}
+            >
+              <Filter size={15} />
+              {isAdvancedOpen ? "Menos filtros" : "Más filtros"}
+            </Button>
+          </div>
+        </div>
+        {isAdvancedOpen && (
+          <div className={styles.advancedFilters}>
         <div className={styles.filterField}>
           <span>Manifiesto / pedido</span>
           <HistorySearchSelect
@@ -257,40 +335,8 @@ export function OperationHistoryView({
             }}
           />
         </div>
-        <label className={styles.filterField}>
-          <span>Desde</span>
-          <input
-            name="startDate"
-            type="date"
-            value={draftFilters.startDate || ""}
-            onChange={updateDraft}
-          />
-        </label>
-        <label className={styles.filterField}>
-          <span>Hasta</span>
-          <input
-            name="endDate"
-            type="date"
-            value={draftFilters.endDate || ""}
-            onChange={updateDraft}
-          />
-        </label>
-        <div className={styles.filterActions}>
-          <Button type="submit" className={styles.searchButton} disabled={isLoading}>
-            <Search size={16} />
-            Buscar
-          </Button>
-          <Button
-            variant="secondary"
-            type="button"
-            className={styles.clearButton}
-            onClick={resetFilters}
-            disabled={isLoading}
-          >
-            <X size={16} />
-            Limpiar
-          </Button>
-        </div>
+          </div>
+        )}
       </form>
 
       {error && (

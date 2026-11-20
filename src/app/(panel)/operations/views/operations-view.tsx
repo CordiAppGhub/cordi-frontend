@@ -55,6 +55,8 @@ function ClientOperationsExpansion({
     numeroPedido: filters.numeroPedido,
     containerNumber: filters.containerNumber,
     conductor: filters.conductor,
+    search: filters.search,
+    isContainerized: filters.isContainerized,
   });
   const [pagination, setPagination] = useState({ filterKey, page: 1 });
   const page = pagination.filterKey === filterKey ? pagination.page : 1;
@@ -72,6 +74,8 @@ function ClientOperationsExpansion({
     numeroPedido: filters.numeroPedido,
     containerNumber: filters.containerNumber,
     conductor: filters.conductor,
+    search: filters.search,
+    isContainerized: filters.isContainerized,
   };
   const operationsQuery = useQuery({
     queryKey: ['trafico-client-operations', group.clientId, params],
@@ -233,6 +237,7 @@ export function OperationsView() {
   const setSection = useOperationHistoryStore((state) => state.setSection);
 
   const [activeTab, setActiveTab] = useState('TODAS');
+  const [historyCount, setHistoryCount] = useState<number | null>(null);
 
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
   const [novedadOperation, setNovedadOperation] = useState<Operation | null>(null);
@@ -382,110 +387,111 @@ export function OperationsView() {
 
   return (
     <div className={styles.layout}>
-      {/* HEADER */}
       <div className={styles.pageHeader}>
         <div className={styles.headerTitleContainer}>
-          <div>
-            <h1 className={styles.titleText}>
-              {section === 'active'
-                ? 'Operaciones y viajes'
-                : 'Historial de operaciones'}
-            </h1>
-            <p className={styles.subtitleText}>
-              {section === 'history'
-                ? 'Consulta operaciones finalizadas o canceladas según el alcance de tu usuario.'
-                : user?.role === 'ANALISTA'
-                  ? 'Registra la solicitud de operación; el jefe de flota asignará el vehículo.'
-                    : 'La asignación inicial se realiza en Solicitudes de flota. Aquí puedes reasignar operaciones que ya tienen vehículo.'}
-            </p>
-          </div>
+          <h1 className={styles.titleText}>Operaciones y viajes</h1>
+          <p className={styles.subtitleText}>
+            Control operativo, programación y consulta de viajes.
+          </p>
+        </div>
+        <div className={styles.viewTabs} role="tablist" aria-label="Vista de operaciones">
+          {[
+            { id: 'active' as const, label: 'Actuales' },
+            { id: 'history' as const, label: 'Historial' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={section === tab.id}
+              onClick={() => setSection(tab.id)}
+              className={`${styles.viewTabButton} ${
+                section === tab.id ? styles.viewTabButtonActive : ''
+              }`}
+            >
+              {tab.label}
+              {tab.id === 'history' && historyCount !== null && (
+                <span className={styles.viewTabCount}>{historyCount}</span>
+              )}
+            </button>
+          ))}
         </div>
         {section === 'active' && (
-          <Button onClick={openCreateModal} style={{ padding: '10px 18px', fontWeight: 600 }}>
+          <Button onClick={openCreateModal} className={styles.createOperationButton}>
             {user?.role === 'ANALISTA' ? '+ Nueva solicitud' : '+ Nueva Operación'}
           </Button>
         )}
       </div>
 
-      <div className={styles.tabsContainer} aria-label="Vista de operaciones">
-        {[
-          { id: 'active' as const, label: 'Actuales' },
-          { id: 'history' as const, label: 'Historial' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setSection(tab.id)}
-            className={`${styles.tabButton} ${section === tab.id ? styles.tabButtonActive : ''}`}
-            aria-pressed={section === tab.id}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {section === 'active' ? (
         <>
-          <PendingDriverExtraReports />
-          <OperationAmparosPanel
-            enabled={
-              user?.role === 'ADMIN' ||
-              user?.role === 'JEFE_DE_FLOTA' ||
-              user?.role === 'ANALISTA'
-            }
-          />
-
-          <div className={styles.tabsContainer} aria-label="Tipo de operación">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabButtonActive : ''}`}
-                aria-pressed={activeTab === tab.id}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className={styles.insightGrid}>
+            {/* <PendingDriverExtraReports /> */}
+            <OperationAmparosPanel
+              enabled={
+                user?.role === 'ADMIN' ||
+                user?.role === 'JEFE_DE_FLOTA' ||
+                user?.role === 'ANALISTA'
+              }
+            />
           </div>
 
-          {error && <div className={styles.errorMessage} role="alert">⚠️ {error}</div>}
-
-          <OperationFilters
-            onFilter={setFilters}
-            isLoading={isLoadingOperations}
-          />
-
-          <div className={styles.tableCard}>
-            {isLoadingOperations ? (
-              <div className={styles.loaderContainer}>
-                <Loader />
-              </div>
-            ) : <PaginationTable
-              data={operations ?? []}
-              hideSearch
-              columns={clientColumns}
-              isCollapsible={true}
-              subColumns={operationColumns}
-              renderExpandedContent={(row) => (
-                <ClientOperationsExpansion
-                  group={row}
-                  columns={operationColumns}
-                  filters={queryParams}
-                />
-              )}
-              totalPages={meta?.total ?? 1}
-              currentPage={meta?.page ?? 1}
-              onPageChange={(newPage) => setFilters({ page: newPage })}
-            />}
-          </div>
+          <section className={styles.workspaceCard}>
+            <div className={styles.operationTypeTabs} role="tablist" aria-label="Tipo de operación">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`${styles.operationTypeTab} ${
+                    activeTab === tab.id ? styles.operationTypeTabActive : ''
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <OperationFilters
+              onFilter={setFilters}
+              isLoading={isLoadingOperations}
+            />
+            {error && <div className={styles.errorMessage} role="alert">⚠️ {error}</div>}
+            <div className={styles.tableCard}>
+              {isLoadingOperations ? (
+                <div className={styles.loaderContainer}>
+                  <Loader />
+                </div>
+              ) : <PaginationTable
+                data={operations ?? []}
+                hideSearch
+                columns={clientColumns}
+                isCollapsible={true}
+                subColumns={operationColumns}
+                renderExpandedContent={(row) => (
+                  <ClientOperationsExpansion
+                    group={row}
+                    columns={operationColumns}
+                    filters={queryParams}
+                  />
+                )}
+                totalPages={meta?.total ?? 1}
+                currentPage={meta?.page ?? 1}
+                onPageChange={(newPage) => setFilters({ page: newPage })}
+              />}
+            </div>
+          </section>
         </>
       ) : (
-        <OperationHistoryView
-          onOpenOperation={(operationId) =>
-            setTraceContext({ type: 'OPERATION', id: operationId })
-          }
-        />
+        <section className={styles.workspaceCard}>
+          <OperationHistoryView
+            onCountChange={setHistoryCount}
+            onOpenOperation={(operationId) =>
+              setTraceContext({ type: 'OPERATION', id: operationId })
+            }
+          />
+        </section>
       )}
 
       <CreateDrawerOperation />

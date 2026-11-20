@@ -19,7 +19,10 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
     const { name, value } = e.target;
     setFilters((prev) => ({
       ...prev,
-      [name]: value || undefined,
+      [name]:
+        name === 'isContainerized'
+          ? value === '' ? undefined : value === 'true'
+          : value || undefined,
     }));
   };
 
@@ -30,66 +33,105 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
 
   const handleClear = () => {
     setFilters({});
-    onFilter({ page: 1, limit: 10 });
+    onFilter({
+      page: 1,
+      limit: 10,
+      search: undefined,
+      isContainerized: undefined,
+      date: undefined,
+      conductor: undefined,
+      status: undefined,
+    });
   };
 
   return (
     <div className={styles.filterCard}>
       <form onSubmit={handleSearch}>
         <div className={styles.mainRow}>
-          <div className={styles.inputGroup}>
-            <span className={styles.label}>Placa</span>
-            <input name="placa" value={filters.placa || ''} onChange={handleChange} placeholder="Ej: TRL204" className={styles.input} />
-          </div>
+          <label className={`${styles.inputGroup} ${styles.searchGroup}`}>
+            <span className={styles.label}>Buscar</span>
+            <input
+              name="search"
+              value={filters.search || ''}
+              onChange={handleChange}
+              placeholder="Placa / contenedor / # Op."
+              className={styles.input}
+            />
+          </label>
 
-          <div className={styles.inputGroup}>
-            <span className={styles.label}>Contenedor</span>
-            <input name="containerNumber" value={filters.containerNumber || ''} onChange={handleChange} placeholder="MSKU..." className={styles.input} />
-          </div>
+          <label className={`${styles.inputGroup} ${styles.modalityGroup}`}>
+            <span className={styles.label}>Modalidad</span>
+            <Select
+              name="isContainerized"
+              value={
+                filters.isContainerized === undefined
+                  ? ''
+                  : String(filters.isContainerized)
+              }
+              onChange={handleChange}
+              className={styles.input}
+            >
+              <option value="">Todas</option>
+              <option value="true">Contenerizada</option>
+              <option value="false">Carga Suelta</option>
+            </Select>
+          </label>
 
-          <div className={styles.inputGroup}>
-            <span className={styles.label}>Fecha Prog.</span>
-            <input name="date" type="date" value={filters.date || ''} onChange={handleChange} className={styles.input} />
-          </div>
+          <label className={`${styles.inputGroup} ${styles.dateGroup}`}>
+            <span className={styles.label}>Fecha prog.</span>
+            <input
+              name="date"
+              type="date"
+              value={filters.date || ''}
+              onChange={handleChange}
+              className={styles.input}
+            />
+          </label>
 
           <div className={styles.buttonsGroup}>
             <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
               <Search size={14} /> {isLoading ? '...' : 'Buscar'}
             </button>
-            <button type="button" onClick={handleClear} className={styles.btnSecondary} title="Limpiar">
-              <X size={14} />
+            <button
+              type="button"
+              onClick={handleClear}
+              className={styles.btnSecondary}
+              title="Limpiar filtros"
+              aria-label="Limpiar filtros"
+            >
+              <X size={15} />
             </button>
-            <button type="button" onClick={() => setIsExpanded(!isExpanded)} className={styles.btnSecondary} title="Avanzados">
-              <Filter size={14} /> {isExpanded ? 'Menos' : 'Más'}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={styles.btnSecondary}
+              aria-expanded={isExpanded}
+            >
+              <Filter size={14} /> {isExpanded ? 'Menos filtros' : 'Más filtros'}
             </button>
           </div>
         </div>
 
         {isExpanded && (
           <div className={styles.advancedRow}>
-            <div className={styles.inputGroup}>
+            <label className={styles.inputGroup}>
               <span className={styles.label}>Conductor</span>
               <input name="conductor" value={filters.conductor || ''} onChange={handleChange} placeholder="Nombre..." className={styles.input} />
-            </div>
+            </label>
 
-            <div className={styles.inputGroup}>
-              <span className={styles.label}>Pedido / DO</span>
-              <input name="numeroPedido" value={filters.numeroPedido || ''} onChange={handleChange} placeholder="DO-123" className={styles.input} />
-            </div>
-
-            <div className={styles.inputGroup}>
-              <span className={styles.label}>Tipo Op.</span>
-              <Select name="type" value={filters.type || ''} onChange={handleChange} className={styles.input}>
+            <label className={styles.inputGroup}>
+              <span className={styles.label}>Estado</span>
+              <Select name="status" value={filters.status || ''} onChange={handleChange} className={styles.input}>
                 <option value="">Todos</option>
-                <option value="IMPORTACION">Importación</option>
-                <option value="EXPORTACION">Exportación</option>
-                <option value="RETIRO_VACIO">Retiro Vacío</option>
-                <option value="DEVOLUCION_VACIO">Devolución de Vacío</option>
-                <option value="NACIONAL">Nacional</option>
-                <option value="MOVIMIENTO_INTERNO">Movimiento Interno</option>
-                <option value="MOVIMIENTO_INTERNO">Movimiento Interno</option>
+                <option value="CREADO">Creado</option>
+                <option value="PROGRAMADO">Programado</option>
+                <option value="ASIGNADO">Asignado</option>
+                <option value="EN_CURSO">En curso</option>
+                <option value="CIERRE_FISICO">Cierre físico</option>
+                <option value="PAUSADA">Pausada</option>
+                <option value="DESVIO_REPORTADO">Desvío reportado</option>
               </Select>
-            </div>
+            </label>
           </div>
         )}
       </form>

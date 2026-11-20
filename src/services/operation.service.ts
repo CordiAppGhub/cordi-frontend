@@ -33,6 +33,8 @@ export interface GetOperationsParams {
   numeroPedido?: string; // 🚀 Nuevo
   containerNumber?: string; // 🚀 Nuevo
   conductor?: string; // 🚀 Nuevo
+  search?: string;
+  isContainerized?: boolean;
   deferOperations?: boolean;
 }
 
@@ -66,6 +68,8 @@ export interface GetHistoricalOperationsParams {
   driverId?: number;
   manifiesto?: string;
   containerNumber?: string;
+  search?: string;
+  isContainerized?: boolean;
   analista?: string;
   conductor?: string;
 }
@@ -128,6 +132,12 @@ export interface AmparoSuggestionOperation {
   hasAppointment?: boolean;
   appointmentAt: string;
   fechaCitaDestino?: string | null;
+  requiredTrailerType?: TrailerType | null;
+  cargoVehicleType?: {
+    tractorAxles: number | null;
+    trailerAxles: number | null;
+    requiresTrailer: boolean;
+  } | null;
   analyst: { id: number; name: string | null } | null;
   driver: { id: number; name: string | null } | null;
   vehicle: { id: number; plate: string } | null;

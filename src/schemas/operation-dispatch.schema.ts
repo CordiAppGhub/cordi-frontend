@@ -66,8 +66,6 @@ export const createExternalFleetDispatchSchema = (requirements: {
   requiresTrailer: boolean;
   trailerAxles: number | null;
   requiredTrailerType: TrailerType | null;
-  maxPayloadKg: number | null;
-  weightKg: number | null;
 }) =>
   externalFleetDispatchSchema.superRefine((values, context) => {
     if (
@@ -99,8 +97,6 @@ export const createExternalFleetDispatchSchema = (requirements: {
       });
     }
 
-    if (!requirements.isLooseCargo) return;
-
     if (values.tractorAxles === undefined) {
       context.addIssue({
         code: 'custom',
@@ -118,34 +114,7 @@ export const createExternalFleetDispatchSchema = (requirements: {
       });
     }
 
-    if (values.cargoCapacityKg === undefined) {
-      context.addIssue({
-        code: 'custom',
-        path: ['cargoCapacityKg'],
-        message: 'Indica la capacidad de carga en kg.',
-      });
-    } else if (
-      requirements.weightKg !== null &&
-      values.cargoCapacityKg < requirements.weightKg
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['cargoCapacityKg'],
-        message: `La capacidad debe ser igual o mayor a ${requirements.weightKg.toLocaleString('es-CO')} kg.`,
-      });
-    }
-
-    if (
-      requirements.maxPayloadKg !== null &&
-      requirements.weightKg !== null &&
-      requirements.weightKg > requirements.maxPayloadKg
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['cargoCapacityKg'],
-        message: `La carga supera el máximo de ${requirements.maxPayloadKg.toLocaleString('es-CO')} kg de la configuración.`,
-      });
-    }
+    if (!requirements.isLooseCargo) return;
 
     const trailerRequired =
       requirements.requiresTrailer || Boolean(requirements.requiredTrailerType);
