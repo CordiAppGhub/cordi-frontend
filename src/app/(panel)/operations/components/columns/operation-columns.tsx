@@ -4,6 +4,7 @@ import { Operation } from '@/types/operation-types';
 import styles from '../../operations.module.css';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { formatLocationLabel } from '@/utils/location';
+import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 import {
   Building2,
   Calendar,
@@ -297,7 +298,7 @@ export const getOperationsColumns = (
                   fontVariantNumeric: 'tabular-nums'
                 }}
               >
-                <strong>{surcharge.surcharge?.name || surcharge.surchargeCode}</strong>
+                <strong>{formatExtraChargeTypeLabel(surcharge.surcharge?.name || surcharge.surchargeCode)}</strong>
                 <span>Venta: ${Number(surcharge.totalPrice).toLocaleString('es-CO')}</span>
                 {Number(surcharge.costPrice) > 0 && (
                   <span style={{ color: '#b91c1c' }}>Costo: ${Number(surcharge.costPrice).toLocaleString('es-CO')}</span>

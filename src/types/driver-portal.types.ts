@@ -99,11 +99,18 @@ export interface Operation {
   isAnticipada?: boolean;
   isAdvanceRetrieval?: boolean;
   fleteAPagar?: number | null;
+  numeroPedido?: string | null;
+  arin?: string | null;
+  documentoTransporte?: string | null;
+  radicado?: string | null;
+  observaciones?: string | null;
+  pinRetiro?: string | null;
   estadoViaje?: TripMicroState | null;
   placaIA?: string | null;
   containerNumber?: string | null;
   sealNumber?: string | null;
   containerType?: string | null;
+  shippingLine?: { name: string } | null;
   cargoDescription?: string | null;
   peso?: number | null;
   weight?: number | null;
@@ -113,6 +120,8 @@ export interface Operation {
   volumeM3?: number | null;
   containerStatus?: OperationContainerStatus;
   cargoStatus?: CargoStatus;
+  diasLibresDevolucion?: number | null;
+  fechaLimiteDevolucion?: string | null;
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;
   loadingStartedAt?: string | null;
@@ -162,6 +171,9 @@ export interface Operation {
     stopOrder: number;
     cargoDescription?: string | null;
     weightKg?: number | null;
+    appointmentAt?: string | null;
+    actualArrivalAt?: string | null;
+    actualDepartureAt?: string | null;
     status: "PENDIENTE" | "EN_CURSO" | "COMPLETADA" | "OMITIDA";
     client: { razonSocial: string };
     location: { name: string; address?: string | null } | null;

@@ -21,6 +21,11 @@ import { showToast } from '@/utils/alerts';
 import { InspectionResult } from './inspection-result';
 import { useAuthStore } from '@/store/use-auth.store';
 import type { CargoStatus, OperationContainerStatus } from '@/types/driver-portal.types';
+import {
+  formatEvidenceStageLabel,
+  formatEvidenceTypeLabel,
+  formatExtraChargeTypeLabel,
+} from '@/utils/format-labels';
 
 const containerPredecessors: Partial<Record<OperationContainerStatus, OperationContainerStatus[]>> = {
   EN_INSPECCION: ['PENDIENTE', 'EN_PISO'],
@@ -1433,7 +1438,9 @@ export function OperationTraceability({ operationId }: Props) {
                       <span className={styles.surchargeDescription}>
                         <span>
                           <strong>
-                            {surcharge.surcharge?.name || surcharge.surchargeCode}
+                            {formatExtraChargeTypeLabel(
+                              surcharge.surcharge?.name || surcharge.surchargeCode,
+                            )}
                           </strong>
                           {surcharge.quantity > 1
                             ? ` · ${surcharge.quantity} unid.`
@@ -1446,7 +1453,7 @@ export function OperationTraceability({ operationId }: Props) {
                           <small>
                             Novedad #{surcharge.novedad.id}
                             {surcharge.novedad.category
-                              ? ` · ${surcharge.novedad.category.replaceAll('_', ' ')}`
+                              ? ` · ${formatExtraChargeTypeLabel(surcharge.novedad.category)}`
                               : ''}
                           </small>
                         )}
@@ -1680,11 +1687,11 @@ export function OperationTraceability({ operationId }: Props) {
                     <div key={ev.id} className={styles.evidenceCard}>
                       <div className={styles.evidenceHeader}>
                         <div>
-                          <span className={styles.evidenceType}>{ev.type || 'Soporte'}</span>
+                          <span className={styles.evidenceType}>{formatEvidenceTypeLabel(ev.type || 'Soporte')}</span>
                           <div className={styles.evidenceMeta}>
                             {ev.etapa && (
                               <span>
-                                Etapa: <strong>{ev.etapa}</strong>
+                                Etapa: <strong>{formatEvidenceStageLabel(ev.etapa)}</strong>
                               </span>
                             )}
                             <span>Fecha: {formatDate(ev.createdAt)}</span>
@@ -1781,11 +1788,11 @@ export function OperationTraceability({ operationId }: Props) {
                   <div key={ev.id} className={styles.evidenceCard}>
                     <div className={styles.evidenceHeader}>
                       <div>
-                        <span className={styles.evidenceType}>{ev.type || 'Soporte'}</span>
+                        <span className={styles.evidenceType}>{formatEvidenceTypeLabel(ev.type || 'Soporte')}</span>
                         <div className={styles.evidenceMeta}>
                           {ev.etapa && (
                             <span>
-                              Etapa: <strong>{ev.etapa}</strong>
+                              Etapa: <strong>{formatEvidenceStageLabel(ev.etapa)}</strong>
                             </span>
                           )}
                           <span>Fecha: {formatDate(ev.createdAt)}</span>

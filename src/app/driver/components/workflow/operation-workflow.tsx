@@ -11,6 +11,7 @@ import type {
   CargoStatus,
   OperationContainerStatus,
 } from "@/types/driver-portal.types";
+import { formatEvidenceTypeLabel } from "@/utils/format-labels";
 
 const PORT_ENTRY_EVIDENCE = "INGRESO_PUERTO";
 const SEAL_EVIDENCE = "SELLOS_CONTENEDOR";
@@ -1020,7 +1021,7 @@ const AMPARADO_IMPORT_STEPS: WorkflowStep[] = [
   {
     id: "amparo-impo-leave-port",
     travelState: "EN_PUERTO",
-    label: "SUBIR SOPORTE DE SALIDA (SALIDA_PUERTO)",
+    label: "SUBIR SOPORTE DE SALIDA DEL PUERTO",
     action: "evidence",
     evidenceTypes: [PORT_EXIT_EVIDENCE],
     requiresEvidence: [PORT_ENTRY_EVIDENCE],
@@ -1827,7 +1828,7 @@ export function OperationWorkflow({
                     ? "foto del cargue"
                     : type === CONTAINER_NUMBER_EVIDENCE
                       ? "validación OCR del contenedor"
-                      : type.replace(/_/g, " ").toLowerCase();
+                      : formatEvidenceTypeLabel(type).toLowerCase();
                 missingRequirements.push(`Soporte pendiente: ${label}.`);
               }
             }

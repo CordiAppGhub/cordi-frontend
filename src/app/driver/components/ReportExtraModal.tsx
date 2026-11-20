@@ -13,13 +13,7 @@ import {
 import { driverPortalService } from '@/services/driverPortal.service';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { showToast } from '@/utils/alerts';
-
-const reportTypeLabels = {
-  STAND_BY: 'Stand by / tiempo de espera',
-  DESVIO: 'Desvío operativo',
-  MANIOBRA_EXTRA: 'Maniobra extra',
-  EN_PISO: 'Contenedor bajado a piso',
-} as const;
+import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 
 interface ReportExtraModalProps {
   operationId: number | null;
@@ -109,9 +103,9 @@ export function ReportExtraModal({
         <label style={{ display: 'grid', gap: 6 }}>
           Tipo de evento
           <select {...register('type')}>
-            {Object.entries(reportTypeLabels).map(([value, label]) => (
+            {(['STAND_BY', 'DESVIO', 'MANIOBRA_EXTRA', 'EN_PISO'] as const).map((value) => (
               <option key={value} value={value}>
-                {label}
+                {formatExtraChargeTypeLabel(value)}
               </option>
             ))}
           </select>

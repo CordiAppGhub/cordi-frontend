@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ExternalLink, FileText, X } from 'lucide-react';
 import { getEvidenceAttachments, type EvidenceAttachmentSource } from './evidence-attachments';
+import { formatEvidenceTypeLabel } from '@/utils/format-labels';
 import styles from './evidence-viewer.module.css';
 
 interface ImageViewerProps {
@@ -69,6 +70,7 @@ export function ImageViewer({ images, index, label, onClose, onIndexChange }: Im
 
 export function EvidenceViewer({ evidence }: { evidence: EvidenceAttachmentSource }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const evidenceLabel = formatEvidenceTypeLabel(evidence.type || 'Soporte');
   const attachments = getEvidenceAttachments(evidence);
   const images = attachments.filter((item) => !item.isPdf);
   const documents = attachments.filter((item) => item.isPdf);
@@ -77,7 +79,7 @@ export function EvidenceViewer({ evidence }: { evidence: EvidenceAttachmentSourc
   return (
     <div className={styles.attachments}>
       {images.map((image, index) => (
-        <button key={image.url} type="button" className={styles.thumbnailButton} onClick={() => setSelectedIndex(index)} aria-label={`Ampliar ${evidence.type}, imagen ${index + 1} de ${images.length}`}>
+        <button key={image.url} type="button" className={styles.thumbnailButton} onClick={() => setSelectedIndex(index)} aria-label={`Ampliar ${evidenceLabel}, imagen ${index + 1} de ${images.length}`}>
           <Image src={image.url} alt="" width={300} height={200} unoptimized className={styles.thumbnail} />
           <span>Ver imagen {index + 1}</span>
         </button>
@@ -88,7 +90,7 @@ export function EvidenceViewer({ evidence }: { evidence: EvidenceAttachmentSourc
         </a>
       ))}
       {selectedIndex !== null && selectedIndex < images.length && (
-        <ImageViewer images={images.map((item) => item.url)} index={selectedIndex} label={evidence.type || 'Evidencia'} onClose={() => setSelectedIndex(null)} onIndexChange={setSelectedIndex} />
+        <ImageViewer images={images.map((item) => item.url)} index={selectedIndex} label={evidenceLabel} onClose={() => setSelectedIndex(null)} onIndexChange={setSelectedIndex} />
       )}
     </div>
   );

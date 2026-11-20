@@ -276,7 +276,7 @@ export function CurrentTripTab({
                   )}
                 </div>
               )}
-              <span className={styles.label}>Pago Estimado</span>
+              <span className={styles.label}>Flete a pagar</span>
               <span
                 className={styles.value}
                 style={{
@@ -285,10 +285,13 @@ export function CurrentTripTab({
                   fontSize: "1.1rem",
                 }}
               >
-                $
-                {Number(activeOperation.fleteAPagar || 0).toLocaleString(
-                  "es-CO",
-                )}
+                {activeOperation.fleteAPagar == null
+                  ? "Pendiente"
+                  : new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                      maximumFractionDigits: 0,
+                    }).format(activeOperation.fleteAPagar)}
               </span>
             </div>
           ) : (

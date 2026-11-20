@@ -10,6 +10,7 @@ import { showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { useTariffs } from '@/app/(panel)/tariff/hooks/useTariff';
 import { operationService } from '@/services/operation.service';
+import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 
 
 interface ApplySurchargeModalProps {
@@ -37,7 +38,7 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
   const formFields: FormField[] = useMemo(() => {
     const surchargeOptions = (surcharges || []).map(s => ({
       value: s.code,
-      label: s.name,
+      label: formatExtraChargeTypeLabel(s.name || s.code),
     }));
 
     return [
@@ -50,7 +51,7 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
           { value: '', label: 'Sin asociar a una novedad' },
           ...(availableNovedades ?? []).map((novedad) => ({
             value: novedad.id,
-            label: `#${novedad.id} · ${novedad.category?.replaceAll('_', ' ') || 'Novedad'} · ${novedad.description.slice(0, 55)}`,
+            label: `#${novedad.id} · ${novedad.category ? formatExtraChargeTypeLabel(novedad.category) : 'Novedad'} · ${novedad.description.slice(0, 55)}`,
           })),
         ],
         disabled: operationQuery.isLoading || !availableNovedades?.length,

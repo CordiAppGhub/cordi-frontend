@@ -3,6 +3,7 @@
 import React from 'react';
 import { ColumnDef } from '@/types/table';
 import { SurchargeCatalog } from '@/types/tariff-ypes';
+import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 
 export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
   {
@@ -11,7 +12,7 @@ export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
     type: 'text',
     renderCell: (row) => (
       <span style={{ fontWeight: 600, color: '#475569', fontFamily: 'monospace' }}>
-        {row.code}
+        {formatExtraChargeTypeLabel(row.code)}
       </span>
     ),
   },
@@ -21,7 +22,7 @@ export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
     type: 'text',
     renderCell: (row) => (
       <strong style={{ color: '#0f172a' }}>
-        {row.name}
+        {formatExtraChargeTypeLabel(row.name || row.code)}
       </strong>
     ),
   },

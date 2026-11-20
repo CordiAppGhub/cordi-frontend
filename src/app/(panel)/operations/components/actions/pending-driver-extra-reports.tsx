@@ -12,13 +12,7 @@ import {
 import { useTariffs } from '@/app/(panel)/tariff/hooks/useTariff';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { showToast } from '@/utils/alerts';
-
-const reportTypeLabels: Record<DriverExtraReport['type'], string> = {
-  STAND_BY: 'Stand by / espera',
-  DESVIO: 'Desvío operativo',
-  MANIOBRA_EXTRA: 'Maniobra extra',
-  EN_PISO: 'Contenedor en piso',
-};
+import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 
 export function PendingDriverExtraReports() {
   const queryClient = useQueryClient();
@@ -170,7 +164,7 @@ export function PendingDriverExtraReports() {
             >
               <div>
                 <strong>
-                  {reportTypeLabels[report.type]} · Operación #{report.operationId}
+                  {formatExtraChargeTypeLabel(report.type)} · Operación #{report.operationId}
                 </strong>
                 <div style={{ color: '#475569', marginTop: 4 }}>
                   {report.operation.client?.razonSocial ?? 'Cliente sin registrar'}
@@ -205,7 +199,7 @@ export function PendingDriverExtraReports() {
         {selectedReport && (
           <form onSubmit={(event) => void approveReport(event)} style={{ display: 'grid', gap: 12 }}>
             <div>
-              <strong>{reportTypeLabels[selectedReport.type]}</strong>
+              <strong>{formatExtraChargeTypeLabel(selectedReport.type)}</strong>
               <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.description}</p>
               {selectedReport.durationHours != null && (
                 <p>Duración reportada: {selectedReport.durationHours} horas</p>
@@ -235,7 +229,7 @@ export function PendingDriverExtraReports() {
                 <option value="">Selecciona un concepto</option>
                 {surcharges.map((concept) => (
                   <option key={concept.code} value={concept.code}>
-                    {concept.name}
+                    {formatExtraChargeTypeLabel(concept.name || concept.code)}
                   </option>
                 ))}
               </select>

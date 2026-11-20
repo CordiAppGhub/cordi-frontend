@@ -24,37 +24,7 @@ import { ReportExtraModal } from "./components/ReportExtraModal";
 import Swal from "sweetalert2";
 import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 import { compressFiles } from "@/utils/image-compressor";
-
-function evidenceTypeLabel(type?: string): string {
-  switch (type) {
-    case "INGRESO_PUERTO":
-      return "ARIN de ingreso a puerto";
-    case "SELLOS_CONTENEDOR":
-      return "Fotos de los sellos";
-    case "SALIDA_PUERTO":
-      return "ARIN de salida del puerto";
-    case "Soporte de cierre":
-      return "Soporte de cierre";
-    case "COMODATO":
-      return "Documento de comodato";
-    case "FOTO_CARGUE":
-      return "Foto cargando el contenedor";
-    case "EVIDENCIA_CARGA_SUELTA":
-      return "Fotos de frente, atrás y ambos lados de la carga";
-    case "FOTOS_LLEGADA_CARGA_SUELTA":
-      return "Fotos de la carga al llegar al cliente";
-    case "FOTOS_DESCARGUE_CARGA_SUELTA":
-      return "Fotos del descargue de la carga";
-    case "ANOMALY_PHOTO":
-      return "Fotos de anomalías en la mercancía";
-    case "DELIVERY_DOC":
-      return "Soporte de entrega / descargue";
-    case "TIRILLA_EIR":
-      return "Tirilla de Devolución (EIR)";
-    default:
-      return "Soporte del viaje";
-  }
-}
+import { formatEvidenceTypeLabel } from "@/utils/format-labels";
 
 export default function DriverPortalPage() {
   const {
@@ -541,7 +511,7 @@ export default function DriverPortalPage() {
             : modalType === "PLATE_VERIFICATION"
               ? "Verificar Placas de la Flota"
             : modalType === "EVIDENCE"
-              ? `📸 ${evidenceTypeLabel(evidenceTypes[evidenceIndex])}`
+              ? `📸 ${formatEvidenceTypeLabel(evidenceTypes[evidenceIndex])}`
               : modalType === "CLOSING"
                 ? "✅ Subir Soporte"
                 : modalType === "DEVIATION"
@@ -676,7 +646,7 @@ export default function DriverPortalPage() {
                               ? "Adjunta el soporte de entrega / descargue (imagen o PDF): "
                               : "Adjunta una foto o documento claro: "}
                     <strong>
-                      {evidenceTypeLabel(evidenceTypes[evidenceIndex])}
+                      {formatEvidenceTypeLabel(evidenceTypes[evidenceIndex])}
                     </strong>
                     {evidenceTypes.length > 1 &&
                       ` (${evidenceIndex + 1} de ${evidenceTypes.length})`}
