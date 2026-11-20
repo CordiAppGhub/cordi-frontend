@@ -1,6 +1,7 @@
 import { api } from "./api.service";
 import {
   Driver,
+  DriverDetails,
   CreateDriverDto,
   PaginatedDrivers,
   UpdateDriverDto,
@@ -24,8 +25,8 @@ export const driversService = {
     return data;
   },
 
-  getById: async (id: number): Promise<Driver> => {
-    const { data } = await api.get(`/drivers/${id}`);
+  getById: async (id: number): Promise<DriverDetails> => {
+    const { data } = await api.get<DriverDetails>(`/drivers/${id}`);
     return data;
   },
 

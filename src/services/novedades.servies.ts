@@ -212,6 +212,7 @@ export interface NovedadItem {
   operation?: {
     id: number;
     type: string;
+    isContainerized: boolean;
     status: string;
     containerStatus?: string;
     containerType?: string | null;

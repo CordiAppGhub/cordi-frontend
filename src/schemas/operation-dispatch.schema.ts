@@ -1,14 +1,5 @@
 import { z } from 'zod';
-
-const trailerTypes = [
-  'PLANCHA',
-  'GRILLO',
-  'TANQUE',
-  'PLATAFORMA',
-  'FURGON',
-  'CAMA_BAJA',
-  'PORTACONTENEDOR',
-] as const;
+import { TRAILER_TYPES, type TrailerType } from '@/types/vehicles';
 
 const plateSchema = z
   .string()
@@ -41,7 +32,7 @@ export const externalFleetDispatchSchema = z.object({
       'Ingresa una placa de tráiler válida.',
     ),
   tractorAxles: optionalAxles,
-  trailerType: z.enum(trailerTypes).optional(),
+  trailerType: z.enum(TRAILER_TYPES).optional(),
   trailerAxles: optionalAxles,
   cargoCapacityKg: optionalCapacity,
   driverName: z
@@ -74,11 +65,40 @@ export const createExternalFleetDispatchSchema = (requirements: {
   tractorAxles: number | null;
   requiresTrailer: boolean;
   trailerAxles: number | null;
-  requiredTrailerType: string | null;
+  requiredTrailerType: TrailerType | null;
   maxPayloadKg: number | null;
   weightKg: number | null;
 }) =>
   externalFleetDispatchSchema.superRefine((values, context) => {
+    if (
+      requirements.requiredTrailerType &&
+      !values.trailerPlate.trim()
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['trailerPlate'],
+        message: 'La operación requiere una placa de tráiler.',
+      });
+    } else if (
+      requirements.requiredTrailerType &&
+      !values.trailerType
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['trailerType'],
+        message: 'Selecciona el tipo de tráiler requerido por la operación.',
+      });
+    } else if (
+      requirements.requiredTrailerType &&
+      values.trailerType !== requirements.requiredTrailerType
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['trailerType'],
+        message: `La operación requiere un tráiler tipo ${requirements.requiredTrailerType}.`,
+      });
+    }
+
     if (!requirements.isLooseCargo) return;
 
     if (values.tractorAxles === undefined) {
@@ -129,7 +149,11 @@ export const createExternalFleetDispatchSchema = (requirements: {
 
     const trailerRequired =
       requirements.requiresTrailer || Boolean(requirements.requiredTrailerType);
-    if (trailerRequired && !values.trailerPlate.trim()) {
+    if (
+      trailerRequired &&
+      !requirements.requiredTrailerType &&
+      !values.trailerPlate.trim()
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['trailerPlate'],
@@ -145,20 +169,11 @@ export const createExternalFleetDispatchSchema = (requirements: {
     }
 
     if (values.trailerPlate.trim()) {
-      if (!values.trailerType) {
+      if (!values.trailerType && !requirements.requiredTrailerType) {
         context.addIssue({
           code: 'custom',
           path: ['trailerType'],
           message: 'Selecciona el tipo de tráiler.',
-        });
-      } else if (
-        requirements.requiredTrailerType &&
-        values.trailerType !== requirements.requiredTrailerType
-      ) {
-        context.addIssue({
-          code: 'custom',
-          path: ['trailerType'],
-          message: `La operación requiere un tráiler tipo ${requirements.requiredTrailerType}.`,
         });
       }
 

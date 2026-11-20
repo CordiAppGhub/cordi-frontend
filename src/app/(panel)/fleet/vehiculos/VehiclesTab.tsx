@@ -157,7 +157,11 @@ export const VehiclesTab = () => {
               ? formData.cargoCapacity
               : undefined,
         });
-        await queryClient.invalidateQueries({ queryKey: ['trailers'] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['trailers'] }),
+          queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
+          queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
+        ]);
         showToast.success('Tráiler registrado con éxito.');
         return true;
       } catch (error: unknown) {
@@ -193,7 +197,11 @@ export const VehiclesTab = () => {
   ): Promise<boolean> => {
     try {
       await trailersService.update(id, data);
-      await queryClient.invalidateQueries({ queryKey: ['trailers'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['trailers'] }),
+        queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
+        queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
+      ]);
       showToast.success('Tráiler modificado con éxito.');
       return true;
     } catch (error: unknown) {
@@ -279,6 +287,8 @@ export const VehiclesTab = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
         queryClient.invalidateQueries({ queryKey: ['trailers'] }),
+        queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
+        queryClient.invalidateQueries({ queryKey: ['active-assignments'] }),
       ]);
       setTrailerAction(null);
     } catch (error: unknown) {

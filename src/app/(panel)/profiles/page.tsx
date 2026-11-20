@@ -583,7 +583,10 @@ function OperationRecord({
   if (operation.client?.razonSocial) {
     primaryFacts.push(["Cliente", operation.client.razonSocial]);
   }
-  if (kind === "containers" || kind === "shipping-lines") {
+  if (
+    (kind === "containers" || kind === "shipping-lines") &&
+    operation.isContainerized === true
+  ) {
     primaryFacts.push([
       "Referencia",
       operation.containerNumber ||
@@ -620,11 +623,18 @@ function OperationRecord({
   );
   const hasBaseFreight =
     operation.fleteACobrarManual != null || operation.fleteACobrar != null;
-  const surchargeTotal = (operation.surcharges ?? []).reduce(
+  const surcharges = (operation.surcharges ?? []).filter(
+    (surcharge) =>
+      operation.isContainerized === true || !surcharge.isPatioCharge,
+  );
+  const surchargeTotal = surcharges.reduce(
     (total, surcharge) => total + Number(surcharge.totalPrice),
     0,
   );
-  const patioCharge = Number(operation.patioCobro ?? 0);
+  const patioCharge =
+    operation.isContainerized === true
+      ? Number(operation.patioCobro ?? 0)
+      : 0;
   const totalBilling = baseFreight + patioCharge + surchargeTotal;
   const hasFinancialData =
     operation.fleteACobrarManual != null ||
@@ -656,7 +666,9 @@ function OperationRecord({
           ))}
         </dl>
       )}
-      {kind === "shipping-lines" && operation.depositoDevolucion && (
+      {kind === "shipping-lines" &&
+        operation.isContainerized === true &&
+        operation.depositoDevolucion && (
         <div className={styles.returnDetails}>
           <span>
             Depósito de devolución:{" "}
@@ -682,7 +694,7 @@ function OperationRecord({
               <span>${patioCharge.toLocaleString("es-CO")}</span>
             </div>
           )}
-          {(operation.surcharges ?? []).map((surcharge) => (
+          {surcharges.map((surcharge) => (
             <div className={styles.financialRow} key={surcharge.id}>
               <span>
                 {surcharge.surcharge?.name ?? surcharge.surchargeCode}

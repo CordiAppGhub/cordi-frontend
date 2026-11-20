@@ -43,6 +43,7 @@ export type ProfileRecordData = Record<string, unknown> & {
 export interface ProfileOperation {
   id: number;
   type: string;
+  isContainerized: boolean;
   status: string;
   containerNumber?: string | null;
   numeroPedido?: string | null;
@@ -61,6 +62,7 @@ export interface ProfileOperation {
     appliedPrice: number;
     costPrice: number;
     totalPrice: number;
+    isPatioCharge?: boolean;
     observations?: string | null;
     surcharge?: { name: string } | null;
     novedad?: {

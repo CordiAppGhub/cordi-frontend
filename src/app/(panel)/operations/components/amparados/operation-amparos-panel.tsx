@@ -210,10 +210,12 @@ export function OperationAmparosPanel({ enabled }: Props) {
                       <MapPin size={14} aria-hidden="true" />
                       {exportOperation.port?.name ?? "Puerto sin nombre"}
                     </span>
-                    <span className={styles.metaItem}>
-                      <CalendarClock size={14} aria-hidden="true" />
-                      {formatDestination(exportOperation.fechaCitaDestino)}
-                    </span>
+                    {exportOperation.isContainerized === true && (
+                      <span className={styles.metaItem}>
+                        <CalendarClock size={14} aria-hidden="true" />
+                        {formatDestination(exportOperation.fechaCitaDestino)}
+                      </span>
+                    )}
                     <span>
                       Responsable: {exportOperation.analyst?.name || "No disponible"}
                     </span>
@@ -298,12 +300,14 @@ export function OperationAmparosPanel({ enabled }: Props) {
                 <p className={styles.modalOperationId}>
                   Puerto: {selectedSuggestion.exportOperation.port?.name ?? "—"}
                 </p>
-                <p className={styles.modalOperationId}>
-                  Cita destino:{" "}
-                  {formatDestination(
-                    selectedSuggestion.exportOperation.fechaCitaDestino,
-                  )}
-                </p>
+                {selectedSuggestion.exportOperation.isContainerized === true && (
+                  <p className={styles.modalOperationId}>
+                    Cita destino:{" "}
+                    {formatDestination(
+                      selectedSuggestion.exportOperation.fechaCitaDestino,
+                    )}
+                  </p>
+                )}
               </div>
               <div
                 className={`${styles.modalOperation} ${styles.importOperation}`}
@@ -329,12 +333,14 @@ export function OperationAmparosPanel({ enabled }: Props) {
                 <p className={styles.modalOperationId}>
                   Puerto: {selectedSuggestion.importOperation.port?.name ?? "Por confirmar"}
                 </p>
-                <p className={styles.modalOperationId}>
-                  Cita destino:{" "}
-                  {formatDestination(
-                    selectedSuggestion.importOperation.fechaCitaDestino,
-                  )}
-                </p>
+                {selectedSuggestion.importOperation.isContainerized === true && (
+                  <p className={styles.modalOperationId}>
+                    Cita destino:{" "}
+                    {formatDestination(
+                      selectedSuggestion.importOperation.fechaCitaDestino,
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 

@@ -15,14 +15,32 @@ export type TrailerStatus =
   | 'AVAILABLE_IN_YARD'
   | 'AT_CLIENT_SITE'
   | 'IN_MAINTENANCE';
-export type TrailerType =
-  | 'PLANCHA'
-  | 'GRILLO'
-  | 'TANQUE'
-  | 'PLATAFORMA'
-  | 'FURGON'
-  | 'CAMA_BAJA'
-  | 'PORTACONTENEDOR';
+export const TRAILER_TYPES = [
+  'PLANCHA',
+  'PLATAFORMA',
+  'GRILLO',
+  'TANQUE',
+  'FURGON',
+  'CAMA_BAJA',
+  'PORTACONTENEDOR',
+] as const;
+
+export type TrailerType = (typeof TRAILER_TYPES)[number];
+
+export const TRAILER_TYPE_LABELS: Record<TrailerType, string> = {
+  PLANCHA: 'Plancha',
+  PLATAFORMA: 'Plataforma',
+  GRILLO: 'Grillo',
+  TANQUE: 'Tanque',
+  FURGON: 'Furgón',
+  CAMA_BAJA: 'Cama baja',
+  PORTACONTENEDOR: 'Portacontenedor',
+};
+
+export const TRAILER_TYPE_OPTIONS = TRAILER_TYPES.map((value) => ({
+  value,
+  label: TRAILER_TYPE_LABELS[value],
+}));
 
 export interface Vehicle {
   id: number;

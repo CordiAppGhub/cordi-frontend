@@ -15,6 +15,18 @@ interface BackendErrorResponse {
 
 export const useVehicles = (enabled = true) => {
   const queryClient = useQueryClient();
+  const invalidateFleetData = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
+        queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
+        queryClient.invalidateQueries({ queryKey: ['drivers'] }),
+        queryClient.invalidateQueries({ queryKey: ['active-assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['operations'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      ]),
+    [queryClient],
+  );
 
   const {
     data: vehicles = [],
@@ -29,53 +41,53 @@ export const useVehicles = (enabled = true) => {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateVehicleDto) => vehiclesService.create(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('Vehículo registrado con éxito');
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] }); 
+      await invalidateFleetData();
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo crear el vehículo.';
       showToast.error(message);
-    }
+    },
   });
   const createVehicleAsync = createMutation.mutateAsync;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateVehicleDto }) => vehiclesService.update(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('Vehículo modificado con éxito');
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      await invalidateFleetData();
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo actualizar el vehículo.';
       showToast.error(message);
-    }
+    },
   });
   const updateVehicleAsync = updateMutation.mutateAsync;
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => vehiclesService.remove(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       showToast.success('El vehículo fue eliminado correctamente');
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      await invalidateFleetData();
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo eliminar el vehículo.';
       showToast.error(message);
-    }
+    },
   });
   const removeVehicleAsync = removeMutation.mutateAsync;
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => vehiclesService.importExcel(file),
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       showToast.success(response.message || 'Carga masiva completada con éxito');
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      await invalidateFleetData();
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'Error al procesar el archivo Excel de vehículos.';
       showToast.error(message);
-    }
+    },
   });
   const uploadVehiclesAsync = uploadMutation.mutateAsync;
 

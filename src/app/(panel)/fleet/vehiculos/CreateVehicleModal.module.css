@@ -26,6 +26,12 @@
   font-weight: 400;
 }
 
+.warning {
+  color: #b42318;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

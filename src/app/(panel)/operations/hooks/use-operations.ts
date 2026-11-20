@@ -27,6 +27,35 @@ type OperationSocketPayload = Partial<Operation> & {
 
 export function useTrafico(initialParams: GetOperationsParams = {}) {
   const queryClient = useQueryClient();
+  const invalidateOperationQueries = useCallback(
+    async (operationId?: number) => {
+      const queryKeys: (readonly unknown[])[] = [
+        ['operations'],
+        ['programacion'],
+        ['fleet-requests'],
+        ['vehicles'],
+        ['dashboard'],
+        ['trafico'],
+        ['trafico-client-operations'],
+        ['operation-history'],
+        ['operations', 'pending-count'],
+        ['operations', 'by-date'],
+        ['fleet-live-status'],
+      ];
+      if (operationId !== undefined) {
+        queryKeys.push(
+          ['operation', operationId],
+          ['trafico-detail', operationId],
+        );
+      }
+      await Promise.all(
+        queryKeys.map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
+    },
+    [queryClient],
+  );
 
   const [queryParams, setQueryParams] = useState<GetOperationsParams>({
     page: 1,
@@ -83,11 +112,12 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => 
       operationService.createOperation(data),
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['trafico'] });
-      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
-      queryClient.invalidateQueries({ queryKey: ['operations'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
+    onSuccess: async (createdOperation) => {
+      queryClient.setQueryData(
+        ['operation', createdOperation.id],
+        createdOperation,
+      );
+      await invalidateOperationQueries(createdOperation.id);
       
       showToast.success('Operación creada correctamente.');
     },
@@ -110,9 +140,8 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
     onSuccess: async (updatedOp) => {
       // Actualiza el detalle si está abierto
       queryClient.setQueryData(['trafico-detail', updatedOp.id], updatedOp);
-      queryClient.invalidateQueries({ queryKey: ['trafico'] });
-      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
+      queryClient.setQueryData(['operation', updatedOp.id], updatedOp);
+      await invalidateOperationQueries(updatedOp.id);
       
       showToast.success('Operación actualizada correctamente.');
     },
@@ -321,34 +350,18 @@ export function useTrafico(initialParams: GetOperationsParams = {}) {
       if (data.deleted) {
         if (opId) {
           queryClient.removeQueries({ queryKey: ['trafico-detail', opId] });
+          queryClient.removeQueries({ queryKey: ['operation', opId] });
           if (currentOpIdRef.current === opId) {
             setCurrentOperationId(null);
           }
         }
       }
-
-      void queryClient.invalidateQueries({ queryKey: ['trafico'] });
-      void queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] });
-      void queryClient.invalidateQueries({ queryKey: ['operations'] });
-      void queryClient.invalidateQueries({ queryKey: ['operation-history'] });
-      void queryClient.invalidateQueries({ queryKey: ['dashboard', 'operation-alerts'] });
-
-      if (opId && !data.deleted) {
-        void queryClient.invalidateQueries({ queryKey: ['trafico-detail', opId] });
-      }
-    };
-    const handleAlertsUpdate = () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['dashboard', 'operation-alerts'],
-      });
     };
 
     socket.on('global_operations_updated', handleGlobalUpdate);
-    socket.on('operation_alerts_updated', handleAlertsUpdate);
 
     return () => {
       socket.off('global_operations_updated', handleGlobalUpdate);
-      socket.off('operation_alerts_updated', handleAlertsUpdate);
     };
   }, [queryClient]);
 

@@ -74,7 +74,9 @@ export interface LogisticNode {
   id: number;
   name: string;
   address?: string | null;
+  isPort?: boolean;
   isDepot?: boolean;
+  isOwnYard?: boolean;
   client?: ClientNode | null;
 }
 
@@ -115,6 +117,7 @@ export interface OperationSurcharge {
   costPrice?: number;
   quantity: number;
   totalPrice: number;
+  isPatioCharge?: boolean;
   observations?: string;
   createdAt?: string | Date;
   novedadId?: number | null;
@@ -195,10 +198,14 @@ export interface Operation {
     cargoDescription?: string | null;
     weightKg?: number | null;
     status?: string;
+    appointmentAt?: string | null;
+    actualArrivalAt?: string | null;
+    actualDepartureAt?: string | null;
     client?: { id: number; razonSocial: string };
     clientLocation?: {
       id: number;
       name: string;
+      isDepot?: boolean;
       address?: string | null;
       cityId?: number | null;
       department?: string | null;
@@ -206,7 +213,14 @@ export interface Operation {
       latitude?: number | null;
       longitude?: number | null;
     } | null;
-    location?: { id: number; name: string; address?: string | null } | null;
+    location?: {
+      id: number;
+      name: string;
+      address?: string | null;
+      isPort?: boolean;
+      isDepot?: boolean;
+      isOwnYard?: boolean;
+    } | null;
   }>;
   deviations?: Array<{
     id: number;

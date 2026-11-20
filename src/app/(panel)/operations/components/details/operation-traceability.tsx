@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import styles from './operation-traceability.module.css';
 
 import { useTrafico } from '../../hooks/use-operations';
-import type { Evidence, Operation } from '@/types/operation-types';
+import type { Evidence, LogisticNode, Operation } from '@/types/operation-types';
 import { useOperationTimeline } from '../../hooks/use-operation-timeline';
 import { socket } from '@/lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
@@ -19,7 +19,6 @@ import { closeDocumentally, reviewEvidence, correctContainerState, operationServ
 import Swal from 'sweetalert2';
 import { showToast } from '@/utils/alerts';
 import { InspectionResult } from './inspection-result';
-import { formatAppointmentLocationLabel } from '@/utils/appointment-label';
 import { useAuthStore } from '@/store/use-auth.store';
 import type { CargoStatus, OperationContainerStatus } from '@/types/driver-portal.types';
 
@@ -55,6 +54,28 @@ const DOCUMENT_RELATED_CONTAINER_TYPES = new Set([
   'DEVOLUCION_VACIO',
 ]);
 
+type RoutePointRole = 'CARGUE' | 'DESCARGUE' | 'EMPTY_PICKUP' | 'EMPTY_RETURN';
+
+interface TraceabilityRoutePoint {
+  key: string;
+  stopOrder: number;
+  role: RoutePointRole;
+  locationName: string;
+  address?: string | null;
+  locationId?: number | null;
+  isPort?: boolean;
+  isPatio?: boolean;
+  appointmentAt?: string | null;
+  actualArrivalAt?: string | null;
+  actualDepartureAt?: string | null;
+  clientName?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  observations?: string | null;
+  cargoDescription?: string | null;
+  weightKg?: number | null;
+}
+
 function getDocumentaryClosureMissingRequirements(operation: Operation): string[] {
   const missing: string[] = [];
   if (
@@ -65,17 +86,17 @@ function getDocumentaryClosureMissingRequirements(operation: Operation): string[
     missing.push('Manifiesto / DO / BL');
   }
   if (
-    operation.isContainerized &&
+    operation.isContainerized === true &&
     DOCUMENT_RELATED_CONTAINER_TYPES.has(operation.type) &&
     !operation.containerNumber?.trim()
   ) {
     missing.push('Número de contenedor');
   }
-  if (operation.isContainerized && !operation.containerType) {
+  if (  operation.isContainerized === true && !operation.containerType) {
     missing.push('Tipo de contenedor');
   }
 
-  const requiredEvidenceTypes = operation.isContainerized
+  const requiredEvidenceTypes = operation.isContainerized === true
     ? operation.type === 'EXPORTACION'
       ? [operation.amparosExportacion?.length ? 'INGRESO_PUERTO' : 'SALIDA_PUERTO']
       : operation.type === 'IMPORTACION' ||
@@ -192,7 +213,7 @@ export function OperationTraceability({ operationId }: Props) {
     const missing = [];
     if (!currentOperation.vehicleId) missing.push('Flota sin asignar');
     if (
-      currentOperation.isContainerized &&
+      currentOperation.isContainerized === true &&
       !currentOperation.containerNumber &&
       (currentOperation.type === 'IMPORTACION' ||
         currentOperation.type === 'EXPORTACION')
@@ -200,7 +221,15 @@ export function OperationTraceability({ operationId }: Props) {
       missing.push('Falta el número de contenedor');
     }
     if (!currentOperation.documentoTransporte) missing.push('Falta manifiesto / documento de transporte');
-    if (currentOperation.destino && !currentOperation.fechaCitaDestino) missing.push('Destino asignado sin fecha de cita');
+    if (
+      currentOperation.type !== 'NACIONAL' &&
+      (currentOperation.isContainerized === true ||
+        currentOperation.destino?.isPort === true) &&
+      currentOperation.destino &&
+      !currentOperation.fechaCitaDestino
+    ) {
+      missing.push('Destino asignado sin fecha de cita');
+    }
     return missing;
   };
   const missingData = getMissingData();
@@ -208,6 +237,12 @@ export function OperationTraceability({ operationId }: Props) {
     currentOperation.status === 'CIERRE_FISICO'
       ? getDocumentaryClosureMissingRequirements(currentOperation)
       : [];
+  const canCloseDocumentally = ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(
+    role ?? '',
+  );
+  const isDocumentaryClosurePending =
+    currentOperation.status === 'CIERRE_FISICO' &&
+    !currentOperation.fechaCierreDocumental;
   const containerStatus = currentOperation.containerStatus || 'PENDIENTE';
   const correctionStatus = Object.keys(containerPredecessors)
     .find((status): status is OperationContainerStatus => status === containerStatus);
@@ -215,7 +250,7 @@ export function OperationTraceability({ operationId }: Props) {
     ? containerPredecessors[correctionStatus] ?? []
     : [];
   const canCorrectContainer =
-    currentOperation.isContainerized &&
+    currentOperation.isContainerized === true &&
     currentOperation.isActive &&
     !['CIERRE_FISICO', 'FINALIZADO', 'CANCELADO'].includes(currentOperation.status) &&
     ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(role || '') &&
@@ -350,11 +385,195 @@ export function OperationTraceability({ operationId }: Props) {
         : currentOperation.containerStatus === 'EN_PISO'
           ? null
           : currentOperation.fechaCierreFisico;
-  const showsEmptyReturnDeadline = [
+  const physicalDeadline =
+    currentOperation.fechaLimiteDevolucion ??
+    currentOperation.fechaLimiteFisico;
+  const physicalClosure =
+    currentOperation.type === 'IMPORTACION' &&
+    currentOperation.isContainerized === true
+        ? returnClosureDate
+        : currentOperation.fechaCierreFisico;
+  const isExportOperation =
+    currentOperation.type === 'EXPORTACION' ||
+    currentOperation.type === 'EXPORTACION_ANTICIPADA' ||
+    (currentOperation.type === 'EXPORTACION' &&
+      currentOperation.isAnticipada === true);
+  const physicalDeadlineContext = isExportOperation
+    ? 'Ingreso a puerto'
+    : currentOperation.type === 'IMPORTACION' &&
+        currentOperation.isContainerized === true
+      ? 'Devolución de vacío'
+      : 'Entrega en destino';
+  const isAppointmentOperation = [
     'IMPORTACION',
     'EXPORTACION',
-    'DEVOLUCION_VACIO',
-  ].includes(currentOperation.type);
+    'EXPORTACION_ANTICIPADA',
+  ].includes(currentOperation.type) ||
+    (currentOperation.type === 'DEVOLUCION_VACIO' &&
+      currentOperation.isContainerized === true);
+  const makeFallbackPoint = (
+    role: RoutePointRole,
+    location: LogisticNode | null | undefined,
+    stopOrder: number,
+  ): TraceabilityRoutePoint | null =>
+    location
+      ? {
+          key: `fallback-${role}-${location.id}`,
+          stopOrder,
+          role,
+          locationName: location.name,
+          address: location.address,
+          locationId: location.id,
+          isPort: location.isPort,
+          isPatio: location.isDepot || location.isOwnYard,
+        }
+      : null;
+  const storedRoutePoints: TraceabilityRoutePoint[] = [
+    ...(currentOperation.stops ?? []),
+  ]
+    .sort((left, right) => left.stopOrder - right.stopOrder)
+    .map((stop) => {
+      const locationId = stop.locationId;
+      const isPatio =
+        stop.location?.isDepot === true ||
+        stop.location?.isOwnYard === true ||
+        stop.clientLocation?.isDepot === true ||
+        (currentOperation.patioId != null &&
+          locationId === currentOperation.patioId) ||
+        (currentOperation.depositoDevolucionId != null &&
+          locationId === currentOperation.depositoDevolucionId);
+      const isEmptyReturn =
+        currentOperation.isContainerized === true &&
+        stop.stopType === 'DESCARGUE' &&
+        (currentOperation.type === 'DEVOLUCION_VACIO' ||
+          (currentOperation.depositoDevolucionId != null &&
+            locationId === currentOperation.depositoDevolucionId) ||
+          (currentOperation.type === 'IMPORTACION' &&
+            currentOperation.patioId != null &&
+            locationId === currentOperation.patioId));
+
+      return {
+        key: `stop-${stop.id ?? stop.stopOrder}`,
+        stopOrder: stop.stopOrder,
+        role: isEmptyReturn ? 'EMPTY_RETURN' : stop.stopType,
+        locationName:
+          stop.clientLocation?.name ||
+          stop.location?.name ||
+          stop.address ||
+          `Ubicación de parada ${stop.stopOrder + 1}`,
+        address: stop.address || stop.location?.address,
+        locationId,
+        isPort: stop.location?.isPort,
+        isPatio,
+        appointmentAt: stop.appointmentAt,
+        actualArrivalAt: stop.actualArrivalAt,
+        actualDepartureAt: stop.actualDepartureAt,
+        clientName: stop.client?.razonSocial,
+        contactName: stop.contactName,
+        contactPhone: stop.contactPhone,
+        observations: stop.observations,
+        cargoDescription: stop.cargoDescription,
+        weightKg: stop.weightKg,
+      };
+    });
+  const fallbackRoutePoints: TraceabilityRoutePoint[] = [];
+  if (
+    currentOperation.isContainerized === true &&
+    isExportOperation &&
+    currentOperation.patio
+  ) {
+    const emptyPickup = makeFallbackPoint(
+      'EMPTY_PICKUP',
+      currentOperation.patio,
+      fallbackRoutePoints.length,
+    );
+    if (emptyPickup) fallbackRoutePoints.push(emptyPickup);
+  }
+  const fallbackOrigin = isExportOperation
+    ? currentOperation.cargue || currentOperation.origen
+    : currentOperation.type === 'IMPORTACION'
+      ? currentOperation.origen || currentOperation.cargue
+      : currentOperation.cargue || currentOperation.origen;
+  const originPoint = makeFallbackPoint(
+    'CARGUE',
+    fallbackOrigin,
+    fallbackRoutePoints.length,
+  );
+  if (originPoint) fallbackRoutePoints.push(originPoint);
+
+  const fallbackDestination =
+    currentOperation.type === 'DEVOLUCION_VACIO'
+      ? currentOperation.depositoDevolucion ||
+        currentOperation.destino ||
+        currentOperation.patio
+      : currentOperation.type === 'IMPORTACION'
+        ? currentOperation.descargue || currentOperation.destino
+        : currentOperation.destino || currentOperation.descargue;
+  const destinationPoint = makeFallbackPoint(
+    currentOperation.type === 'DEVOLUCION_VACIO' &&
+      currentOperation.isContainerized === true
+      ? 'EMPTY_RETURN'
+      : 'DESCARGUE',
+    fallbackDestination,
+    fallbackRoutePoints.length,
+  );
+  if (destinationPoint) fallbackRoutePoints.push(destinationPoint);
+
+  const routePoints =
+    storedRoutePoints.length > 0 ? [...storedRoutePoints] : fallbackRoutePoints;
+  if (
+    currentOperation.isContainerized === true &&
+    isExportOperation &&
+    currentOperation.patio &&
+    !routePoints.some((point) => point.locationId === currentOperation.patio?.id)
+  ) {
+    const emptyPickup = makeFallbackPoint(
+      'EMPTY_PICKUP',
+      currentOperation.patio,
+      -1,
+    );
+    if (emptyPickup) routePoints.unshift(emptyPickup);
+  }
+  if (
+    currentOperation.isContainerized === true &&
+    currentOperation.type === 'IMPORTACION'
+  ) {
+    const returnLocation =
+      currentOperation.depositoDevolucion || currentOperation.patio;
+    const alreadyIncluded = routePoints.some(
+      (point) => point.locationId === returnLocation?.id,
+    );
+    if (returnLocation && !alreadyIncluded) {
+      const returnPoint = makeFallbackPoint(
+        'EMPTY_RETURN',
+        returnLocation,
+        routePoints.length,
+      );
+      if (returnPoint) routePoints.push(returnPoint);
+    }
+  }
+  routePoints.sort((left, right) => left.stopOrder - right.stopOrder);
+  routePoints.forEach((point, index) => {
+    point.stopOrder = index;
+  });
+  const firstLoadingPoint = routePoints.find(
+    (point) => point.role === 'CARGUE',
+  );
+  const lastUnloadingPoint = [...routePoints]
+    .reverse()
+    .find((point) => point.role === 'DESCARGUE');
+  const tripMilestones = [
+    { label: 'Creada', value: currentOperation.createdAt },
+    { label: 'Programada', value: currentOperation.scheduledAt },
+    { label: 'Inicio de ruta', value: currentOperation.horaInicio },
+    {
+      label: 'Finalización del viaje',
+      value: currentOperation.horaFinal ?? currentOperation.fechaCierreFisico,
+    },
+    ...(currentOperation.fechaAsignacion
+      ? [{ label: 'Asignación', value: currentOperation.fechaAsignacion }]
+      : []),
+  ];
 
   const handleDownloadEvidencePdf = async () => {
     setIsDownloadingPdf(true);
@@ -375,16 +594,27 @@ export function OperationTraceability({ operationId }: Props) {
     }
   };
 
-  const formatDuration = (start?: string | null, end?: string | null) => {
-    if (!start) return 'Sin iniciar';
-    if (!end) return 'En curso';
-    const totalMinutes = Math.max(
-      0,
-      Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000),
-    );
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
+  const formatTimestampRange = (
+    start?: string | null,
+    end?: string | null,
+  ) => {
+    if (start && end) return `${formatDate(start)} — ${formatDate(end)}`;
+    if (start) return `${formatDate(start)} — Fin sin registrar`;
+    if (end) return `Inicio sin registrar — ${formatDate(end)}`;
+    return 'Sin registro';
+  };
+
+  const formatElapsedMinutes = (
+    start?: string | null,
+    end?: string | null,
+  ) => {
+    if (!start || !end) return 'Duración no disponible';
+    const startTime = new Date(start).getTime();
+    const endTime = new Date(end).getTime();
+    if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
+      return 'Duración no disponible';
+    }
+    return `${Math.max(0, Math.round((endTime - startTime) / 60000))} min`;
   };
 
   const handleApprove = async (evidenceId: number) => {
@@ -486,10 +716,16 @@ export function OperationTraceability({ operationId }: Props) {
   };
 
   const handleDocumentaryClosure = async () => {
-    if (documentaryClosureMissing.length > 0 || isClosingDocumentally) return;
+    if (
+      !canCloseDocumentally ||
+      documentaryClosureMissing.length > 0 ||
+      isClosingDocumentally
+    ) {
+      return;
+    }
     const confirmation = await Swal.fire({
       title: 'Aprobar cierre documental',
-      text: 'Se registrará la validación administrativa sin cambiar el estado del viaje físico.',
+      text: 'Al aprobar el cierre documental, la operación quedará finalizada y pasará al historial.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Aprobar cierre documental',
@@ -515,9 +751,14 @@ export function OperationTraceability({ operationId }: Props) {
         queryClient.invalidateQueries({ queryKey: ['trafico'] }),
         queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
         queryClient.invalidateQueries({ queryKey: ['operations'] }),
+        queryClient.invalidateQueries({ queryKey: ['operations', 'by-date'] }),
+        queryClient.invalidateQueries({ queryKey: ['operation-history'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['dashboard', 'operation-alerts'],
+        }),
       ]);
       showToast.success(
-        'Cierre documental aprobado. El estado físico del viaje se conservó.',
+        'Cierre documental aprobado. La operación quedó finalizada.',
       );
     } catch (error: unknown) {
       showToast.error(error, 'No se pudo aprobar el cierre documental.');
@@ -609,50 +850,13 @@ export function OperationTraceability({ operationId }: Props) {
               <p className={styles.detailHeroMeta}>
                 Operación #{currentOperation.id} · {currentOperation.type}
                 {currentOperation.client?.nit ? ` · NIT ${currentOperation.client.nit}` : ''}
+                {currentOperation.analyst?.name
+                  ? ` · Analista: ${currentOperation.analyst.name}`
+                  : ''}
               </p>
             </div>
             <StatusBadge status={currentOperation.status} />
           </div>
-
-          <div className={styles.summaryMetrics}>
-            <div className={styles.summaryMetric}>
-              <span className={styles.summaryMetricLabel}>Tipo de carga</span>
-              <strong className={styles.summaryMetricValue}>
-                {currentOperation.tipoCarga ||
-                  (currentOperation.isContainerized ? 'CONTENERIZADA' : 'SUELTA')}
-              </strong>
-            </div>
-            <div className={styles.summaryMetric}>
-              <span className={styles.summaryMetricLabel}>Flete a cobrar</span>
-              <strong className={styles.summaryMetricValue}>
-                {currentOperation.fleteACobrarManual != null ||
-                currentOperation.fleteACobrar != null
-                  ? `$ ${fleteBase.toLocaleString('es-CO')}`
-                  : 'Pendiente'}
-              </strong>
-            </div>
-            <div className={`${styles.summaryMetric} ${styles.summaryMetricHighlight}`}>
-              <span className={styles.summaryMetricLabel}>Flete a pagar</span>
-              <strong className={styles.summaryMetricValue}>
-                {currentOperation.fleteAPagar == null
-                  ? 'Pendiente'
-                  : `$ ${fleteAPagar.toLocaleString('es-CO')}`}
-              </strong>
-              {currentOperation.retencionFlotaPorcentaje != null && (
-                <small>
-                  Retención afiliación: {currentOperation.retencionFlotaPorcentaje}%
-                </small>
-              )}
-            </div>
-            <div className={styles.summaryMetric}>
-              <span className={styles.summaryMetricLabel}>Conductor</span>
-              <strong className={styles.summaryMetricValue}>
-                {currentOperation.driver?.name || 'Sin asignar'}
-              </strong>
-            </div>
-          </div>
-
-          <InspectionResult operation={currentOperation} />
 
           {/* ALERTAS (Lo que falta) */}
           {missingData.length > 0 && (
@@ -669,309 +873,598 @@ export function OperationTraceability({ operationId }: Props) {
             </div>
           )}
 
-          {/* INFO PRINCIPAL (Analista y Fechas Clave) */}
-          <div className={styles.grid2Col}>
-            <div className={styles.infoCard}>
-              <span className={styles.label}>Analista a Cargo</span>
-              <strong className={`${styles.value} ${styles.valueLarge}`}>
-                {currentOperation.analyst?.name || 'No asignado'}
-              </strong>
-            </div>
-          </div>
-
-          {/* RUTAS Y TIEMPOS */}
-          <div>
+          <section className={styles.detailSection}>
             <h3 className={styles.sectionTitle}>
-              <MapPin size={18} color="#64748b" /> Ruta y Tiempos
+              <MapPin size={18} color="#64748b" /> Ruta y Trazabilidad por Ubicación
             </h3>
-            {currentOperation.stops && currentOperation.stops.length > 0 && (
-              <ol className={styles.routeStops}>
-                {[...currentOperation.stops]
-                  .sort((left, right) => left.stopOrder - right.stopOrder)
-                  .map((stop) => (
-                    <li className={styles.routeStop} key={stop.id ?? stop.stopOrder}>
-                      <span className={styles.routeStopOrder}>
-                        {stop.stopOrder + 1}
-                      </span>
-                      <div>
-                        <strong>
-                          {stop.stopType === 'CARGUE' ? 'Cargue' : 'Descargue'} ·{' '}
-                          {stop.location?.name || stop.address || 'Ubicación'}
-                        </strong>
-                        <span>{stop.client?.razonSocial || 'Cliente'}</span>
-                        {(stop.address || stop.location?.address) && (
-                          <small>{stop.address || stop.location?.address}</small>
-                        )}
-                        {stop.contactName && <small>Contacto: {stop.contactName}</small>}
-                        {stop.contactPhone && <small>Teléfono: {stop.contactPhone}</small>}
-                        {stop.observations && <small>Observaciones: {stop.observations}</small>}
-                        {stop.cargoDescription && (
-                          <small>{stop.cargoDescription}</small>
-                        )}
-                        {stop.weightKg != null && (
-                          <small>
-                            {Number(stop.weightKg).toLocaleString('es-CO')} kg
-                          </small>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-              </ol>
-            )}
-            <div className={styles.grid2Col}>
-              <div className={styles.infoBlock} style={{ flex: 1 }}>
-                <span className={styles.label}>Origen</span>
-                <p className={styles.value}>{currentOperation.origen?.name || '---'}</p>
-                <p className={styles.dateSub}>
-                  <Clock size={12}/>{' '}
-                  {formatAppointmentLocationLabel(
-                    'Cita de origen',
-                    currentOperation.origen?.name,
-                  )}
-                  : {formatDate(currentOperation.fechaCitaOrigen)}
-                </p>
-              </div>
-              <div className={styles.infoBlock} style={{ flex: 1 }}>
-                <span className={styles.label}>Destino</span>
-                <p className={styles.value}>{currentOperation.destino?.name || currentOperation.descargue?.name || '---'}</p>
-                <p className={styles.dateSub}>
-                   <Clock size={12}/>{' '}
-                   {formatAppointmentLocationLabel(
-                     'Cita de destino',
-                     currentOperation.destino?.name ||
-                       currentOperation.descargue?.name,
-                   )}
-                   : {formatDate(currentOperation.fechaCitaDestino)}
-                </p>
-              </div>
-            </div>
-            <div className={styles.gridAuto}>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Lugar de cargue</span>
-                <p className={styles.value}>{currentOperation.cargue?.name || '---'}</p>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Lugar de descargue</span>
-                <p className={styles.value}>{currentOperation.descargue?.name || '---'}</p>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Fecha de retiro</span>
-                <p className={styles.value}>{formatDate(currentOperation.fechaRetiro)}</p>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Asignación</span>
-                <p className={styles.value}>{formatDate(currentOperation.fechaAsignacion)}</p>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Programada</span>
-                <p className={styles.value}>{formatDate(currentOperation.scheduledAt)}</p>
-              </div>
-            </div>
-          </div>
+            {routePoints.length > 0 ? (
+              <ol className={styles.traceabilityStops}>
+                {routePoints.map((point) => {
+                  const roleLabel =
+                    point.role === 'CARGUE'
+                      ? 'Cargue / Origen'
+                      : point.role === 'DESCARGUE'
+                        ? 'Descargue / Destino'
+                        : point.role === 'EMPTY_PICKUP'
+                          ? 'Retiro de vacío'
+                          : 'Devolución de vacío';
+                  const isFirstLoadingPoint =
+                    point.key === firstLoadingPoint?.key;
+                  const isLastUnloadingPoint =
+                    point.key === lastUnloadingPoint?.key;
+                  const appointmentRelevant =
+                    isAppointmentOperation &&
+                    (currentOperation.isContainerized === true
+                      ? point.role === 'EMPTY_PICKUP' ||
+                        point.role === 'EMPTY_RETURN' ||
+                        point.isPatio === true ||
+                        ((point.role === 'CARGUE' && isFirstLoadingPoint) ||
+                          (point.role === 'DESCARGUE' &&
+                            isLastUnloadingPoint))
+                      : point.isPort === true);
+                  const appointmentDate =
+                    point.appointmentAt ??
+                    (point.role === 'EMPTY_PICKUP'
+                      ? currentOperation.fechaRetiro
+                      : point.role === 'EMPTY_RETURN'
+                        ? currentOperation.type === 'DEVOLUCION_VACIO'
+                          ? currentOperation.fechaCitaDestino ??
+                            currentOperation.fechaCitaDesvio
+                          : currentOperation.fechaCitaDesvio
+                        : point.isPatio &&
+                            currentOperation.isContainerized === true
+                          ? currentOperation.fechaRetiro
+                          : point.role === 'CARGUE'
+                            ? currentOperation.fechaCitaOrigen
+                            : currentOperation.fechaCitaDestino);
+                  const arrivalFallback =
+                    point.role === 'EMPTY_RETURN'
+                      ? currentOperation.horaAtencion ??
+                        returnClosureDate
+                      : point.role === 'CARGUE' && isFirstLoadingPoint
+                        ? currentOperation.horaLlegada
+                        : point.role === 'DESCARGUE' &&
+                            isLastUnloadingPoint
+                          ? isExportOperation
+                            ? currentOperation.horaLlegada
+                            : currentOperation.horaAtencion ??
+                              currentOperation.horaLlegada
+                          : null;
+                  const departureFallback =
+                    point.role === 'EMPTY_RETURN'
+                      ? returnClosureDate
+                      : point.role === 'CARGUE' && isFirstLoadingPoint
+                        ? currentOperation.horaSalida
+                        : point.role === 'DESCARGUE' &&
+                            isLastUnloadingPoint
+                          ? currentOperation.horaFinal ??
+                            currentOperation.fechaCierreFisico
+                          : null;
+                  const arrivalAt =
+                    point.actualArrivalAt ?? arrivalFallback;
+                  const departureAt =
+                    point.actualDepartureAt ?? departureFallback;
+                  const loadingStart = isFirstLoadingPoint
+                    ? currentOperation.loadingStartedAt ??
+                      currentOperation.horaCargue
+                    : null;
+                  const loadingEnd = isFirstLoadingPoint
+                    ? currentOperation.loadingCompletedAt
+                    : null;
+                  const unloadingStart = isLastUnloadingPoint
+                    ? currentOperation.unloadingStartedAt ??
+                      currentOperation.horaDescargue
+                    : null;
+                  const unloadingEnd = isLastUnloadingPoint
+                    ? currentOperation.unloadingCompletedAt
+                    : null;
 
-          {(currentOperation.containerStatus === 'PENDIENTE_DEVOLUCION' ||
-            currentOperation.nuevoDestinoId ||
-            deviationNotice) && (
-            <div className={styles.infoBlock}>
-              <h3 className={styles.sectionTitle}>
-                <MapPin size={18} color="#d97706" /> Desvío / devolución
-              </h3>
-              <div className={styles.grid2Col}>
-                <div>
-                  <span className={styles.label}>Ruta confirmada</span>
-                  <p className={styles.value}>
+                  return (
+                    <li className={styles.traceabilityStop} key={point.key}>
+                      <header className={styles.traceabilityStopHeader}>
+                        <span className={styles.routeStopOrder}>
+                          {point.stopOrder + 1}
+                        </span>
+                        <div>
+                          <span className={styles.traceabilityStopRole}>
+                            Parada {point.stopOrder + 1} · {roleLabel}
+                          </span>
+                          <strong>{point.locationName}</strong>
+                          {point.address && <small>{point.address}</small>}
+                          {point.clientName && <small>{point.clientName}</small>}
+                          {point.contactName && (
+                            <small>Contacto: {point.contactName}</small>
+                          )}
+                          {point.contactPhone && (
+                            <small>Teléfono: {point.contactPhone}</small>
+                          )}
+                          {point.observations && (
+                            <small>{point.observations}</small>
+                          )}
+                        </div>
+                      </header>
+
+                      {appointmentRelevant && (
+                        <p className={styles.stopAppointment}>
+                          <Clock size={14} aria-hidden="true" />
+                          <span>
+                            Cita programada en {point.locationName}:{' '}
+                            {appointmentDate
+                              ? formatDate(appointmentDate)
+                              : 'Sin cita programada'}
+                          </span>
+                        </p>
+                      )}
+
+                      <div className={styles.stopTimeline}>
+                        <div className={styles.stopTimelineItem}>
+                          <span>Llegada a {point.locationName}</span>
+                          <strong>
+                            {arrivalAt ? formatDate(arrivalAt) : 'Sin registrar'}
+                          </strong>
+                        </div>
+                        {point.role === 'CARGUE' && (
+                          <div className={styles.stopTimelineItem}>
+                            <span>Cargue en {point.locationName}</span>
+                            <strong>
+                              {formatTimestampRange(loadingStart, loadingEnd)}
+                            </strong>
+                            <small>
+                              Duración: {formatElapsedMinutes(loadingStart, loadingEnd)}
+                            </small>
+                          </div>
+                        )}
+                        {point.role === 'DESCARGUE' && (
+                          <div className={styles.stopTimelineItem}>
+                            <span>Descargue en {point.locationName}</span>
+                            <strong>
+                              {formatTimestampRange(unloadingStart, unloadingEnd)}
+                            </strong>
+                            <small>
+                              Duración:{' '}
+                              {formatElapsedMinutes(unloadingStart, unloadingEnd)}
+                            </small>
+                          </div>
+                        )}
+                        <div className={styles.stopTimelineItem}>
+                          <span>
+                            {point.role === 'CARGUE'
+                              ? `Salida de ${point.locationName}`
+                              : point.role === 'EMPTY_RETURN'
+                                ? `Entrega de vacío en ${point.locationName}`
+                                : point.role === 'EMPTY_PICKUP'
+                                  ? `Retiro de vacío en ${point.locationName}`
+                                  : `Salida / Entrega en ${point.locationName}`}
+                          </span>
+                          <strong>
+                            {departureAt
+                              ? formatDate(departureAt)
+                              : 'Sin registrar'}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {(point.cargoDescription || point.weightKg != null) && (
+                        <div className={styles.stopCargoDetails}>
+                          {point.cargoDescription && (
+                            <span>{point.cargoDescription}</span>
+                          )}
+                          {point.weightKg != null && (
+                            <span>
+                              {Number(point.weightKg).toLocaleString('es-CO')} kg
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className={styles.emptyRoute}>
+                No hay ubicaciones de ruta registradas.
+              </p>
+            )}
+
+            {currentOperation.isContainerized === true &&
+              (currentOperation.containerStatus === 'PENDIENTE_DEVOLUCION' ||
+                currentOperation.nuevoDestinoId ||
+                deviationNotice) && (
+                <div className={styles.deviationTrace}>
+                  <h4>Desvío / devolución</h4>
+                  <p>
                     {currentOperation.destino?.name ||
                       currentOperation.descargue?.name ||
-                      'Patio de devolución'}
+                      'Destino original'}
                     {' → '}
                     {deviationDestination || 'Pendiente de confirmación'}
                   </p>
-                </div>
-                <div>
-                  <span className={styles.label}>Cita del desvío</span>
-                  <p className={styles.value}>
-                    {formatDate(deviationAppointment)}
-                  </p>
-                </div>
-              </div>
-              {comodatoOcr && (
-                <div className={styles.gridAuto}>
-                  <div>
-                    <span className={styles.label}>
-                      Lectura IA del comodato
-                    </span>
-                    <p className={styles.value}>
-                      {comodatoOcr.legible
-                        ? 'Lectura disponible; requiere confirmación del analista'
-                        : 'No se pudo leer el comodato automáticamente'}
-                    </p>
-                  </div>
-                  {comodatoOcr.destino && (
-                    <div>
-                      <span className={styles.label}>
-                        Destino sugerido por el documento
-                      </span>
-                      <p className={styles.value}>{comodatoOcr.destino}</p>
+                  <small>
+                    Cita programada en {deviationDestination || 'destino confirmado'}:{' '}
+                    {deviationAppointment
+                      ? formatDate(deviationAppointment)
+                      : 'Sin cita programada'}
+                  </small>
+                  {comodatoOcr && (
+                    <div className={styles.gridAuto}>
+                      <div>
+                        <span className={styles.label}>
+                          Lectura IA del comodato
+                        </span>
+                        <p className={styles.value}>
+                          {comodatoOcr.legible
+                            ? 'Lectura disponible; requiere confirmación del analista'
+                            : 'No se pudo leer el comodato automáticamente'}
+                        </p>
+                      </div>
+                      {comodatoOcr.destino && (
+                        <div>
+                          <span className={styles.label}>
+                            Destino sugerido por el documento
+                          </span>
+                          <p className={styles.value}>{comodatoOcr.destino}</p>
+                        </div>
+                      )}
+                      {comodatoOcr.fechaCita && (
+                        <div>
+                          <span className={styles.label}>
+                            Cita indicada en el documento
+                          </span>
+                          <p className={styles.value}>{comodatoOcr.fechaCita}</p>
+                        </div>
+                      )}
+                      {comodatoOcr.numeroContenedor && (
+                        <div>
+                          <span className={styles.label}>Contenedor leído</span>
+                          <p className={styles.value}>
+                            {comodatoOcr.numeroContenedor}
+                          </p>
+                        </div>
+                      )}
+                      {comodatoOcr.referencia && (
+                        <div>
+                          <span className={styles.label}>Referencia</span>
+                          <p className={styles.value}>{comodatoOcr.referencia}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                  {comodatoOcr.fechaCita && (
-                    <div>
-                      <span className={styles.label}>
-                        Cita indicada en el documento
-                      </span>
-                      <p className={styles.value}>{comodatoOcr.fechaCita}</p>
+                  {comodatoEvidences.map((evidence) => (
+                    <div key={evidence.id}>
+                      <span className={styles.label}>Soportes adjuntos</span>
+                      <EvidenceViewer evidence={evidence} />
                     </div>
-                  )}
-                  {comodatoOcr.numeroContenedor && (
-                    <div>
-                      <span className={styles.label}>
-                        Contenedor leído
-                      </span>
-                      <p className={styles.value}>
-                        {comodatoOcr.numeroContenedor}
-                      </p>
+                  ))}
+                  {legacyComodatoUrls.map((url) => (
+                    <div key={url}>
+                      <span className={styles.label}>Soporte legado</span>
+                      <EvidenceViewer evidence={{ type: 'COMODATO', url }} />
                     </div>
-                  )}
-                  {comodatoOcr.referencia && (
-                    <div>
-                      <span className={styles.label}>Referencia</span>
-                      <p className={styles.value}>{comodatoOcr.referencia}</p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
-              {comodatoEvidences.map((evidence) => (
-                <div key={evidence.id}>
-                  <span className={styles.label}>Soportes adjuntos</span>
-                  <EvidenceViewer evidence={evidence} />
-                </div>
-              ))}
-              {legacyComodatoUrls.map((url) => (
-                <div key={url}>
-                  <span className={styles.label}>Soporte legado</span>
-                  <EvidenceViewer evidence={{ type: 'COMODATO', url }} />
-                </div>
-              ))}
-            </div>
-          )}
 
-          <div>
-            <h3 className={styles.sectionTitle}>
-              <Clock size={18} color="#64748b" /> Marcas de tiempo
-            </h3>
-            <div className={styles.gridAuto}>
-              {[
-                ['Inicio', currentOperation.horaInicio],
-                ['Llegada', currentOperation.horaLlegada],
-                ['Atención', currentOperation.horaAtencion],
-                ['Cargue', currentOperation.horaCargue],
-                ['Descargue', currentOperation.horaDescargue],
-                ['Salida', currentOperation.horaSalida],
-                ['Finalización', currentOperation.horaFinal],
-              ].map(([label, timestamp]) => (
-                <div className={styles.infoBlock} key={label}>
-                  <span className={styles.label}>{label}</span>
-                  <strong className={styles.value}>{formatDate(timestamp)}</strong>
-                </div>
-              ))}
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Creada</span>
-                <strong className={styles.value}>{formatDate(currentOperation.createdAt)}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* EQUIPO Y CARGA */}
-          <div>
-            <h3 className={styles.sectionTitle}>
-              <Truck size={18} color="#64748b" /> Equipo, Carga y Finanzas
-            </h3>
-            
-            <div className={styles.gridAuto}>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Tipo de carga</span>
-                <strong className={styles.value}>
-                  {currentOperation.tipoCarga ||
-                    (currentOperation.isContainerized
-                      ? 'Contenerizada'
-                      : 'Carga suelta')}
-                </strong>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Vehículo</span>
-                <div>
-                  <span className={styles.plateBadge}>
-                    {currentOperation.placaIA || currentOperation.vehicle?.plate || 'Sin Asignar'}
-                  </span>
-                </div>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Remolque / Chasis</span>
-                <strong className={styles.value}>{currentOperation.trailer?.plate || '---'}</strong>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Conductor Asignado</span>
-                <strong className={styles.value}>{currentOperation.driver?.name || '---'}</strong>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Contenedor / Tipo</span>
-                <div>
-                  <strong className={styles.value}>{currentOperation.containerNumber || '---'}</strong>
-                  <span className={styles.containerType}>({currentOperation.containerType || '-'})</span>
-                </div>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Peso</span>
-                <strong className={styles.value}>
-                  {currentOperation.isContainerized
-                    ? currentOperation.peso == null
-                      ? '---'
-                      : `${Number(currentOperation.peso).toLocaleString('es-CO')} kg`
-                    : currentOperation.weight == null
-                      ? '---'
-                      : `${Number(currentOperation.weight).toLocaleString('es-CO')} kg`}
-                </strong>
-              </div>
-              {!currentOperation.isContainerized && (
-                <div className={styles.infoBlock}>
-                  <span className={styles.label}>Dimensiones de carga</span>
-                  <strong className={styles.value}>
-                    {currentOperation.dimensions || '---'}
+            <div className={styles.tripMilestones}>
+              {tripMilestones.map((milestone) => (
+                <div className={styles.tripMilestone} key={milestone.label}>
+                  <span>{milestone.label}</span>
+                  <strong>
+                    {milestone.value
+                      ? formatDate(milestone.value)
+                      : 'Pendiente'}
                   </strong>
                 </div>
-              )}
-              {!currentOperation.isContainerized &&
-                currentOperation.cargoDescription && (
-                  <div className={styles.infoBlock}>
-                    <span className={styles.label}>Descripción de carga</span>
-                    <strong className={styles.value}>
-                      {currentOperation.cargoDescription}
-                    </strong>
-                  </div>
-                )}
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Flete a cobrar / pagar</span>
-                <div className={styles.financialList}>
-                  <div className={styles.financialRow}>
-                    <span>Flete a cobrar{currentOperation.fleteACobrarManual != null ? ' (manual)' : ''}</span>
-                    <strong>{currentOperation.fleteACobrarManual != null || currentOperation.fleteACobrar != null
-                      ? `$ ${fleteBase.toLocaleString('es-CO')}`
-                      : 'Pendiente'}</strong>
-                  </div>
+              ))}
+            </div>
+          </section>
 
-                  {/* 🚀 RENDERIZADO DINÁMICO DE RECARGOS Y PATIO */}
-                  {recargos.length > 0 ? recargos.map((surcharge) => (
+          <section className={styles.detailSection}>
+            <h3 className={styles.sectionTitle}>
+              <Clock size={18} color="#64748b" /> Fechas Límite
+            </h3>
+            <div className={styles.deadlineGrid}>
+              <div className={styles.deadlineCard}>
+                <span className={styles.label}>Fecha Límite Documental</span>
+                <strong className={styles.value}>
+                  {formatDate(currentOperation.fechaLimiteDocumental)}
+                </strong>
+                {currentOperation.diasLibresDocumental != null && (
+                  <small>
+                    {currentOperation.diasLibresDocumental} días libres documentales
+                  </small>
+                )}
+                <span
+                  className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteDocumental, currentOperation.fechaCierreDocumental) ?? 'none'}`]}`}
+                >
+                  {getDeadlineLabel(
+                    getDeadlineStatus(
+                      currentOperation.fechaLimiteDocumental,
+                      currentOperation.fechaCierreDocumental,
+                    ),
+                  )}
+                </span>
+              </div>
+              <div className={styles.deadlineCard}>
+                <span className={styles.label}>
+                  Fecha Límite de Cierre Físico
+                </span>
+                <strong className={styles.value}>
+                  {formatDate(physicalDeadline)}
+                </strong>
+                <small>{physicalDeadlineContext}</small>
+                <span
+                  className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(physicalDeadline, physicalClosure) ?? 'none'}`]}`}
+                >
+                  {getDeadlineLabel(
+                    getDeadlineStatus(physicalDeadline, physicalClosure),
+                  )}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.detailSection}>
+            <h3 className={styles.sectionTitle}>
+              <Truck size={18} color="#64748b" /> Equipo y Mercancía
+            </h3>
+
+            <div className={styles.detailSubsection}>
+              <h4>Equipo asignado</h4>
+              <div className={styles.detailGrid}>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Vehículo</span>
+                  <strong className={styles.value}>
+                    {currentOperation.placaIA ||
+                      currentOperation.vehicle?.plate ||
+                      'Sin asignar'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Tráiler / Chasis</span>
+                  <strong className={styles.value}>
+                    {currentOperation.trailer?.plate || 'Sin asignar'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Conductor asignado</span>
+                  <strong className={styles.value}>
+                    {currentOperation.driver?.name || 'Sin asignar'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>
+                    Configuración vehicular requerida
+                  </span>
+                  <strong className={styles.value}>
+                    {currentOperation.cargoVehicleType?.name ||
+                      currentOperation.vehicleType?.name ||
+                      'No especificada'}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.detailSubsection}>
+              <h4>Detalle de la carga</h4>
+              <div className={styles.detailGrid}>
+                {currentOperation.isContainerized === true ? (
+                  <>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>
+                        Tipo y N.º de contenedor
+                      </span>
+                      <strong className={styles.value}>
+                        {currentOperation.containerType || 'Tipo sin registrar'}
+                        {' · '}
+                        {currentOperation.containerNumber ||
+                          'Número sin registrar'}
+                      </strong>
+                    </div>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Línea naviera</span>
+                      <strong className={styles.value}>
+                        {currentOperation.shippingLine?.name || 'Sin asignar'}
+                      </strong>
+                    </div>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>
+                        Inspección de naviera
+                      </span>
+                      <strong className={styles.value}>
+                        {!currentOperation.requiresInspection
+                          ? 'No requerida'
+                          : currentOperation.inspectionStatus === 'APROBADO'
+                            ? 'Aprobada'
+                            : currentOperation.inspectionStatus
+                              ? 'Rechazada'
+                              : 'Pendiente'}
+                      </strong>
+                    </div>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Días libres</span>
+                      <strong className={styles.value}>
+                        {currentOperation.diasLibresDevolucion != null
+                          ? `${currentOperation.diasLibresDevolucion} días`
+                          : 'Sin registrar'}
+                      </strong>
+                    </div>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Peso (kg)</span>
+                      <strong className={styles.value}>
+                        {(currentOperation.peso ?? currentOperation.weight) != null
+                          ? `${Number(currentOperation.peso ?? currentOperation.weight).toLocaleString('es-CO')} kg`
+                          : 'Sin registrar'}
+                      </strong>
+                    </div>
+                    {currentOperation.containerStatus && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>Estado del contenedor</span>
+                        <strong
+                          className={styles.containerStatusBadge}
+                          style={{
+                            backgroundColor: isContainerStatusAlert
+                              ? '#fee2e2'
+                              : isContainerStatusComplete
+                                ? '#dcfce7'
+                                : '#e0f2fe',
+                            color: isContainerStatusAlert
+                              ? '#b91c1c'
+                              : isContainerStatusComplete
+                                ? '#15803d'
+                                : '#0369a1',
+                          }}
+                        >
+                          {ContainerStatusLabels[containerStatus] ||
+                            containerStatus.replace(/_/g, ' ')}
+                        </strong>
+                        {canCorrectContainer && (
+                          <button
+                            type="button"
+                            className={styles.btnViewEvidence}
+                            disabled={isCorrectingContainer}
+                            onClick={() =>
+                              void handleContainerCorrection().catch(
+                                (error: unknown) =>
+                                  showToast.error(
+                                    error,
+                                    'No se pudo corregir el contenedor.',
+                                  ),
+                              )
+                            }
+                          >
+                            <RotateCcw size={14} /> Corregir estado del
+                            contenedor
+                          </button>
+                        )}
+                        {currentOperation.containerIssueDescription && (
+                          <small className={styles.dateSub}>
+                            Falla reportada:{' '}
+                            {currentOperation.containerIssueDescription}
+                          </small>
+                        )}
+                        {currentOperation.containerStatusUpdatedAt && (
+                          <small className={styles.dateSub}>
+                            Último reporte:{' '}
+                            {formatDate(currentOperation.containerStatusUpdatedAt)}
+                          </small>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Tipo de carga</span>
+                      <strong className={styles.value}>
+                        SUELTA
+                      </strong>
+                    </div>
+                    {currentOperation.requiredTrailerType && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>
+                          Tipo de tráiler requerido
+                        </span>
+                        <strong className={styles.value}>
+                          {currentOperation.requiredTrailerType}
+                        </strong>
+                      </div>
+                    )}
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Peso (kg)</span>
+                      <strong className={styles.value}>
+                        {currentOperation.weight != null
+                          ? `${Number(currentOperation.weight).toLocaleString('es-CO')} kg`
+                          : 'Sin registrar'}
+                      </strong>
+                    </div>
+                    <div className={styles.infoBlock}>
+                      <span className={styles.label}>Descripción de carga</span>
+                      <strong className={styles.value}>
+                        {currentOperation.cargoDescription || 'Sin registrar'}
+                      </strong>
+                    </div>
+                    {currentOperation.packageType && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>Empaque</span>
+                        <strong className={styles.value}>
+                          {currentOperation.packageType}
+                        </strong>
+                      </div>
+                    )}
+                    {currentOperation.packageCount != null && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>Bultos</span>
+                        <strong className={styles.value}>
+                          {currentOperation.packageCount}
+                        </strong>
+                      </div>
+                    )}
+                    {currentOperation.dimensions && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>Dimensiones</span>
+                        <strong className={styles.value}>
+                          {currentOperation.dimensions}
+                        </strong>
+                      </div>
+                    )}
+                    {currentOperation.volumeM3 != null && (
+                      <div className={styles.infoBlock}>
+                        <span className={styles.label}>Volumen</span>
+                        <strong className={styles.value}>
+                          {Number(currentOperation.volumeM3).toLocaleString(
+                            'es-CO',
+                          )}{' '}
+                          m³
+                        </strong>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              {currentOperation.isContainerized === true && (
+                <InspectionResult operation={currentOperation} />
+              )}
+            </div>
+          </section>
+
+          <section className={styles.detailSection}>
+            <h3 className={styles.sectionTitle}>
+              <Activity size={18} color="#64748b" /> Liquidación Financiera
+            </h3>
+            <div className={`${styles.infoBlock} ${styles.financialSummary}`}>
+              <div className={styles.financialList}>
+                <div className={styles.financialRow}>
+                  <span>
+                    Flete a cobrar
+                    {currentOperation.fleteACobrarManual != null
+                      ? ' (manual)'
+                      : ''}
+                  </span>
+                  <strong>
+                    {currentOperation.fleteACobrarManual != null ||
+                    currentOperation.fleteACobrar != null
+                      ? `$ ${fleteBase.toLocaleString('es-CO')}`
+                      : 'Pendiente'}
+                  </strong>
+                </div>
+
+                {recargos.length > 0 ? (
+                  recargos.map((surcharge) => (
                     <div className={styles.financialRow} key={surcharge.id}>
-                      <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span className={styles.surchargeDescription}>
                         <span>
-                          <strong>{surcharge.surcharge?.name || surcharge.surchargeCode}</strong>
-                          {surcharge.quantity > 1 ? ` · ${surcharge.quantity} unid.` : ''}
+                          <strong>
+                            {surcharge.surcharge?.name || surcharge.surchargeCode}
+                          </strong>
+                          {surcharge.quantity > 1
+                            ? ` · ${surcharge.quantity} unid.`
+                            : ''}
                         </span>
                         {surcharge.observations && (
-                          <small style={{ color: '#64748b' }}>{surcharge.observations}</small>
+                          <small>{surcharge.observations}</small>
                         )}
                         {surcharge.novedad && (
-                          <small style={{ color: '#475569' }}>
+                          <small>
                             Novedad #{surcharge.novedad.id}
                             {surcharge.novedad.category
                               ? ` · ${surcharge.novedad.category.replaceAll('_', ' ')}`
@@ -979,128 +1472,64 @@ export function OperationTraceability({ operationId }: Props) {
                           </small>
                         )}
                         {Number(surcharge.costPrice) > 0 && (
-                          <small style={{ color: '#b91c1c' }}>
-                            Costo Prov: $ {Number(surcharge.costPrice).toLocaleString('es-CO')}
+                          <small>
+                            Costo proveedor: ${' '}
+                            {Number(surcharge.costPrice).toLocaleString('es-CO')}
                           </small>
                         )}
                       </span>
-                      <strong style={{ color: '#b45309' }}>Venta: $ {Number(surcharge.totalPrice).toLocaleString('es-CO')}</strong>
+                      <strong>
+                        Venta: ${' '}
+                        {Number(surcharge.totalPrice).toLocaleString('es-CO')}
+                      </strong>
                     </div>
-                  )) : (
-                    <div className={styles.financialRow}>
-                      <span>Novedades y Recargos</span>
-                      <strong>—</strong>
-                    </div>
-                  )}
-
+                  ))
+                ) : (
                   <div className={styles.financialRow}>
-                    <span>Total cobros extra</span>
-                    <strong>$ {totalCobrosExtras.toLocaleString('es-CO')}</strong>
+                    <span>Novedades y recargos</span>
+                    <strong>—</strong>
                   </div>
+                )}
 
-                  <div className={styles.financialRow}>
-                    <span>Flete a pagar (Flota)</span>
-                    <strong>{currentOperation.fleteAPagar == null ? 'Pendiente' : `$ ${fleteAPagar.toLocaleString('es-CO')}`}</strong>
-                  </div>
-
-                  <div className={styles.financialRow}>
-                    <span>Retención de flota</span>
-                    <strong>{currentOperation.retencionFlotaPorcentaje == null
-                      ? '—'
-                      : `${Number(currentOperation.retencionFlotaPorcentaje).toLocaleString('es-CO')} %`}</strong>
-                  </div>
-
-                  <div className={styles.totalRow}>
-                    <span>Total cobro cliente</span>
-                    <strong>{granTotalCobro == null
-                      ? 'Pendiente'
-                      : `$ ${Number(granTotalCobro).toLocaleString('es-CO')}`}</strong>
-                  </div>
+                <div className={styles.financialRow}>
+                  <span>Total cobros extra</span>
+                  <strong>
+                    $ {totalCobrosExtras.toLocaleString('es-CO')}
+                  </strong>
                 </div>
-
-                {/* 🚀 ELIMINAMOS LA ALERTA QUEMADA DEL PATIO Y DEJAMOS SOLO LA RENTABILIDAD */}
-                <strong
-                  style={{
-                    color:
-                      currentOperation.rentabilidadBruta === null ||
-                      currentOperation.rentabilidadBruta === undefined
-                        ? '#94a3b8'
-                        : currentOperation.rentabilidadBruta >= 0
-                          ? '#15803d'
-                          : '#dc2626',
-                    display: 'block',
-                    marginTop: '12px'
-                  }}
-                >
-                  Rentabilidad bruta:{' '}
-                  {currentOperation.rentabilidadBruta === null ||
-                  currentOperation.rentabilidadBruta === undefined
-                    ? 'Pendiente de pago de flota'
-                    : `$ ${currentOperation.rentabilidadBruta.toLocaleString('es-CO')}`}
-                </strong>
+                <div className={styles.financialRow}>
+                  <span>Flete a pagar (Flota)</span>
+                  <strong>
+                    {currentOperation.fleteAPagar == null
+                      ? 'Pendiente'
+                      : `$ ${fleteAPagar.toLocaleString('es-CO')}`}
+                  </strong>
+                </div>
+                <div className={styles.financialRow}>
+                  <span>Retención de flota</span>
+                  <strong>
+                    {currentOperation.retencionFlotaPorcentaje == null
+                      ? '—'
+                      : `${Number(currentOperation.retencionFlotaPorcentaje).toLocaleString('es-CO')} %`}
+                  </strong>
+                </div>
+                <div className={styles.totalRow}>
+                  <span>Total cobro cliente</span>
+                  <strong>
+                    {granTotalCobro == null
+                      ? 'Pendiente'
+                      : `$ ${Number(granTotalCobro).toLocaleString('es-CO')}`}
+                  </strong>
+                </div>
               </div>
+              <strong className={styles.grossProfit}>
+                Rentabilidad bruta:{' '}
+                {currentOperation.rentabilidadBruta == null
+                  ? 'Pendiente de pago de flota'
+                  : `$ ${currentOperation.rentabilidadBruta.toLocaleString('es-CO')}`}
+              </strong>
             </div>
-            <div className={styles.gridAuto}>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Estado del contenedor</span>
-                <strong
-                  className={styles.containerStatusBadge}
-                  style={{
-                    backgroundColor: isContainerStatusAlert
-                      ? '#fee2e2'
-                      : isContainerStatusComplete
-                        ? '#dcfce7'
-                        : '#e0f2fe',
-                    color: isContainerStatusAlert
-                      ? '#b91c1c'
-                      : isContainerStatusComplete
-                        ? '#15803d'
-                        : '#0369a1',
-                  }}
-                >
-                  {ContainerStatusLabels[containerStatus] || containerStatus.replace(/_/g, ' ')}
-                </strong>
-                {canCorrectContainer && (
-                  <button
-                    type="button"
-                    className={styles.btnViewEvidence}
-                    disabled={isCorrectingContainer}
-                    onClick={() => void handleContainerCorrection().catch((error: unknown) => showToast.error(error, 'No se pudo corregir el contenedor.'))}
-                  >
-                    <RotateCcw size={14} /> Corregir estado del contenedor
-                  </button>
-                )}
-                {currentOperation.containerIssueDescription && (
-                  <p className={styles.dateSub}>
-                    Falla reportada: {currentOperation.containerIssueDescription}
-                  </p>
-                )}
-                {currentOperation.containerStatusUpdatedAt && (
-                  <p className={styles.dateSub}>
-                    Último reporte: {formatDate(currentOperation.containerStatusUpdatedAt)}
-                  </p>
-                )}
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Cargue</span>
-                <strong className={styles.value}>
-                  {formatDuration(currentOperation.loadingStartedAt, currentOperation.loadingCompletedAt)}
-                </strong>
-                <p className={styles.dateSub}>
-                  {formatDate(currentOperation.loadingStartedAt)} — {formatDate(currentOperation.loadingCompletedAt)}
-                </p>
-              </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Descargue</span>
-                <strong className={styles.value}>
-                  {formatDuration(currentOperation.unloadingStartedAt, currentOperation.unloadingCompletedAt)}
-                </strong>
-                <p className={styles.dateSub}>
-                  {formatDate(currentOperation.unloadingStartedAt)} — {formatDate(currentOperation.unloadingCompletedAt)}
-                </p>
-              </div>
-            </div>
-          </div>
+          </section>
 
           {/* DOCUMENTOS */}
           <div>
@@ -1117,10 +1546,12 @@ export function OperationTraceability({ operationId }: Props) {
                 <span className={styles.label}>Manifiesto / DO</span>
                 <strong className={styles.value}>{currentOperation.documentoTransporte || '--'}</strong>
               </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Precinto (Seal)</span>
-                <strong className={styles.value}>{currentOperation.sealNumber || '---'}</strong>
-              </div>
+              {currentOperation.isContainerized === true && (
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Precinto (Seal)</span>
+                  <strong className={styles.value}>{currentOperation.sealNumber || '---'}</strong>
+                </div>
+              )}
               <div className={styles.infoBlock}>
                 <span className={styles.label}>ARIN</span>
                 <strong className={styles.value}>{currentOperation.arin || '---'}</strong>
@@ -1138,54 +1569,12 @@ export function OperationTraceability({ operationId }: Props) {
                 <strong className={styles.value}>{formatDate(currentOperation.fechaCierreFisico)}</strong>
               </div>
               <div className={styles.infoBlock}>
-                <span className={styles.label}>límite físico en puerto</span>
-                <strong className={styles.value}>{formatDate(currentOperation.fechaLimiteFisico)}</strong>
-                <span className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteFisico, currentOperation.fechaCierreFisico) ?? 'none'}`]}`}>
-                  {getDeadlineLabel(getDeadlineStatus(currentOperation.fechaLimiteFisico, currentOperation.fechaCierreFisico))}
-                </span>
-              </div>
-              <div className={styles.infoBlock}>
                 <span className={styles.label}>Cierre documental</span>
                 <strong className={styles.value}>{formatDate(currentOperation.fechaCierreDocumental)}</strong>
               </div>
-              <div className={styles.infoBlock}>
-                <span className={styles.label}>Límite de cierre documental</span>
-                <strong className={styles.value}>{formatDate(currentOperation.fechaLimiteDocumental)}</strong>
-                {currentOperation.diasLibresDocumental != null && (
-                  <small>{currentOperation.diasLibresDocumental} días libres documentales</small>
-                )}
-                <span className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteDocumental, currentOperation.fechaCierreDocumental) ?? 'none'}`]}`}>
-                  {getDeadlineLabel(getDeadlineStatus(currentOperation.fechaLimiteDocumental, currentOperation.fechaCierreDocumental))}
-                </span>
-              </div>
-              {showsEmptyReturnDeadline && (
-                <div className={styles.infoBlock}>
-                  <span className={styles.label}>
-                    Límite devolución de vacío
-                  </span>
-                  <strong className={styles.value}>
-                    {formatDate(currentOperation.fechaLimiteDevolucion)}
-                  </strong>
-                  {currentOperation.diasLibresDevolucion != null && (
-                    <small>
-                      {currentOperation.diasLibresDevolucion} días libres de
-                      naviera
-                    </small>
-                  )}
-                  <span
-                    className={`${styles.deadlineBadge} ${styles[`deadline_${getDeadlineStatus(currentOperation.fechaLimiteDevolucion, returnClosureDate) ?? 'none'}`]}`}
-                  >
-                    {getDeadlineLabel(
-                      getDeadlineStatus(
-                        currentOperation.fechaLimiteDevolucion,
-                        returnClosureDate,
-                      ),
-                    )}
-                  </span>
-                </div>
-              )}
             </div>
-            {currentOperation.containerStatus === 'EN_PISO' && (
+            {currentOperation.isContainerized === true &&
+              currentOperation.containerStatus === 'EN_PISO' && (
               <div
                 className={
                   linkedReturnOperation
@@ -1224,7 +1613,8 @@ export function OperationTraceability({ operationId }: Props) {
                 )}
               </div>
             )}
-            {currentOperation.type === 'DEVOLUCION_VACIO' &&
+            {currentOperation.isContainerized === true &&
+              currentOperation.type === 'DEVOLUCION_VACIO' &&
               relatedParentId && (
                 <Button
                   type="button"
@@ -1249,8 +1639,7 @@ export function OperationTraceability({ operationId }: Props) {
             )}
           </div>
 
-          {currentOperation.status === 'CIERRE_FISICO' &&
-            !currentOperation.fechaCierreDocumental && (
+          {canCloseDocumentally && isDocumentaryClosurePending && (
             <section className={styles.documentaryClosure}>
               <h3 className={styles.sectionTitle}>
                 <FileCheck size={18} color="#64748b" /> Cierre documental pendiente

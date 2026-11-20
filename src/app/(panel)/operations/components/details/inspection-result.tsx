@@ -77,7 +77,7 @@ export function InspectionResult({ operation }: Props) {
     }
   };
 
-  if (!operation.requiresInspection) return null;
+  if (!operation.isContainerized || !operation.requiresInspection) return null;
 
   if (operation.inspectionStatus) {
     return (

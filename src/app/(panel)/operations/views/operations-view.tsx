@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import Swal from 'sweetalert2';
 import { useUIStore } from '@/store/use-ui.store';
 import { useTrafico } from '../hooks/use-operations';
@@ -310,14 +310,6 @@ export function OperationsView() {
     });
     if (result.isConfirmed) await unassignVehicle(operation.id);
   };
-
-  const isInitialized = useRef(false);
-  useEffect(() => {
-    if (!isInitialized.current) {
-      fetchOperations({ page: 1, limit: 10 });
-      isInitialized.current = true;
-    }
-  }, [fetchOperations]);
 
   const operationColumns = getOperationsColumns(
     () => { },

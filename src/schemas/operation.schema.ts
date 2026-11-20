@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRAILER_TYPES } from "@/types/vehicles";
 
 const operationTypes = [
   "IMPORTACION",
@@ -20,16 +21,6 @@ const containerTypes = [
   "FLAT_RACK_20",
   "FLAT_RACK_40",
   "ISO_TANK_20",
-] as const;
-
-const trailerTypes = [
-  "PLANCHA",
-  "GRILLO",
-  "TANQUE",
-  "PLATAFORMA",
-  "FURGON",
-  "CAMA_BAJA",
-  "PORTACONTENEDOR",
 ] as const;
 
 const optionalPositiveNumber = z.preprocess(
@@ -106,7 +97,7 @@ const cargoFields = z.object({
     .optional(),
   destinoCustomAddress: z.string().optional(),
   vehicleCapacityId: optionalPositiveInteger,
-  requiredTrailerType: z.enum(trailerTypes).optional().or(z.literal("")),
+  requiredTrailerType: z.enum(TRAILER_TYPES).optional().or(z.literal("")),
   cargoDescription: z.string().trim().optional(),
   weight: optionalPositiveNumber,
   dimensions: z.string().trim().optional(),
@@ -119,6 +110,9 @@ const cargoFields = z.object({
   ),
   nuevoDestinoId: optionalPositiveInteger,
   fechaCitaDesvio: z.string().optional(),
+  fechaLimiteFisico: z.string().optional().nullable(),
+  fechaLimiteDocumental: z.string().optional().nullable(),
+  fechaLimiteDevolucion: z.string().optional().nullable(),
   originIsPort: z.boolean().optional(),
   originIsDepot: z.boolean().optional(),
   originIsClientLocation: z.boolean().optional(),
@@ -171,52 +165,52 @@ const validateCargoFields = (
   }
   if (
     data.isContainerized &&
-    (data.operationType === "IMPORTACION" ||
-      data.operationType === "EXPORTACION") &&
+    data.operationType === "EXPORTACION" &&
     !data.descargueId
   ) {
     context.addIssue({
       code: "custom",
       path: ["descargueId"],
-      message: "Seleccione la ubicación del cliente",
+      message: "Seleccione el lugar de cargue del cliente",
     });
   }
-  if (data.isContainerized && data.operationType === "IMPORTACION") {
+  if (data.operationType === "IMPORTACION") {
     if (data.originIsPort === false) {
       context.addIssue({
         code: "custom",
         path: ["origenId"],
-        message: "La importación contenerizada debe iniciar en un puerto",
+        message: "La importación debe iniciar en un puerto",
       });
     }
-    if (data.clientStopIsClientLocation === false) {
-      context.addIssue({
-        code: "custom",
-        path: ["descargueId"],
-        message: "Seleccione una ubicación del cliente",
-      });
-    }
-    if (data.destinationIsDepot === false) {
+    if (data.destinationIsClientLocation === false) {
       context.addIssue({
         code: "custom",
         path: ["destinoId"],
-        message: "La importación debe terminar en un patio",
+        message: "La importación debe terminar en una ubicación del cliente",
       });
     }
   }
-  if (data.isContainerized && data.operationType === "EXPORTACION") {
-    if (data.originIsDepot === false) {
+  if (data.operationType === "EXPORTACION") {
+    if (data.isContainerized) {
+      if (data.originIsDepot === false) {
+        context.addIssue({
+          code: "custom",
+          path: ["origenId"],
+          message: "La exportación contenerizada debe iniciar en un patio de vacíos",
+        });
+      }
+      if (data.clientStopIsClientLocation === false) {
+        context.addIssue({
+          code: "custom",
+          path: ["descargueId"],
+          message: "Seleccione una ubicación de cargue del cliente",
+        });
+      }
+    } else if (data.originIsClientLocation === false) {
       context.addIssue({
         code: "custom",
         path: ["origenId"],
-        message: "La exportación contenerizada debe iniciar en un patio",
-      });
-    }
-    if (data.clientStopIsClientLocation === false) {
-      context.addIssue({
-        code: "custom",
-        path: ["descargueId"],
-        message: "Seleccione una ubicación del cliente",
+        message: "La exportación suelta debe iniciar en una bodega del cliente",
       });
     }
     if (data.destinationIsPort === false) {
@@ -480,7 +474,42 @@ const validateShippingLine = (
   }
 };
 
-export const operationCargoSchema = cargoFields;
+const validateDeadlineChronology = (
+  data: z.infer<typeof cargoFields>,
+  context: z.RefinementCtx,
+) => {
+  const documentaryDeadlineValue = data.fechaLimiteDocumental;
+  const documentaryDeadline = documentaryDeadlineValue
+    ? new Date(documentaryDeadlineValue)
+    : null;
+  const physicalDeadlineValue =
+    data.fechaLimiteDevolucion || data.fechaLimiteFisico;
+  const physicalDeadline = physicalDeadlineValue
+    ? new Date(physicalDeadlineValue)
+    : null;
+
+  if (
+    documentaryDeadline &&
+    physicalDeadline &&
+    documentaryDeadlineValue &&
+    physicalDeadlineValue &&
+    Number.isFinite(documentaryDeadline.getTime()) &&
+    Number.isFinite(physicalDeadline.getTime()) &&
+    documentaryDeadlineValue.slice(0, 10) >
+      physicalDeadlineValue.slice(0, 10)
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["fechaLimiteDevolucion"],
+      message:
+        "La fecha límite documental debe ocurrir antes o el mismo día que la fecha límite de cierre físico",
+    });
+  }
+};
+
+export const operationCargoSchema = cargoFields.superRefine(
+  validateDeadlineChronology,
+);
 
 export const operationSchema = z
   .object({
@@ -509,7 +538,8 @@ export const operationSchema = z
     fleteACobrarManual: optionalPositiveNumber,
   })
   .superRefine(validateCargoFields)
-  .superRefine(validateShippingLine);
+  .superRefine(validateShippingLine)
+  .superRefine(validateDeadlineChronology);
 
 export const createOperationSchema = operationSchema;
 export type OperationSchemaInput = z.input<typeof operationSchema>;

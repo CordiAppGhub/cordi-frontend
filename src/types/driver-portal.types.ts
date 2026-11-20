@@ -1,3 +1,5 @@
+import type { TrailerType } from "./vehicles";
+
 export type OperationStatus =
   | "CREADO"
   | "PROGRAMADO"
@@ -205,7 +207,7 @@ export interface Operation {
   trailer?: {
     id: string;
     plate: string;
-    trailerType?: "PLANCHA" | "GRILLO" | "TANQUE";
+    trailerType?: TrailerType;
   };
 }
 

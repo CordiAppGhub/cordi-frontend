@@ -24,7 +24,7 @@ export const DriversTab = () => {
     editDriver,
     deleteDriver,
     uploadExcel,
-  } = useDrivers();
+  } = useDrivers(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [driverToEdit, setDriverToEdit] = useState<Driver | null>(null);

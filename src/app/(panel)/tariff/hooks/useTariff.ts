@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import{ AxiosError } from 'axios';
 
@@ -19,12 +19,10 @@ interface BackendErrorResponse {
 export function useTariffs() {
   const queryClient = useQueryClient();
 
-  const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
-  const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
-  const quoteRequestId = useRef(0);
-
   const invalidateOperationTariffs = () =>
     Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tariffs'] }),
+      queryClient.invalidateQueries({ queryKey: ['tariff-lookup'] }),
       queryClient.invalidateQueries({ queryKey: ['trafico'] }),
       queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
       queryClient.invalidateQueries({ queryKey: ['operations'] }),
@@ -143,7 +141,11 @@ export function useTariffs() {
     mutationFn: (data: CreateSurchargeOverrideInput) => tariffService.createSurchargeOverride(data),
     onSuccess: () => {
       showToast.success('La tarifa especial para este cliente ha sido guardada.');
-      queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }); 
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariffs'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariff-lookup'] }),
+      ]);
     },
     onError: (err: AxiosError<BackendErrorResponse>) => {
       const message = err.response?.data?.message || 'No se pudo guardar la excepción.';
@@ -233,49 +235,6 @@ export function useTariffs() {
   }, [upsertPatioTariffMutation]);
 
 
-  const getLiveQuote = useCallback(async (
-    clientId: number | null, 
-    operationType: string | null, 
-    locationId: number | null,
-    routeScope: "URBANO" | "NACIONAL" | null,
-    isContainerized: boolean,
-  ) => {
-    const requestId = ++quoteRequestId.current;
-    if (!clientId || !operationType || !locationId || !routeScope) {
-      setSuggestedPrice(null);
-      setIsCalculatingPrice(false);
-      return;
-    }
-
-    setIsCalculatingPrice(true);
-    try {
-      const quote = await tariffService.getQuote({
-        clientId,
-        operationType,
-        routeScope,
-        locationId,
-        isContainerized,
-      });
-      if (requestId === quoteRequestId.current) {
-        setSuggestedPrice(quote.price);
-      }
-    } catch {
-      if (requestId === quoteRequestId.current) {
-        setSuggestedPrice(null);
-      }
-    } finally {
-      if (requestId === quoteRequestId.current) {
-        setIsCalculatingPrice(false);
-      }
-    }
-  }, []);
-
-  const resetQuote = useCallback(() => {
-    quoteRequestId.current += 1;
-    setSuggestedPrice(null);
-    setIsCalculatingPrice(false);
-  }, []);
-
   return {
     clientTariffs,
     surcharges,
@@ -299,9 +258,5 @@ export function useTariffs() {
     refreshPatioTariffs,
     upsertPatioTariff,
     
-    suggestedPrice,
-    isCalculatingPrice,
-    getLiveQuote,
-    resetQuote,
   };
 }

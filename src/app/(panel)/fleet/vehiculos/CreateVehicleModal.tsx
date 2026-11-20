@@ -20,6 +20,7 @@ import type {
   UpdateVehicleDto,
   Vehicle,
 } from '@/types/vehicles';
+import { TRAILER_TYPE_OPTIONS } from '@/types/vehicles';
 import styles from './CreateVehicleModal.module.css';
 
 interface CreateVehicleModalProps {
@@ -325,15 +326,7 @@ export default function CreateVehicleModal({
               <>
                 <span>Tipo de tráiler</span>
                 <Select
-                  options={[
-                    { value: 'PLANCHA', label: 'Plancha' },
-                    { value: 'PLATAFORMA', label: 'Plataforma' },
-                    { value: 'GRILLO', label: 'Grillo' },
-                    { value: 'TANQUE', label: 'Tanque' },
-                    { value: 'FURGON', label: 'Furgón' },
-                    { value: 'CAMA_BAJA', label: 'Cama baja' },
-                    { value: 'PORTACONTENEDOR', label: 'Portacontenedor' },
-                  ]}
+                  options={TRAILER_TYPE_OPTIONS}
                   {...register('trailerType')}
                   error={inputError('trailerType')}
                   required
@@ -456,25 +449,14 @@ export default function CreateVehicleModal({
             />
           </label>}
 
-          {assetType === 'vehicle' && <label className={styles.field}>
+          <label className={styles.field}>
             <span>Capacidad de carga (kg)</span>
             <Input
               type="number"
               {...register('cargoCapacity', { valueAsNumber: true })}
               min="0.01"
               step="any"
-              placeholder="Ej. 34000"
-              error={inputError('cargoCapacity')}
-            />
-          </label>}
-          {assetType === 'trailer' && <label className={styles.field}>
-            <span>Capacidad de carga (kg)</span>
-            <Input
-              type="number"
-              {...register('cargoCapacity', { valueAsNumber: true })}
-              min="0.01"
-              step="any"
-              placeholder="Ej. 32000"
+              placeholder={assetType === 'vehicle' ? 'Ej. 34000' : 'Ej. 32000'}
               error={inputError('cargoCapacity')}
             />
             {typeof capacityKg === 'number' &&
@@ -484,7 +466,16 @@ export default function CreateVehicleModal({
                   = {(capacityKg / 1000).toFixed(1)} Ton
                 </span>
               )}
-          </label>}
+            {typeof capacityKg === 'number' &&
+              Number.isFinite(capacityKg) &&
+              capacityKg > 0 &&
+              capacityKg < 1000 && (
+                <span className={styles.warning} role="alert">
+                  El valor es menor a 1.000 kg. Verifica que ingresaste kilogramos,
+                  no toneladas (por ejemplo, 30.000 kg para 30 Ton).
+                </span>
+              )}
+          </label>
 
           {assetType === 'vehicle' && <label className={styles.field}>
             <span>Estado inicial</span>

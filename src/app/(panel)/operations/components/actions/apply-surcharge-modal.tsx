@@ -57,11 +57,20 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
       },
       { name: 'quantity', label: 'Cantidad (Ej: Días o Eventos)', type: 'number', placeholder: '1' },
       { name: 'unitPrice', label: 'Cobro al cliente por unidad ($)', type: 'number', placeholder: 'Ej: 150000' },
-      { name: 'costPrice', label: 'Costo (patio/proveedor) por unidad ($)', type: 'number', placeholder: 'Ej: 80000 (0 si no aplica)' },
+      { name: 'costPrice', label: operationQuery.data?.isContainerized === true
+        ? 'Costo (patio/proveedor) por unidad ($)'
+        : 'Costo del proveedor por unidad ($)', type: 'number', placeholder: 'Ej: 80000 (0 si no aplica)' },
       { name: 'observations', label: 'Observaciones (Opcional)', type: 'text', placeholder: 'Motivo del cobro extra' },
-      { name: 'isPatioCharge', label: 'Es cargo de patio', type: 'checkbox' },
+      ...(operationQuery.data?.isContainerized === true
+        ? [{ name: 'isPatioCharge', label: 'Es cargo de patio', type: 'checkbox' as const }]
+        : []),
     ];
-  }, [surcharges, availableNovedades, operationQuery.isLoading]);
+  }, [
+    surcharges,
+    availableNovedades,
+    operationQuery.isLoading,
+    operationQuery.data?.isContainerized,
+  ]);
 
   const handleSubmit = async (formData: Record<string, FormFieldValue>) => {
     setErrors({});
@@ -89,7 +98,9 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
         unitPrice,
         costPrice: Number(formData.costPrice) || 0,
         observations: formData.observations ? String(formData.observations) : undefined,
-        isPatioCharge: Boolean(formData.isPatioCharge),
+        isPatioCharge:
+          operationQuery.data?.isContainerized === true &&
+          Boolean(formData.isPatioCharge),
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] }),

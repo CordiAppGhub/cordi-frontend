@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/atoms/button/button';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { ClientTariffModal } from '../components/client-tariff-modal';
@@ -29,9 +29,6 @@ export const TariffsView: React.FC = () => {
     vehicleTariffs,
     isLoadingTariffs, 
     error,
-    refreshTariffs, 
-    refreshSurcharges,
-    fetchVehicleTariffs
   } = useTariffs();
   
   const [activeTab, setActiveTab] = useState<TabState>('BASE');
@@ -46,17 +43,6 @@ export const TariffsView: React.FC = () => {
   const [currentPageSurcharge, setCurrentPageSurcharge] = useState(1);
   const [currentPageVehicle, setCurrentPageVehicle] = useState(1);
   const itemsPerPage = 10;
-
-  const isInitialized = useRef(false);
-  useEffect(() => {
-    if (!isInitialized.current) {
-      refreshTariffs();
-      refreshSurcharges();
-      fetchVehicleTariffs();
-      isInitialized.current = true;
-    }
-  }, [refreshTariffs, refreshSurcharges, fetchVehicleTariffs]);
-
 
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'BASE', label: 'Tarifas Comerciales' },

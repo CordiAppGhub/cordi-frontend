@@ -47,6 +47,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   background: #f8fafc;
+  scroll-margin-top: 84px;
 }
 
 .containerStatusAttention {
@@ -190,6 +191,11 @@
   background: #fffbeb;
   color: #92400e;
   font-size: 0.9rem;
+  touch-action: manipulation;
+}
+
+.startBlockedNoticeInteractive {
+  cursor: pointer;
 }
 
 .stepBtn {

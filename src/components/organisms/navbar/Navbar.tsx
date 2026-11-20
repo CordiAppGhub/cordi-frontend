@@ -1,7 +1,7 @@
 // src/components/organisms/navbar/Navbar.tsx
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,7 +24,6 @@ import { showToast } from '@/utils/alerts';
 import { dashboardService, OperationAlert } from '@/services/dashboard.service';
 import { operationService } from '@/services/operation.service';
 import { notificationsService } from '@/services/notifications.service';
-import { socket } from '@/lib/socket';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import styles from './navbar.module.css';
 
@@ -100,22 +99,6 @@ export const Navbar: React.FC = () => {
       showToast.error(error, 'No se pudieron marcar las notificaciones como leídas.');
     }
   };
-
-  useEffect(() => {
-    const refreshNavbarAlerts = () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['operations', 'pending-count'],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ['dashboard', 'operation-alerts'],
-      });
-    };
-
-    socket.on('global_operations_updated', refreshNavbarAlerts);
-    return () => {
-      socket.off('global_operations_updated', refreshNavbarAlerts);
-    };
-  }, [queryClient]);
 
   const groupedAlerts = useMemo(() => {
     const groups = new Map<number, OperationAlertGroup>();

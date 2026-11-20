@@ -212,6 +212,9 @@ export function SuperForm<
     const label = typeof field.label === 'function'
       ? field.label(formData)
       : field.label;
+    const helperText = typeof field.helperText === 'function'
+      ? field.helperText(formData)
+      : field.helperText;
     const isDisabled = typeof field.disabled === 'function'
       ? field.disabled(formData)
       : field.disabled ?? false;
@@ -391,6 +394,9 @@ export function SuperForm<
                 }
               })()}
 
+              {helperText && (
+                <small className={styles.helperText}>{helperText}</small>
+              )}
               {errorMessage && (
                 <span className={styles.errorMessage}>
                   {errorMessage}

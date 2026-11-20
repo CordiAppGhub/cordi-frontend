@@ -135,7 +135,7 @@ export const StatusConfig: Record<string, StatusConfigType> = {
     border: "#86efac",
     dot: "#22c55e",
     description:
-      "Estado Técnico: FINALIZADO. Contenedor en patio vacío o entregado exitosamente en puerto.",
+      "Estado Técnico: FINALIZADO. Cierre físico y documental aprobados.",
   },
   PAUSADA: {
     label: "PAUSADA",

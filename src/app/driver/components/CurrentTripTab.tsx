@@ -140,7 +140,7 @@ export function CurrentTripTab({
                       "ASIGNADO"}
                   </span>
                   <span>
-                    {operation.isContainerized === false
+                    {operation.isContainerized !== true
                       ? "Carga suelta"
                       : `Contenedor: ${(operation.containerStatus || "PENDIENTE").replace(/_/g, " ")}`}
                   </span>

@@ -119,6 +119,7 @@ export interface AmparoSuggestionOperation {
   id: number;
   type: "EXPORTACION" | "IMPORTACION";
   status: string;
+  isContainerized: boolean;
   numeroPedido?: string | null;
   containerNumber: string | null;
   containerType?: string | null;
@@ -195,8 +196,8 @@ export type UpdateOperationPayload = Partial<{
   isAnticipada: boolean;
   destinoTemporalId: number | null;
   origenId: number | null;
-  cargueId: number;
-  descargueId: number;
+  cargueId: number | null;
+  descargueId: number | null;
   destinoId: number | null;
   scheduledAt: string;
   driverId: number | null;
@@ -215,14 +216,14 @@ export type UpdateOperationPayload = Partial<{
   packageType: string | null;
   packageCount: number | null;
   volumeM3: number | null;
-  sealNumber: string;
+  sealNumber: string | null;
   documentoTransporte: string;
   numeroPedido: string;
   observaciones: string;
-  fechaCitaOrigen: string;
-  fechaCitaDestino: string;
-  nuevoDestinoId: number;
-  fechaCitaDesvio: string;
+  fechaCitaOrigen: string | null;
+  fechaCitaDestino: string | null;
+  nuevoDestinoId: number | null;
+  fechaCitaDesvio: string | null;
   fechaRetiro: string | null;
   fechaLimiteFisico: string | null;
   diasLibresDocumental: number | null;

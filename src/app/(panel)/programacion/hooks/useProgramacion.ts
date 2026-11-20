@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import {
@@ -8,7 +7,6 @@ import {
   ScheduleOperationsFilters,
 } from '@/services/operation.service';
 import Swal from 'sweetalert2';
-import { socket } from '@/lib/socket';
 import { showToast } from '@/utils/alerts';
 
 interface BackendErrorResponse {
@@ -46,18 +44,6 @@ export const useProgramacion = (filters: ScheduleOperationsFilters) => {
     retry: false,
     staleTime: 1000 * 60 * 1,
   });
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      void queryClient.invalidateQueries({ queryKey: ['operations', 'by-date'] });
-    };
-
-    socket.on('global_operations_updated', handleUpdate);
-
-    return () => {
-      socket.off('global_operations_updated', handleUpdate);
-    };
-  }, [queryClient]);
 
   const assignVehicleMutation = useMutation({
     mutationFn: ({

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/app/(panel)/fleet/conductores/hooks/use-drivers';
 import { Button } from '@/components/atoms/button/button';
@@ -21,19 +21,13 @@ export default function AssignDriverModal({
   initialVehicleId 
 }: AssignDriverModalProps) {
   const { vehicles, isLoading: loadingVehicles } = useVehicles(isOpen);
-  const { drivers, loadDrivers, isLoading: loadingDrivers } = useDrivers();
+  const { drivers, isLoading: loadingDrivers } = useDrivers(isOpen);
 
   const [vehicleId, setVehicleId] = useState(
     initialVehicleId === undefined ? '' : String(initialVehicleId),
   );
   const [driverId, setDriverId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadDrivers();
-    }
-  }, [isOpen, loadDrivers]);
 
   const vehicleOptions = vehicles.filter(
     (v) =>

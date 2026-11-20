@@ -27,9 +27,19 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
   const getMissingData = () => {
     const missing = [];
     if (!operation.vehicleId) missing.push('Flota sin asignar');
-    if (!operation.containerNumber && (operation.type === 'IMPORTACION' || operation.type === 'EXPORTACION')) missing.push('Falta el número de contenedor');
+    if (
+      operation.isContainerized === true &&
+      !operation.containerNumber &&
+      (operation.type === 'IMPORTACION' || operation.type === 'EXPORTACION')
+    ) missing.push('Falta el número de contenedor');
     if (!operation.documentoTransporte) missing.push('Falta manifiesto / documento de transporte');
-    if (operation.destino && !operation.fechaCitaDestino) missing.push('Destino asignado sin fecha de cita');
+    if (
+      operation.type !== 'NACIONAL' &&
+      (operation.isContainerized === true ||
+        operation.destino?.isPort === true) &&
+      operation.destino &&
+      !operation.fechaCitaDestino
+    ) missing.push('Destino asignado sin fecha de cita');
     return missing;
   };
 
@@ -41,6 +51,13 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
       month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
     });
   };
+  const physicalDeadlineContext =
+    operation.type === 'EXPORTACION'
+      ? 'Ingreso a puerto'
+      : operation.type === 'IMPORTACION' &&
+          operation.isContainerized === true
+        ? 'Devolución de vacío (patio vacío, propio o cliente)'
+        : 'Entrega física en destino';
 
   return (
     <div className={styles.container}>
@@ -84,26 +101,56 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
           <div className={styles.infoBlock} style={{ flex: 1 }}>
             <span className={styles.label}>Origen</span>
             <p className={styles.value} style={{ margin: '4px 0' }}>{operation.origen?.name || '---'}</p>
-            <p className={styles.dateSub}>
-              <Clock size={12}/>{' '}
-              {formatAppointmentLocationLabel(
-                'Cita de origen',
-                operation.origen?.name,
-              )}
-              : {formatDate(operation.fechaCitaOrigen)}
-            </p>
+            {operation.type !== 'NACIONAL' &&
+              operation.fechaCitaOrigen && (
+              <p className={styles.dateSub}>
+                <Clock size={12}/>{' '}
+                {formatAppointmentLocationLabel(
+                  'Cita de origen',
+                  operation.origen?.name,
+                )}
+                : {formatDate(operation.fechaCitaOrigen)}
+              </p>
+            )}
           </div>
           <div className={styles.infoBlock} style={{ flex: 1 }}>
             <span className={styles.label}>Destino</span>
             <p className={styles.value} style={{ margin: '4px 0' }}>{operation.destino?.name || operation.descargue?.name || '---'}</p>
-            <p className={styles.dateSub}>
-               <Clock size={12}/>{' '}
-               {formatAppointmentLocationLabel(
-                 'Cita de destino',
-                 operation.destino?.name || operation.descargue?.name,
-               )}
-               : {formatDate(operation.fechaCitaDestino)}
-            </p>
+            {operation.type !== 'NACIONAL' &&
+              operation.fechaCitaDestino && (
+              <p className={styles.dateSub}>
+                 <Clock size={12}/>{' '}
+                 {formatAppointmentLocationLabel(
+                   'Cita de destino',
+                   operation.destino?.name || operation.descargue?.name,
+                 )}
+                 : {formatDate(operation.fechaCitaDestino)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className={styles.sectionTitle}>
+          <Clock size={18} color="#64748b" /> Fechas límite
+        </h3>
+        <div className={styles.grid2Col}>
+          <div className={styles.infoBlock}>
+            <span className={styles.label}>Fecha Límite de Cierre Físico</span>
+            <strong className={styles.value}>
+              {formatDate(
+                operation.fechaLimiteDevolucion ??
+                  operation.fechaLimiteFisico,
+              )}
+            </strong>
+            <small>{physicalDeadlineContext}</small>
+          </div>
+          <div className={styles.infoBlock}>
+            <span className={styles.label}>Fecha Límite Documental</span>
+            <strong className={styles.value}>
+              {formatDate(operation.fechaLimiteDocumental)}
+            </strong>
           </div>
         </div>
       </div>
@@ -127,17 +174,25 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
             <span className={styles.label}>Conductor</span>
             <strong className={styles.value}>{operation.driver?.name || '---'}</strong>
           </div>
-          <div className={styles.infoBlock}>
-            <span className={styles.label}>Contenedor / Tamaño</span>
-            <div>
-              <strong className={styles.value}>{operation.containerNumber || '---'}</strong>
-              <span className={styles.containerType}>({operation.containerType || '-'})</span>
+          {operation.isContainerized === true && (
+            <div className={styles.infoBlock}>
+              <span className={styles.label}>Contenedor / Tamaño</span>
+              <div>
+                <strong className={styles.value}>{operation.containerNumber || '---'}</strong>
+                <span className={styles.containerType}>({operation.containerType || '-'})</span>
+              </div>
             </div>
-          </div>
+          )}
           <div className={styles.infoBlock}>
             <span className={styles.label}>Peso Declarado</span>
             <strong className={styles.value}>
-              {operation.peso ? `${operation.peso} Ton` : '---'}
+              {operation.isContainerized === true
+                ? operation.peso
+                  ? `${operation.peso} Ton`
+                  : '---'
+                : operation.weight != null
+                  ? `${operation.weight} kg`
+                  : '---'}
             </strong>
           </div>
         </div>
@@ -154,14 +209,18 @@ export const OperationSummaryTab: React.FC<OperationSummaryTabProps> = ({ operat
             <span className={styles.label}>Manifiesto / DO</span>
             <strong className={styles.value}>{operation.documentoTransporte || '---'}</strong>
           </div>
-          <div className={styles.infoBlock}>
-            <span className={styles.label}>PIN Retiro</span>
-            <strong className={styles.value}>{operation.pinRetiro || '---'}</strong>
-          </div>
-          <div className={styles.infoBlock}>
-            <span className={styles.label}>Precinto (Seal)</span>
-            <strong className={styles.value}>{operation.sealNumber || '---'}</strong>
-          </div>
+          {operation.isContainerized === true && (
+            <>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>PIN Retiro</span>
+                <strong className={styles.value}>{operation.pinRetiro || '---'}</strong>
+              </div>
+              <div className={styles.infoBlock}>
+                <span className={styles.label}>Precinto (Seal)</span>
+                <strong className={styles.value}>{operation.sealNumber || '---'}</strong>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

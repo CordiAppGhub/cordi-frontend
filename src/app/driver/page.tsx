@@ -48,7 +48,7 @@ function evidenceTypeLabel(type?: string): string {
     case "ANOMALY_PHOTO":
       return "Fotos de anomalías en la mercancía";
     case "DELIVERY_DOC":
-      return "Soporte de descargado y devolución";
+      return "Soporte de entrega / descargue";
     case "TIRILLA_EIR":
       return "Tirilla de Devolución (EIR)";
     default:
@@ -200,8 +200,9 @@ export default function DriverPortalPage() {
         }
       } else if (modalType === "CLOSING") {
         const requiresEir =
-          selectedOperation.type === "IMPORTACION" ||
-          selectedOperation.type === "DEVOLUCION_VACIO";
+          selectedOperation.isContainerized === true &&
+          (selectedOperation.type === "IMPORTACION" ||
+            selectedOperation.type === "DEVOLUCION_VACIO");
         await uploadEvidence(
           selectedOperation.id,
           file,
@@ -651,6 +652,7 @@ export default function DriverPortalPage() {
                   </label>
                 )}
                 {modalType === "CLOSING" &&
+                  selectedOperation.isContainerized === true &&
                   (selectedOperation.type === "IMPORTACION" ||
                     selectedOperation.type === "DEVOLUCION_VACIO") && (
                     <p role="note">
@@ -671,7 +673,7 @@ export default function DriverPortalPage() {
                           : evidenceTypes[evidenceIndex] === "ANOMALY_PHOTO"
                             ? "Puedes seleccionar más de cuatro fotos de las anomalías: "
                             : evidenceTypes[evidenceIndex] === "DELIVERY_DOC"
-                              ? "Adjunta el soporte de descargado y devolución (imagen o PDF): "
+                              ? "Adjunta el soporte de entrega / descargue (imagen o PDF): "
                               : "Adjunta una foto o documento claro: "}
                     <strong>
                       {evidenceTypeLabel(evidenceTypes[evidenceIndex])}

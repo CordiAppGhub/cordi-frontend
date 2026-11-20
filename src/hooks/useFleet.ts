@@ -31,6 +31,11 @@ export const useAssignments = () => {
       queryClient.invalidateQueries({ queryKey: ['trafico'] }),
       queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
       queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      queryClient.invalidateQueries({ queryKey: ['operation'] }),
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
+      queryClient.invalidateQueries({ queryKey: ['drivers'] }),
+      queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
     ]);
 
   const assignMutation = useMutation({

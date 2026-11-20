@@ -20,7 +20,7 @@ export function generateDriverOperationRoute(operation: Operation): string {
     operation.customer?.name || operation.clientName || "Cliente";
 
   if (
-    operation.isContainerized === false &&
+    operation.isContainerized !== true &&
     operation.stops?.length
   ) {
     return [...operation.stops]
@@ -33,7 +33,7 @@ export function generateDriverOperationRoute(operation: Operation): string {
       .join(" ➡️ ");
   }
 
-  if (operation.isContainerized === false) {
+  if (operation.isContainerized !== true) {
     return `${getLocationName(origin, "Origen")} ➡️ ${getLocationName(destination, "Destino")}`;
   }
 

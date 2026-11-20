@@ -98,7 +98,11 @@ export function NovedadesPageView() {
 
   const saveDeviationDestination = async (novedad: NovedadItem) => {
     const operation = novedad.operation;
-    if (!operation || !novedad.operationId) return;
+    if (
+      !operation ||
+      operation.isContainerized !== true ||
+      !novedad.operationId
+    ) return;
     const destinationId = Number(
       destinationDrafts[novedad.id] ?? operation.nuevoDestinoId ?? "",
     );
@@ -360,7 +364,8 @@ export function NovedadesPageView() {
                     </strong>
                   </div>
                 )}
-                {nov.operation?.containerStatus === "PENDIENTE_DEVOLUCION" && (
+                {nov.operation?.isContainerized === true &&
+                  nov.operation.containerStatus === "PENDIENTE_DEVOLUCION" && (
                   <div>
                     Contenedor:{" "}
                     <strong>
@@ -398,7 +403,8 @@ export function NovedadesPageView() {
                 </div>
               )}
 
-              {nov.operation?.containerStatus === "PENDIENTE_DEVOLUCION" && (
+              {nov.operation?.isContainerized === true &&
+                nov.operation.containerStatus === "PENDIENTE_DEVOLUCION" && (
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >

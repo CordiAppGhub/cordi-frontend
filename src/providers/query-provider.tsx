@@ -2,8 +2,9 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { shouldRetryApiRequest } from '@/utils/api-error';
+import { bindSocketQueryCache } from '@/lib/socket';
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
  
@@ -18,6 +19,8 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
       },
     },
   }));
+
+  useEffect(() => bindSocketQueryCache(queryClient), [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

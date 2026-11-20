@@ -194,14 +194,21 @@ export function OperationDetailsCard({
   );
   const weight = operation.weight ?? operation.peso ?? (stopWeight || null);
   const advanceRetrievalDate =
-    operation.isAnticipada || operation.isAdvanceRetrieval
+    operation.isContainerized === true &&
+    (operation.isAnticipada || operation.isAdvanceRetrieval)
       ? (operation.advanceRetrievalDate ?? operation.fechaRetiro ?? null)
       : null;
   const operationDate = operation.operationDate ?? operation.scheduledAt;
   const originAppointment =
-    operation.originAppointment ?? operation.fechaCitaOrigen;
+    operation.type &&
+    operation.type !== "NACIONAL"
+      ? operation.originAppointment ?? operation.fechaCitaOrigen
+      : null;
   const destinationAppointment =
-    operation.destinationAppointment ?? operation.fechaCitaDestino;
+    operation.type &&
+    operation.type !== "NACIONAL"
+      ? operation.destinationAppointment ?? operation.fechaCitaDestino
+      : null;
   const dates = [
     operationDate
       ? {

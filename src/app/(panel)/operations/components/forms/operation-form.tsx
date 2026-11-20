@@ -30,6 +30,7 @@ export const OperationForm: React.FC<OperationFormProps> = ({
 
   const {
     categorizedFields,
+    isContainerized,
     isDevolucion,
     initialValues,
     handleSubmit,
@@ -39,6 +40,9 @@ export const OperationForm: React.FC<OperationFormProps> = ({
     isLoadingOperations,
     suggestedPrice,
     isCalculatingPrice,
+    tariffLookupError,
+    tariffLookupCompleted,
+    canLookupTariff,
     shippingLinesError,
     vehicleTypesError,
     relatedOperationsError,
@@ -89,7 +93,10 @@ export const OperationForm: React.FC<OperationFormProps> = ({
             {errors.global}
           </div>
         )}
-        {shippingLinesError && !scheduleBase && !isDevolucion && (
+        {shippingLinesError &&
+          isContainerized &&
+          !scheduleBase &&
+          !isDevolucion && (
           <div role="alert" style={{ color: "#b91c1c" }}>
             No se pudieron cargar las líneas navieras. Cierra y vuelve a abrir
             el formulario para reintentar.
@@ -138,7 +145,18 @@ export const OperationForm: React.FC<OperationFormProps> = ({
                 >
                   ⏳ Consultando contrato del cliente...
                 </span>
-              ) : suggestedPrice ? (
+              ) : tariffLookupError ? (
+                <span
+                  role="alert"
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#b91c1c",
+                    fontWeight: 600,
+                  }}
+                >
+                  No se pudo consultar la tarifa. Reintenta la búsqueda.
+                </span>
+              ) : suggestedPrice !== null ? (
                 <div
                   style={{
                     display: "flex",
@@ -160,7 +178,7 @@ export const OperationForm: React.FC<OperationFormProps> = ({
                     según contrato.
                   </span>
                 </div>
-              ) : (
+              ) : tariffLookupCompleted ? (
                 <span
                   style={{
                     fontSize: "0.875rem",
@@ -171,6 +189,18 @@ export const OperationForm: React.FC<OperationFormProps> = ({
                   ⚠️ No hay una tarifa comercial configurada para el cliente, la
                   ruta y el tipo de operación seleccionados. Ingresa el flete
                   manualmente o solicita que configuren la tarifa.
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#475569",
+                    fontWeight: 500,
+                  }}
+                >
+                  {canLookupTariff
+                    ? "La tarifa se consulta al completar o actualizar los datos determinantes."
+                    : "Completa cliente, ruta y configuración de carga para consultar la tarifa."}
                 </span>
               )}
             </div>

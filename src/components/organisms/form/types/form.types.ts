@@ -40,6 +40,7 @@ export interface FormField {
   placeholder?: string;
   options?: FormOptions;
   disabled?: boolean | ((formData: Record<string, FormFieldValue>) => boolean);
+  helperText?: string | ((formData: Record<string, FormFieldValue>) => string);
   // 🚀 Permitimos que 'visible' sea un booleano o una función reactiva del estado del form
   visible?: boolean | ((formData: Record<string, FormFieldValue>) => boolean);
   gridSpan?: number;

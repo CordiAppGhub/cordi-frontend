@@ -16,6 +16,8 @@ import { userService } from '@/services/userService';
 import type { ScheduleOperationsFilters } from '@/services/operation.service';
 import { OperationDispatchDrawer } from '@/app/(panel)/operations/components/actions/operation-dispatch-drawer';
 import { useAuthStore } from '@/store/use-auth.store';
+import { TRAILER_TYPE_LABELS } from '@/types/vehicles';
+import { getOperationRouteNames } from '@/utils/operation-route';
 import Swal from 'sweetalert2';
 import styles from './fleet-schedule.module.css';
 
@@ -239,6 +241,8 @@ export default function FleetScheduleGrid() {
               <tr>
                 <th>Cliente</th>
                 <th>Operación</th>
+                <th>Ruta</th>
+                <th>Configuración vehicular</th>
                 <th>Analista</th>
                 <th>Hora</th>
                 <th>Estado</th>
@@ -248,6 +252,8 @@ export default function FleetScheduleGrid() {
             </thead>
             <tbody>
               {operations.map((operation) => {
+                const { originName, destinationName } =
+                  getOperationRouteNames(operation);
                 const pending =
                   isAwaitingVehicle(operation.status) && !operation.vehicleId;
                 const requiresAction =
@@ -258,7 +264,12 @@ export default function FleetScheduleGrid() {
                 const hasAssignedVehicle = Boolean(operation.vehicleId);
                 const canUnassign = operation.status === 'ASIGNADO';
                 const urgent = pending && now !== null &&
-                  [operation.fechaCitaOrigen, operation.fechaCitaDestino, operation.scheduledAt]
+                  [
+                    ...(operation.type !== 'NACIONAL'
+                      ? [operation.fechaCitaOrigen, operation.fechaCitaDestino]
+                      : []),
+                    operation.scheduledAt,
+                  ]
                     .some((value) => {
                       if (!value) return false;
                       const remaining = new Date(value).getTime() - now;
@@ -271,6 +282,25 @@ export default function FleetScheduleGrid() {
                       <strong>{operation.type.replace(/_/g, ' ')}</strong>
                       <small>Solicitud #{operation.id}</small>
                       {urgent && <small>Próxima cita: menos de 2 horas</small>}
+                    </td>
+                    <td>{originName} → {destinationName}</td>
+                    <td>
+                      {operation.isContainerized
+                        ? 'Contenerizada'
+                        : operation.cargoVehicleType?.name ??
+                          'Configuración no disponible'}
+                      {operation.requiredTrailerType && (
+                        <small>
+                          Tráiler requerido:{' '}
+                          {TRAILER_TYPE_LABELS[operation.requiredTrailerType]}
+                        </small>
+                      )}
+                      {!operation.isContainerized &&
+                        operation.weight != null && (
+                          <small>
+                            {operation.weight.toLocaleString('es-CO')} kg
+                          </small>
+                        )}
                     </td>
                     <td>{operation.analyst?.name || '—'}</td>
                     <td>

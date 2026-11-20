@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { Button } from '@/components/atoms/button/button';
@@ -17,25 +17,22 @@ import { TruckLoader } from '@/components/TruckLoader';
 import { useAuthStore } from '@/store/use-auth.store';
 import { driverAuthService } from '@/services/driverPortal.service';
 import { showToast } from '@/utils/alerts';
+import type { DriverAssignedOperation } from '@/types/drivers';
 
 export function DriverDetailView() {
   const router = useRouter();
   const params = useParams();
   const driverId = parseInt(params.id as string, 10);
 
-  const { details, isLoading, error, loadDriverDetails } = useDriverDetail();
-  const { editDriver, deleteDriver } = useDrivers();
+  const { details, isLoading, error } = useDriverDetail(driverId);
+  const { editDriver, deleteDriver } = useDrivers(false);
   const userRole = useAuthStore((state) => state.user?.role);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  useEffect(() => {
-    loadDriverDetails(driverId);
-  }, [driverId, loadDriverDetails]);
-
-  const operationColumns: ColumnDef<any>[] = useMemo(() => [
+  const operationColumns: ColumnDef<DriverAssignedOperation>[] = useMemo(() => [
     {
       id: 'operacion',
       header: 'Operación',
@@ -80,7 +77,7 @@ export function DriverDetailView() {
   }, [details, currentPage]);
 
   const handleManualRecoveryCode = async () => {
-    if (!details.cedula) {
+    if (!details?.cedula) {
       showToast.error('El conductor no tiene una cédula registrada.');
       return;
     }
@@ -203,9 +200,9 @@ export function DriverDetailView() {
         <div className={styles.mainContent}>
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Vehículo Asignado</h3>
-            {details.drivenVehicles?.length > 0 ? (
+            {(details.drivenVehicles?.length ?? 0) > 0 ? (
               <div className={styles.vehiclesWrapper}>
-                {details.drivenVehicles.map((v: any) => (
+                {details.drivenVehicles?.map((v) => (
                   <div key={v.id} className={styles.vehicleBox}>
                     <span className={styles.vehiclePlate}>{v.plate}</span>
                     <span className={styles.vehicleBrand}>{v.brand || 'Marca N/A'}</span>
@@ -222,7 +219,7 @@ export function DriverDetailView() {
 
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>Registro de Operaciones</h3>
-            {details.assignedOperations?.length > 0 ? (
+            {(details.assignedOperations?.length ?? 0) > 0 ? (
               <PaginationTable
                 data={paginatedOperations}
                 columns={operationColumns}
@@ -245,9 +242,6 @@ export function DriverDetailView() {
           onClose={() => setIsEditModalOpen(false)}
           onEditDriver={async (id, data) => {
             const ok = await editDriver(id, data);
-            if (ok) {
-              loadDriverDetails(driverId);
-            }
             return ok;
           }}
           driverToEdit={{

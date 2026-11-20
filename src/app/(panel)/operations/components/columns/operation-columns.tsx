@@ -206,9 +206,11 @@ export const getOperationsColumns = (
       header: 'Citas y Tiempos',
       type: 'text',
       renderCell: (row) => {
-        const hasCitaOrigen = Boolean(row.fechaCitaOrigen);
-        const hasCitaDestino = Boolean(row.fechaCitaDestino);
-        const hasRetiro = Boolean(row.fechaRetiro);
+        const hasCitaOrigen =
+          row.type !== 'NACIONAL' && Boolean(row.fechaCitaOrigen);
+        const hasCitaDestino =
+          row.type !== 'NACIONAL' && Boolean(row.fechaCitaDestino);
+        const hasRetiro = row.isContainerized === true && Boolean(row.fechaRetiro);
 
         if (!hasCitaOrigen && !hasCitaDestino && !hasRetiro) {
           return <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>--</span>;
@@ -274,10 +276,13 @@ export const getOperationsColumns = (
     },
     {
       id: 'recargos',
-      header: 'Recargos / Patio',
+      header: 'Recargos',
       type: 'text',
       renderCell: (row) => {
-        const surcharges = row.surcharges ?? [];
+        const surcharges = (row.surcharges ?? []).filter(
+          (surcharge) =>
+            row.isContainerized === true || !surcharge.isPatioCharge,
+        );
         return surcharges.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '140px' }}>
             {surcharges.map((surcharge) => (
@@ -307,7 +312,7 @@ export const getOperationsColumns = (
     },
     {
       id: 'totalCobrosExtras',
-      header: 'Total extra (Novedades/Patio)',
+      header: 'Total extras',
       type: 'text',
       renderCell: (row) => (
         <strong style={{ color: Number(row.totalCobrosExtras ?? 0) > 0 ? '#b45309' : '#94a3b8', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>

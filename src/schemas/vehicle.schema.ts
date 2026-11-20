@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRAILER_TYPES } from '@/types/vehicles';
 
 const optionalDocument = z.custom<File | undefined>(
   (value) => value === undefined || (typeof File !== 'undefined' && value instanceof File),
@@ -8,17 +9,7 @@ export const createVehicleSchema = z.object({
   plate: z.string().trim().min(1, 'La placa es obligatoria'),
   type: z.enum(['PATINETA', 'MULA', 'TRAILER']),
   brand: z.string().trim().optional(),
-  trailerType: z
-    .enum([
-      'PLANCHA',
-      'GRILLO',
-      'TANQUE',
-      'PLATAFORMA',
-      'FURGON',
-      'CAMA_BAJA',
-      'PORTACONTENEDOR',
-    ])
-    .optional(),
+  trailerType: z.enum(TRAILER_TYPES).optional(),
   axles: z.union([z.literal(2), z.literal(3)]).optional(),
   currentLocationId: z.number().int().positive().optional(),
   notes: z.string().trim().max(2000).optional(),
