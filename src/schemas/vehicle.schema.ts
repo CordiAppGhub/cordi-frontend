@@ -7,10 +7,13 @@ const optionalDocument = z.custom<File | undefined>(
 
 export const createVehicleSchema = z.object({
   plate: z.string().trim().min(1, 'La placa es obligatoria'),
-  type: z.enum(['PATINETA', 'MULA', 'TRAILER']),
+  type: z.enum(['PATINETA', 'MULA', 'C2', 'C3', 'TRAILER']),
   brand: z.string().trim().optional(),
   trailerType: z.enum(TRAILER_TYPES).optional(),
-  axles: z.union([z.literal(2), z.literal(3)]).optional(),
+  axles: z
+    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .optional(),
+  requiresTrailer: z.boolean().optional(),
   currentLocationId: z.number().int().positive().optional(),
   notes: z.string().trim().max(2000).optional(),
   modelYear: z.number().int().min(1900).max(2100).optional(),
@@ -24,6 +27,18 @@ export const createVehicleSchema = z.object({
   tecnomecanicaFile: optionalDocument.optional(),
   tecnomecanicaExpiration: z.union([z.literal(''), z.iso.date()]).optional(),
 }).superRefine((values, context) => {
+  if (
+    values.type !== 'TRAILER' &&
+    values.axles !== undefined &&
+    values.axles !== 2 &&
+    values.axles !== 3
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['axles'],
+      message: 'El cabezote debe tener 2 o 3 ejes',
+    });
+  }
   if (values.type !== 'TRAILER') {
     if (!values.brand) {
       context.addIssue({
@@ -61,11 +76,16 @@ export const createVehicleSchema = z.object({
       });
     }
   }
-  if (values.type === 'TRAILER' && values.axles !== 2 && values.axles !== 3) {
+  if (
+    values.type === 'TRAILER' &&
+    values.axles !== 1 &&
+    values.axles !== 2 &&
+    values.axles !== 3
+  ) {
     context.addIssue({
       code: 'custom',
       path: ['axles'],
-      message: 'Selecciona si el tráiler tiene 2 o 3 ejes',
+      message: 'Selecciona si el tráiler tiene 1, 2 o 3 ejes',
     });
   }
   if (values.type === 'TRAILER' && !values.trailerType) {

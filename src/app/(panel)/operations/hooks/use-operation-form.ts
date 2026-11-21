@@ -26,7 +26,12 @@ import { useTrafico } from "./use-operations";
 import { OperationDateTimePicker } from "../components/forms/operation-date-time-picker";
 import { operationCargoSchema } from "@/schemas/operation.schema";
 import { ClientQuoteParams, ContainerType } from "@/types/tariff-ypes";
-import { TRAILER_TYPE_OPTIONS, TRAILER_TYPES } from "@/types/vehicles";
+import {
+  DEFAULT_CONTAINER_TRAILER_TYPE,
+  CARGO_VEHICLE_TYPE_CODES,
+  TRAILER_TYPE_OPTIONS,
+  TRAILER_TYPES,
+} from "@/types/vehicles";
 import { operationOptions } from "@/app/constants/operation.constants";
 import { formatAppointmentLocationLabel } from "@/utils/appointment-label";
 
@@ -59,13 +64,45 @@ const containerTypeLabels: Record<ContainerType, string> = {
 const getContainerSize = (value?: string | null): ContainerType | null =>
   containerSizeValues.find((containerSize) => containerSize === value) ?? null;
 
-const dateTimeField = (name: string, label: FormField["label"]): FormField => ({
+const INVALID_YARD_APPOINTMENT_MESSAGE =
+  "Horario de patio no válido: lunes a viernes hasta las 4:00 p. m. y sábados hasta las 12:00 m. (domingos cerrado)";
+
+const getPatioAppointmentError = (value: FormFieldValue): string | null => {
+  if (typeof value !== "string" || !value) return null;
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/,
+  );
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const weekday = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day)),
+  ).getUTCDay();
+  const minutesAfterMidnight = Number(hour) * 60 + Number(minute);
+  if (
+    weekday === 0 ||
+    (weekday === 6 && minutesAfterMidnight > 12 * 60) ||
+    (weekday > 0 &&
+      weekday < 6 &&
+      minutesAfterMidnight > 16 * 60)
+  ) {
+    return INVALID_YARD_APPOINTMENT_MESSAGE;
+  }
+  return null;
+};
+
+const dateTimeField = (
+  name: string,
+  label: FormField["label"],
+  placeholder = "Selecciona fecha y hora",
+): FormField => ({
   name,
   label,
   type: "custom",
+  placeholder,
   render: (value, onChange) =>
     createElement(OperationDateTimePicker, {
       value: typeof value === "string" ? value : "",
+      placeholderText: placeholder,
       onChange: (nextValue: string) => onChange(nextValue),
     }),
 });
@@ -159,7 +196,9 @@ export const useOperationForm = (
     shippingLineId: operationHasContainerData
       ? String(operationBase?.shippingLineId ?? "")
       : "",
-    requiresInspection: operationHasContainerData
+    requiresInspection:
+      operationHasContainerData &&
+      operationBase?.type === "IMPORTACION"
       ? (operationBase?.requiresInspection ?? false)
       : false,
     destinoTemporalId: "",
@@ -486,7 +525,11 @@ export const useOperationForm = (
         operationBase.isContainerized === true ? "CONTENERIZADA" : "SUELTA",
       isContainerized: operationBase.isContainerized,
       vehicleCapacityId: operationBase.vehicleCapacityId ?? "",
-      requiredTrailerType: operationBase.requiredTrailerType ?? "",
+      requiredTrailerType:
+        operationBase.requiredTrailerType ??
+        (operationBase.isContainerized === true
+          ? DEFAULT_CONTAINER_TRAILER_TYPE
+          : ""),
       shippingLineId: operationBase.isContainerized === true && operationBase.shippingLineId
         ? String(operationBase.shippingLineId)
         : "",
@@ -496,7 +539,9 @@ export const useOperationForm = (
       destinoCustomAddressEnabled:
         operationBase.stops?.at(-1)?.isCustomAddress ?? false,
       destinoCustomAddress: operationBase.stops?.at(-1)?.address ?? "",
-      requiresInspection: operationBase.isContainerized === true
+      requiresInspection:
+        operationBase.isContainerized === true &&
+        operationBase.type === "IMPORTACION"
         ? (operationBase.requiresInspection ?? false)
         : false,
       clientId: operationBase.client?.id || operationBase.clientId,
@@ -831,17 +876,14 @@ export const useOperationForm = (
         layoutClass: "cargoTypeSection",
         reserveSpaceWhenHidden: true,
       },
-      ...(!isEdit
-        ? [
-            {
-              name: "requiresInspection",
-              label: "La línea naviera exige inspección",
-              type: "checkbox" as const,
-              visible: (formData: Record<string, FormFieldValue>) =>
-                !isDevolucion && formData.isContainerized === true,
-            },
-          ]
-        : []),
+      {
+        name: "requiresInspection",
+        label: "La línea naviera exige inspección",
+        type: "checkbox",
+        visible: (formData) =>
+          formData.type === "IMPORTACION" &&
+          formData.isContainerized === true,
+      },
     ];
 
     if (isExport) {
@@ -1029,7 +1071,6 @@ export const useOperationForm = (
         const selectedLocation = locations.find(
           (location) => location.id === selectedLocationId,
         );
-        const appointmentRequired = Boolean(selectedLocation?.exigeCita);
         const baseLabel =
           appointment === "origen"
             ? "Cita de origen"
@@ -1040,15 +1081,42 @@ export const useOperationForm = (
           baseLabel,
           selectedLocation?.name,
         );
-        return `${locationLabel}${appointmentRequired ? " *" : ""}`;
+        return locationLabel;
       };
       const appointmentDateField = (
         appointment: "origen" | "destino",
-      ): FormField => ({
-        ...dateTimeField(`fechaCita${appointment === "origen" ? "Origen" : "Destino"}`, (formData) =>
-          getAppointmentLabel(appointment, formData),
-        ),
-        visible: (formData) => {
+      ): FormField => {
+        const fieldName = `fechaCita${appointment === "origen" ? "Origen" : "Destino"}`;
+        return {
+          ...dateTimeField(
+            fieldName,
+            (formData) => getAppointmentLabel(appointment, formData),
+            "Opcional · Por confirmar",
+          ),
+          helperText: (formData) => {
+            const isImportReturnAppointment =
+              appointment === "destino" &&
+              formData.type === "IMPORTACION" &&
+              formData.isContainerized === true;
+            const locationId = Number(
+              isImportReturnAppointment
+                ? formData.depositoDevolucionId
+                : formData[appointment === "origen" ? "origenId" : "destinoId"],
+            );
+            const selectedLocation = locations.find(
+              (location) => location.id === locationId,
+            );
+            const patioError =
+              selectedLocation &&
+              !selectedLocation.isPort &&
+              (selectedLocation.isDepot || selectedLocation.isOwnYard)
+                ? getPatioAppointmentError(formData[fieldName])
+                : null;
+            return patioError
+              ? `⚠️ ${patioError}`
+              : "Opcional · Por confirmar";
+          },
+          visible: (formData) => {
           if (!supportsAppointmentFields(String(formData.type ?? ""))) {
             return false;
           }
@@ -1060,8 +1128,9 @@ export const useOperationForm = (
               location.id === Number(formData[locationField]),
           );
           return selectedLocation?.isPort === true;
-        },
-      });
+          },
+        };
+      };
 
       if (isDevolucion) {
         generalFields.push(
@@ -1150,9 +1219,13 @@ export const useOperationForm = (
           "Fecha Límite Documental",
         ),
         {
-          ...dateTimeField(
-            "fechaLimiteDevolucion",
-            "Fecha Límite de Cierre Físico",
+          ...          dateTimeField("fechaLimiteDevolucion", (formData) =>
+            formData.type === "EXPORTACION"
+              ? "Fecha límite de ingreso a puerto"
+              : formData.type === "IMPORTACION" &&
+                  formData.isContainerized === true
+                ? "Fecha límite de devolución de vacío"
+                : "Fecha límite de cierre físico",
           ),
           helperText: (formData) => {
             if (
@@ -1174,7 +1247,7 @@ export const useOperationForm = (
       );
       if (
         cargoFormat === "CONTENERIZADA" &&
-        (isImport || isExport || isDevolucion)
+        (isImport || isDevolucion)
       ) {
         generalFields.push(
           {
@@ -1198,7 +1271,11 @@ export const useOperationForm = (
             type: "select",
             options: desvioDestinationOptions,
           },
-          dateTimeField("fechaCitaDesvio", "Fecha y hora de nueva cita *"),
+          dateTimeField(
+            "fechaCitaDesvio",
+            "Fecha y hora de nueva cita",
+            "Opcional · Por confirmar",
+          ),
         );
       }
     }
@@ -1217,10 +1294,180 @@ export const useOperationForm = (
             type: "select",
             options: desvioDestinationOptions,
           },
-          dateTimeField("fechaCitaDesvio", "Fecha y hora de cita del desvío *"),
+          dateTimeField(
+            "fechaCitaDesvio",
+            "Fecha y hora de cita del desvío",
+            "Opcional · Por confirmar",
+          ),
         );
       }
     }
+
+    const vehicleRequirementFields: FormField[] = [
+      {
+        name: "vehicleRequirementsHeading",
+        label: "Requerimientos de Vehículo y Capacidad",
+        type: "text",
+        sectionTitle: true,
+        fullWidth: true,
+      },
+      {
+        name: "vehicleCapacityId",
+        label: "Tipología vehicular requerida *",
+        type: "select",
+        options: (formData) => {
+          const enteredWeight =
+            typeof formData.weight === "number" ||
+            typeof formData.weight === "string"
+              ? Number(formData.weight)
+              : 0;
+          return [
+            { value: "", label: "-- Seleccionar cabezote --" },
+            ...vehicleTypes
+              .map((vehicleType) => {
+                const supportsWeight =
+                  !enteredWeight ||
+                  vehicleType.maxPayloadKg === null ||
+                  enteredWeight <= vehicleType.maxPayloadKg;
+                const containerRigid =
+                  formData.isContainerized === true &&
+                  !vehicleType.requiresTrailer;
+                const payloadDescription =
+                  vehicleType.maxPayloadKg === null
+                    ? "sin límite configurado"
+                    : `hasta ${vehicleType.maxPayloadKg.toLocaleString("es-CO")} kg`;
+                return {
+                  value: vehicleType.id,
+                  supportsWeight,
+                  containerRigid,
+                  label: `${vehicleType.name} · ${payloadDescription}${containerRigid ? " · No recomendado para contenedor" : ""}${supportsWeight ? "" : " · NO SOPORTA EL PESO"}`,
+                };
+              })
+              .sort(
+                (left, right) =>
+                  Number(right.supportsWeight) - Number(left.supportsWeight) ||
+                  Number(left.containerRigid) - Number(right.containerRigid),
+              ),
+          ];
+        },
+        visible: () => true,
+      },
+      {
+        name: "requiredTrailerType",
+        label: "Tipo de tráiler requerido",
+        type: "select",
+        options: (formData) => [
+          {
+            value: "",
+            label: "Cualquiera / Sin restricción",
+          },
+          ...TRAILER_TYPE_OPTIONS.map((option) => ({
+            ...option,
+            label:
+              formData.isContainerized === true &&
+              option.value === DEFAULT_CONTAINER_TRAILER_TYPE
+                ? `${option.label} · Sugerido para contenedores`
+                : option.label,
+          })),
+        ],
+        visible: (formData) =>
+          vehicleTypes.find(
+            (vehicleType) =>
+              vehicleType.id === Number(formData.vehicleCapacityId),
+          )?.requiresTrailer === true,
+      },
+      {
+        name: "weight",
+        label: (formData) =>
+          formData.type === "RETIRO_VACIO" ||
+          formData.type === "DEVOLUCION_VACIO"
+            ? "Peso de la carga (kg) · opcional"
+            : "Peso de la carga (kg) *",
+        type: "number",
+        placeholder: "Peso en kilogramos",
+        visible: () => true,
+      },
+      {
+        name: "configurationWeightWarning",
+        label: "",
+        type: "custom",
+        fullWidth: true,
+        render: (_value, onChange) => {
+          if (!cargoWeightKg || cargoWeightKg <= 0) return null;
+          const selectedConfiguration = vehicleTypes.find(
+            (vehicleType) => vehicleType.id === vehicleTypeId,
+          );
+          const maximumCatalogPayload = Math.max(
+            ...vehicleTypes.map((vehicleType) => vehicleType.maxPayloadKg ?? 0),
+          );
+          const suggestedConfiguration = vehicleTypes
+            .filter(
+              (vehicleType) =>
+                vehicleType.maxPayloadKg !== null &&
+                cargoWeightKg <= vehicleType.maxPayloadKg &&
+                (formValuesRef.current.isContainerized !== true ||
+                  vehicleType.requiresTrailer),
+            )
+            .sort(
+              (left, right) =>
+                (left.maxPayloadKg ?? Infinity) -
+                (right.maxPayloadKg ?? Infinity),
+            )[0];
+          const exceedsSelectedPayload =
+            selectedConfiguration?.maxPayloadKg != null &&
+            cargoWeightKg > selectedConfiguration.maxPayloadKg;
+          const estimatedPbv =
+            selectedConfiguration?.approxTareKg == null
+              ? null
+              : cargoWeightKg + selectedConfiguration.approxTareKg;
+          const exceedsLegalPbv =
+            estimatedPbv !== null &&
+            selectedConfiguration?.maxLegalPbvKg != null &&
+            estimatedPbv > selectedConfiguration.maxLegalPbvKg;
+          const exceedsCatalogPayload = cargoWeightKg > maximumCatalogPayload;
+
+          return createElement(
+            "div",
+            { style: { display: "grid", gap: 6 } },
+            selectedConfiguration && estimatedPbv !== null
+              ? createElement(
+                  "span",
+                  { style: { color: "#475569" } },
+                  `PBV estimado: ${estimatedPbv.toLocaleString("es-CO")} kg · Legal: ${selectedConfiguration.maxLegalPbvKg.toLocaleString("es-CO")} kg · Tolerancia: ${selectedConfiguration.maxTolerancePbvKg.toLocaleString("es-CO")} kg`,
+                )
+              : null,
+            exceedsSelectedPayload || exceedsLegalPbv || exceedsCatalogPayload
+              ? createElement(
+                  "span",
+                  {
+                    role: "alert",
+                    style: {
+                      color: exceedsCatalogPayload ? "#b91c1c" : "#b45309",
+                      fontWeight: 600,
+                    },
+                  },
+                  exceedsCatalogPayload
+                    ? `El peso supera la capacidad útil máxima del catálogo (${maximumCatalogPayload.toLocaleString("es-CO")} kg).`
+                    : exceedsSelectedPayload
+                      ? `El peso supera la capacidad útil de ${selectedConfiguration?.code} (${selectedConfiguration?.maxPayloadKg?.toLocaleString("es-CO")} kg).`
+                      : `El PBV estimado supera el PBV legal para ${selectedConfiguration?.code}.`,
+                )
+              : null,
+            exceedsSelectedPayload && suggestedConfiguration
+              ? createElement(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => onChange(String(suggestedConfiguration.id)),
+                  },
+                  `Cambiar a ${suggestedConfiguration.code} · Hasta ${suggestedConfiguration.maxPayloadKg?.toLocaleString("es-CO")} kg`,
+                )
+              : null,
+          );
+        },
+        visible: () => true,
+      },
+    ];
 
     // Tab 2: Información física de la carga
     const cargaFields: FormField[] = isDevolucion
@@ -1239,6 +1486,7 @@ export const useOperationForm = (
             options: relatedParentOperationOptions,
             fullWidth: true,
           },
+          ...vehicleRequirementFields,
         ]
       : currentType
         ? [
@@ -1266,87 +1514,7 @@ export const useOperationForm = (
               })),
               visible: (formData) => formData.isContainerized === true,
             },
-            {
-              name: "vehicleCapacityId",
-              label: "Configuración Vehicular / Ejes *",
-              type: "select",
-              options: (formData) => {
-                const enteredWeight =
-                  typeof formData.weight === "number" ||
-                  typeof formData.weight === "string"
-                    ? Number(formData.weight)
-                    : 0;
-                return [
-                  { value: "", label: "-- Seleccionar configuración --" },
-                  ...vehicleTypes
-                    .map((vehicleType) => {
-                      const supportsWeight =
-                        !enteredWeight ||
-                        vehicleType.maxPayloadKg === null ||
-                        enteredWeight <= vehicleType.maxPayloadKg;
-                      const payloadDescription =
-                        vehicleType.maxPayloadKg === null
-                          ? "sin límite configurado"
-                          : `máx. ${vehicleType.maxPayloadKg.toLocaleString("es-CO")} kg`;
-                      return {
-                        value: vehicleType.id,
-                        supportsWeight,
-                        label: `${vehicleType.name} · ${payloadDescription}${supportsWeight ? "" : " · NO SOPORTA EL PESO"}`,
-                      };
-                    })
-                    .sort(
-                      (left, right) =>
-                        Number(right.supportsWeight) -
-                        Number(left.supportsWeight),
-                    ),
-                ];
-              },
-              visible: (formData) => formData.isContainerized !== true,
-            },
-            {
-              name: "requiredTrailerType",
-              label: "Tipo de Tráiler requerido (opcional)",
-              type: "select",
-              options: [
-                { value: "", label: "-- Sin requisito específico --" },
-                ...TRAILER_TYPE_OPTIONS,
-              ],
-              visible: () => true,
-            },
-            {
-              name: "weight",
-              label: "Peso (kg) *",
-              type: "number",
-              placeholder: "Peso en kg",
-              visible: (formData) => formData.isContainerized !== true,
-            },
-            {
-              name: "configurationWeightWarning",
-              label: "",
-              type: "custom",
-              fullWidth: true,
-              render: () => {
-                const selectedConfiguration = vehicleTypes.find(
-                  (vehicleType) => vehicleType.id === vehicleTypeId,
-                );
-                if (
-                  !cargoWeightKg ||
-                  !selectedConfiguration?.maxPayloadKg ||
-                  cargoWeightKg <= selectedConfiguration.maxPayloadKg
-                ) {
-                  return null;
-                }
-                return createElement(
-                  "span",
-                  {
-                    role: "alert",
-                    style: { color: "#b91c1c", fontWeight: 600 },
-                  },
-                  `El peso supera el máximo de ${selectedConfiguration.maxPayloadKg.toLocaleString("es-CO")} kg para esta configuración.`,
-                );
-              },
-              visible: (formData) => formData.isContainerized !== true,
-            },
+            ...vehicleRequirementFields,
             {
               name: "cargoDescription",
               label: "Descripción de la carga *",
@@ -1570,9 +1738,14 @@ export const useOperationForm = (
       const clearedAppointmentValues = {
         fechaCitaOrigen: "",
         fechaCitaDestino: "",
+        requiresInspection: false,
       };
       Object.assign(formValuesRef.current, clearedAppointmentValues);
       return clearedAppointmentValues;
+    }
+    if (name === "type" && value !== "IMPORTACION") {
+      formValuesRef.current.requiresInspection = false;
+      return { requiresInspection: false };
     }
     if (name === "isContainerized") {
       const clearedRouteValues: Record<string, FormFieldValue> = {
@@ -1581,6 +1754,12 @@ export const useOperationForm = (
         destinoCustomAddressEnabled: false,
         destinoCustomAddress: "",
       };
+      if (value === true && !formValuesRef.current.requiredTrailerType) {
+        formValuesRef.current.requiredTrailerType =
+          DEFAULT_CONTAINER_TRAILER_TYPE;
+        clearedRouteValues.requiredTrailerType =
+          DEFAULT_CONTAINER_TRAILER_TYPE;
+      }
       if (value === false) {
         const appointmentType = String(
           formValuesRef.current.type ?? currentType,
@@ -1838,21 +2017,22 @@ export const useOperationForm = (
           (location) => location.id === destinationAppointmentLocationId,
         );
     if (
-      supportsAppointmentFields(String(formData.type ?? "")) &&
-      (isContainerized || originAppointmentLocation?.isPort === true) &&
-      !isSubmittingDevolucion &&
-      originAppointmentLocation?.exigeCita &&
-      !formData.fechaCitaOrigen
+      originAppointmentLocation &&
+      !originAppointmentLocation.isPort &&
+      (originAppointmentLocation.isDepot ||
+        originAppointmentLocation.isOwnYard)
     ) {
-      localErrors.fechaCitaOrigen = `Indica la cita en origen para ${originAppointmentLocation.name}.`;
+      const error = getPatioAppointmentError(formData.fechaCitaOrigen);
+      if (error) localErrors.fechaCitaOrigen = error;
     }
     if (
-      supportsAppointmentFields(String(formData.type ?? "")) &&
-      (isContainerized || destinationAppointmentLocation?.isPort === true) &&
-      destinationAppointmentLocation?.exigeCita &&
-      !formData.fechaCitaDestino
+      destinationAppointmentLocation &&
+      !destinationAppointmentLocation.isPort &&
+      (destinationAppointmentLocation.isDepot ||
+        destinationAppointmentLocation.isOwnYard)
     ) {
-      localErrors.fechaCitaDestino = `Indica la cita en destino para ${destinationAppointmentLocation.name}.`;
+      const error = getPatioAppointmentError(formData.fechaCitaDestino);
+      if (error) localErrors.fechaCitaDestino = error;
     }
     if (
       (formData.type === "IMPORTACION" || formData.type === "EXPORTACION") &&
@@ -1892,15 +2072,34 @@ export const useOperationForm = (
           "Indica la fecha y hora del retiro anticipado.";
       }
     }
-    if (!isContainerized && !formData.vehicleCapacityId) {
+    const emptyCargoOperation =
+      formData.type === "RETIRO_VACIO" ||
+      formData.type === "DEVOLUCION_VACIO";
+    const selectedVehicleConfiguration = vehicleTypes.find(
+      (vehicleType) => vehicleType.id === Number(formData.vehicleCapacityId),
+    );
+    const enteredWeight = Number(formData.weight);
+    if (!formData.vehicleCapacityId) {
       localErrors.vehicleCapacityId =
-        "Selecciona una configuración vehicular.";
+        "Selecciona el tipo de cabezote requerido.";
     }
     if (!isContainerized) {
-      if (!formData.weight) localErrors.weight = "Indica el peso en kg.";
-      if (!String(formData.cargoDescription ?? "").trim())
+      if (!String(formData.cargoDescription ?? "").trim() && !emptyCargoOperation)
         localErrors.cargoDescription = "Describe la carga.";
-    } else {
+    }
+    if (!emptyCargoOperation && (!Number.isFinite(enteredWeight) || enteredWeight <= 0)) {
+      localErrors.weight = "Indica un peso de carga mayor que cero.";
+    }
+    if (
+      Number.isFinite(enteredWeight) &&
+      enteredWeight > 0 &&
+      selectedVehicleConfiguration?.maxPayloadKg != null &&
+      enteredWeight > selectedVehicleConfiguration.maxPayloadKg
+    ) {
+      localErrors.vehicleCapacityId =
+        `El peso supera ${selectedVehicleConfiguration.maxPayloadKg.toLocaleString("es-CO")} kg útiles para ${selectedVehicleConfiguration.code}.`;
+    }
+    if (isContainerized) {
       if (isSubmittingDevolucion && !formData.containerNumber) {
         localErrors.containerNumber = "El número de contenedor es obligatorio.";
       } else if (!isSubmittingDevolucion && !formData.shippingLineId) {
@@ -1933,8 +2132,16 @@ export const useOperationForm = (
       if (!formData.nuevoDestinoId) {
         localErrors.nuevoDestinoId = "Selecciona el destino del desvío.";
       }
-      if (!formData.fechaCitaDesvio) {
-        localErrors.fechaCitaDesvio = "Indica la fecha y hora de la cita.";
+      const deviationLocation = locations.find(
+        (location) => location.id === Number(formData.nuevoDestinoId),
+      );
+      if (
+        deviationLocation &&
+        !deviationLocation.isPort &&
+        (deviationLocation.isDepot || deviationLocation.isOwnYard)
+      ) {
+        const error = getPatioAppointmentError(formData.fechaCitaDesvio);
+        if (error) localErrors.fechaCitaDesvio = error;
       }
       if (!formData.destinoId) {
         localErrors.destinoId =
@@ -1954,7 +2161,9 @@ export const useOperationForm = (
       payload.clientId = Number(formData.clientId);
       payload.isAnticipada = isContainerized && isAnticipada;
       payload.requiresInspection =
-        isContainerized && Boolean(formData.requiresInspection);
+        isContainerized &&
+        formData.type === "IMPORTACION" &&
+        Boolean(formData.requiresInspection);
       if (
         isSubmittingDevolucion &&
         String(formData.relatedOperationId ?? "").trim()
@@ -1968,9 +2177,9 @@ export const useOperationForm = (
       ) {
         payload.programarDesvio = true;
         payload.nuevoDestinoId = Number(formData.nuevoDestinoId);
-        payload.fechaCitaDesvio = new Date(
-          String(formData.fechaCitaDesvio),
-        ).toISOString();
+        payload.fechaCitaDesvio = formData.fechaCitaDesvio
+          ? new Date(String(formData.fechaCitaDesvio)).toISOString()
+          : null;
       }
     }
 
@@ -1978,9 +2187,12 @@ export const useOperationForm = (
     if (formData.routeScope) {
       payload.routeScope = String(formData.routeScope) as "URBANO" | "NACIONAL";
     }
-    payload.vehicleCapacityId = !isContainerized
-      ? Number(formData.vehicleCapacityId)
-      : null;
+    payload.vehicleCapacityId = Number(formData.vehicleCapacityId);
+    payload.cargoVehicleTypeCode =
+      CARGO_VEHICLE_TYPE_CODES.find(
+        (vehicleTypeCode) =>
+          vehicleTypeCode === selectedVehicleConfiguration?.code,
+      ) ?? null;
     payload.requiredTrailerType =
       TRAILER_TYPES.find(
         (trailerType) => trailerType === formData.requiredTrailerType,
@@ -1990,12 +2202,13 @@ export const useOperationForm = (
         ? Number(formData.shippingLineId)
         : null;
     payload.requiresInspection =
-      isContainerized && Boolean(formData.requiresInspection);
+      isContainerized &&
+      formData.type === "IMPORTACION" &&
+      Boolean(formData.requiresInspection);
     if (!isContainerized) {
       payload.containerNumber = null;
       payload.containerSize = null;
       payload.cargoDescription = String(formData.cargoDescription).trim();
-      payload.weight = Number(formData.weight);
       payload.dimensions = String(formData.dimensions ?? "").trim() || null;
       payload.packageType = String(formData.packageType ?? "").trim() || null;
       payload.packageCount = formData.packageCount
@@ -2008,12 +2221,15 @@ export const useOperationForm = (
         ? null
         : String(formData.containerSize);
       payload.cargoDescription = null;
-      payload.weight = null;
       payload.dimensions = null;
       payload.packageType = null;
       payload.packageCount = null;
       payload.volumeM3 = null;
     }
+    payload.weight =
+      Number.isFinite(enteredWeight) && enteredWeight > 0
+        ? enteredWeight
+        : null;
 
     if (formData.scheduledAt)
       payload.scheduledAt = new Date(
@@ -2190,13 +2406,12 @@ export const useOperationForm = (
       isContainerized &&
       isEdit &&
       operationBase?.containerStatus === "PENDIENTE_DEVOLUCION" &&
-      formData.nuevoDestinoId &&
-      formData.fechaCitaDesvio
+      formData.nuevoDestinoId
     ) {
       payload.nuevoDestinoId = Number(formData.nuevoDestinoId);
-      payload.fechaCitaDesvio = new Date(
-        String(formData.fechaCitaDesvio),
-      ).toISOString();
+      payload.fechaCitaDesvio = formData.fechaCitaDesvio
+        ? new Date(String(formData.fechaCitaDesvio)).toISOString()
+        : null;
     }
 
     try {

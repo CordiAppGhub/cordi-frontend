@@ -1,8 +1,14 @@
 import axios from 'axios';
-import Swal from 'sweetalert2';
+import Swal, { type SweetAlertOptions } from 'sweetalert2';
 import { getUserFriendlyErrorMessage } from './api-error';
 
 let lastErrorNotification: { message: string; time: number } | null = null;
+
+export function showAlert<T = unknown>(
+  options: SweetAlertOptions,
+) {
+  return Swal.fire<T>(options);
+}
 
 export const showToast = {
   success: (message: string) => {

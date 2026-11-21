@@ -118,13 +118,14 @@ export const driverPortalService = {
   reportDeviation: async (
     operationId: number,
     file: File | File[],
+    reason: "AVERIA_NO_APTO" | "PATIO_LLENO" = "AVERIA_NO_APTO",
   ): Promise<void> => {
     const formData = new FormData();
     const files = Array.isArray(file) ? file : [file];
     for (const item of files) {
       formData.append(files.length === 1 ? "file" : "files", item);
     }
-    formData.append("reason", "AVERIA_NO_APTO");
+    formData.append("reason", reason);
 
     await api.post(`/portal/operations/${operationId}/diversion`, formData, {
       headers: { "Content-Type": "multipart/form-data" },

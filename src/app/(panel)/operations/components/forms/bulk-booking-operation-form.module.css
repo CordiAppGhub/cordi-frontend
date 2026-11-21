@@ -1,0 +1,213 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 2px 12px;
+}
+
+.modeHeading {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.modeHeading > div,
+.sectionHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.modeHeading strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.modeHeading span,
+.sectionHeader p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.sharedGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sharedGrid label,
+.containerRow label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sharedGrid input:not([type="checkbox"]),
+.sharedGrid select,
+.containerRow input,
+.containerRow select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #0f172a;
+  font: inherit;
+}
+
+.sharedGrid small {
+  color: #64748b;
+  font-size: 0.73rem;
+  font-weight: 400;
+}
+
+.checkboxField {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  align-self: end;
+  min-height: 40px;
+}
+
+.checkboxField input {
+  width: 16px;
+  height: 16px;
+}
+
+.containersSection {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sectionHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.addButton,
+.removeButton,
+.actions button {
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  padding: 7px 11px;
+  color: #334155;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addButton {
+  flex: 0 0 auto;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.containerRows {
+  display: grid;
+  gap: 10px;
+}
+
+.containerRow {
+  display: grid;
+  grid-template-columns: 28px minmax(180px, 1.25fr) minmax(150px, 1fr) minmax(110px, 0.7fr) auto;
+  align-items: end;
+  gap: 10px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+}
+
+.rowNumber {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 7px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.removeButton {
+  margin-bottom: 1px;
+}
+
+.removeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.validationError {
+  margin: 0;
+  border-radius: 7px;
+  background: #fef2f2;
+  padding: 10px 12px;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+
+.actions button[type="submit"] {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 700px) {
+  .sharedGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .containerRow {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .rowNumber {
+    grid-row: span 3;
+    align-self: start;
+  }
+
+  .containerRow label {
+    grid-column: 2;
+  }
+
+  .removeButton {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

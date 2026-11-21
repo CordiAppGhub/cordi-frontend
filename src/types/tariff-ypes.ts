@@ -26,6 +26,9 @@ export interface CargoVehicleType {
   tractorAxles: number | null;
   trailerAxles: number | null;
   requiresTrailer: boolean;
+  maxLegalPbvKg: number;
+  maxTolerancePbvKg: number;
+  approxTareKg: number;
   maxPayloadKg: number | null;
   isActive: boolean;
 }

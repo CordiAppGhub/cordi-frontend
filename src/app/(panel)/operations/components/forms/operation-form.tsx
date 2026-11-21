@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/use-auth.store";
 import { Drawer } from "@/components/Drawer";
 import { Tabs } from "@/components/molecules/tabs/tabs";
 import { Button } from "@/components/atoms/button/button";
+import { BulkBookingOperationForm } from "./bulk-booking-operation-form";
 import "react-datepicker/dist/react-datepicker.css";
 import styles from "./operation-form.module.css";
 
@@ -26,6 +27,9 @@ export const OperationForm: React.FC<OperationFormProps> = ({
 }) => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState("general");
+  const [creationMode, setCreationMode] = useState<"single" | "booking">(
+    "single",
+  );
   const submitForDispatch = useRef(false);
 
   const {
@@ -82,11 +86,36 @@ export const OperationForm: React.FC<OperationFormProps> = ({
       title={
         scheduleBase
           ? `Editar Operación #${scheduleBase.id}`
-          : user?.role === "ANALISTA"
+          : creationMode === "booking"
+            ? "Consolidado por Booking"
+            : user?.role === "ANALISTA"
             ? "Crear solicitud de operación"
             : "Crear Nueva Operación"
       }
     >
+      {!scheduleBase && (
+          <div className={styles.creationModes} aria-label="Modo de creación">
+            <Button
+              type="button"
+              variant={creationMode === "single" ? "primary" : "secondary"}
+              onClick={() => setCreationMode("single")}
+              aria-pressed={creationMode === "single"}
+            >
+              Operación individual
+            </Button>
+            <Button
+              type="button"
+              variant={creationMode === "booking" ? "primary" : "secondary"}
+              onClick={() => setCreationMode("booking")}
+              aria-pressed={creationMode === "booking"}
+            >
+              Consolidado por Booking
+            </Button>
+          </div>
+      )}
+      {!scheduleBase && creationMode === "booking" ? (
+          <BulkBookingOperationForm onClose={onClose} />
+      ) : (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {errors.global && (
           <div role="alert" style={{ color: "#b91c1c" }}>
@@ -275,6 +304,7 @@ export const OperationForm: React.FC<OperationFormProps> = ({
           )}
         />
       </div>
+      )}
     </Drawer>
   );
 };

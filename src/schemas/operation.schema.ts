@@ -131,7 +131,20 @@ const validateCargoFields = (
   const isEmptyContainerOperation =
     data.operationType === "RETIRO_VACIO" ||
     data.operationType === "DEVOLUCION_VACIO";
-
+  if (!data.vehicleCapacityId) {
+    context.addIssue({
+      code: "custom",
+      path: ["vehicleCapacityId"],
+      message: "El tipo de cabezote requerido es obligatorio",
+    });
+  }
+  if (!isEmptyContainerOperation && !data.weight) {
+    context.addIssue({
+      code: "custom",
+      path: ["weight"],
+      message: "El peso de la carga es obligatorio",
+    });
+  }
   if (isEmptyContainerOperation && !data.isContainerized) {
     context.addIssue({
       code: "custom",
@@ -435,25 +448,11 @@ const validateCargoFields = (
       });
     }
   });
-  if (!data.vehicleCapacityId) {
-    context.addIssue({
-      code: "custom",
-      path: ["vehicleCapacityId"],
-      message: "La capacidad del vehículo es obligatoria",
-    });
-  }
   if (!data.cargoDescription?.trim()) {
     context.addIssue({
       code: "custom",
       path: ["cargoDescription"],
       message: "La descripción de la carga es obligatoria",
-    });
-  }
-  if (!data.weight) {
-    context.addIssue({
-      code: "custom",
-      path: ["weight"],
-      message: "El peso es obligatorio",
     });
   }
 };

@@ -37,7 +37,10 @@ import {
 } from '@/schemas/operation-dispatch.schema';
 import type { Driver } from '@/types/drivers';
 import type { Operation } from '@/types/operation-types';
-import { TRAILER_TYPE_LABELS } from '@/types/vehicles';
+import {
+  getFleetConfigurationCode,
+  TRAILER_TYPE_LABELS,
+} from '@/types/vehicles';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { showToast } from '@/utils/alerts';
 import { getOperationRouteNames } from '@/utils/operation-route';
@@ -80,8 +83,10 @@ const formatCapacity = (capacityKg: number | null): string =>
     ? 'No registrada'
     : `${capacityKg.toLocaleString('es-CO')} kg · ${(capacityKg / 1000).toFixed(1)} Ton`;
 
-const normalizeAxles = (axles?: number | null): 2 | 3 | undefined =>
+const normalizeTractorAxles = (axles?: number | null): 2 | 3 | undefined =>
   axles === 2 || axles === 3 ? axles : undefined;
+const normalizeTrailerAxles = (axles?: number | null): 1 | 2 | 3 | undefined =>
+  axles === 1 || axles === 2 || axles === 3 ? axles : undefined;
 
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) return 'Sin fecha';
@@ -168,41 +173,75 @@ const getVehicleAxleCompatibility = (
   vehicle: FleetLiveVehicle,
   trailer: FleetLiveTrailer | null,
 ) => {
-  const isContainerized = operation.isContainerized === true;
   const configuration = operation.cargoVehicleType;
   const reasons: string[] = [];
   if (vehicle.axles !== 2 && vehicle.axles !== 3) {
     reasons.push('Ejes del cabezote sin registrar (se requieren 2 o 3)');
   }
-  if (!isContainerized && !configuration) {
+  if (!configuration) {
     reasons.push('Configuración vehicular requerida no disponible');
   }
   if (configuration) {
+    const emptyCargoOperation =
+      operation.type === 'RETIRO_VACIO' ||
+      operation.type === 'DEVOLUCION_VACIO';
+    if (
+      !emptyCargoOperation &&
+      (operation.weight == null || operation.weight <= 0)
+    ) {
+      reasons.push('Peso de carga sin registrar');
+    }
     if (
       configuration.tractorAxles !== null &&
-      vehicle.axles !== configuration.tractorAxles
+      (vehicle.axles ?? 0) < configuration.tractorAxles
     ) {
       reasons.push(
-        `Cabezote de ${vehicle.axles ?? 'ejes no registrados'}; se requieren ${configuration.tractorAxles}`,
+        `Cabezote de ${vehicle.axles ?? 'ejes no registrados'}; se requieren al menos ${configuration.tractorAxles}`,
       );
     }
 
-    if (!isContainerized) {
-      if (configuration.requiresTrailer && !trailer) {
-        reasons.push('La configuración requiere un tráiler');
-      } else if (!configuration.requiresTrailer && trailer) {
-        reasons.push('La configuración requiere un vehículo rígido sin tráiler');
-      }
+    if (configuration.requiresTrailer && !trailer) {
+      reasons.push('La configuración requiere un tráiler');
+    } else if (!configuration.requiresTrailer && trailer) {
+      reasons.push('La configuración requiere un vehículo rígido sin tráiler');
     }
 
     if (
       trailer &&
       configuration.trailerAxles !== null &&
-      trailer.axles !== configuration.trailerAxles
+      configuration.trailerAxles > 0 &&
+      (trailer.axles ?? 0) < configuration.trailerAxles
     ) {
       reasons.push(
-        `Tráiler de ${trailer.axles ?? 'ejes no registrados'}; se requieren ${configuration.trailerAxles}`,
+        `Tráiler de ${trailer.axles ?? 'ejes no registrados'}; se requieren al menos ${configuration.trailerAxles}`,
       );
+    }
+
+    const actualConfigurationCode = getFleetConfigurationCode(
+      vehicle.axles,
+      trailer?.axles,
+      vehicle.type,
+    );
+    if (!actualConfigurationCode) {
+      reasons.push('No se pudo determinar una tipología oficial del equipo');
+    }
+    if (
+      !configuration.requiresTrailer &&
+      vehicle.type !== 'C2' &&
+      vehicle.type !== 'C3'
+    ) {
+      reasons.push('Se requiere registrar un camión rígido C2 o C3');
+    }
+
+    if (operation.weight != null && operation.weight > 0) {
+      const effectiveCapacity = vehicle.effectiveCapacityKg;
+      if (effectiveCapacity === null) {
+        reasons.push('Capacidad efectiva del equipo sin registrar');
+      } else if (operation.weight > effectiveCapacity) {
+        reasons.push(
+          `La carga de ${operation.weight.toLocaleString('es-CO')} kg supera la capacidad efectiva de ${effectiveCapacity.toLocaleString('es-CO')} kg`,
+        );
+      }
     }
   }
 
@@ -265,7 +304,6 @@ export function OperationDispatchDrawer({
   const externalDispatchSchema = useMemo(
     () =>
       createExternalFleetDispatchSchema({
-        isLooseCargo: operation?.isContainerized !== true,
         tractorAxles: operation?.cargoVehicleType?.tractorAxles ?? null,
         requiresTrailer:
           operation?.cargoVehicleType?.requiresTrailer ?? false,
@@ -321,9 +359,9 @@ export function OperationDispatchDrawer({
     () => ({
       plate: operation?.vehicle?.plate ?? '',
       trailerPlate: operation?.trailer?.plate ?? '',
-      tractorAxles: normalizeAxles(operation?.vehicle?.axles),
+      tractorAxles: normalizeTractorAxles(operation?.vehicle?.axles),
       trailerType: operation?.trailer?.trailerType ?? undefined,
-      trailerAxles: normalizeAxles(operation?.trailer?.axles),
+      trailerAxles: normalizeTrailerAxles(operation?.trailer?.axles),
       cargoCapacityKg: operation?.vehicle?.cargoCapacity ?? undefined,
       driverName: operation?.driver?.name ?? '',
       driverCedula: operation?.driver?.cedula ?? '',
@@ -412,7 +450,6 @@ export function OperationDispatchDrawer({
   );
   const operationDriverId = operation?.driverId;
   const operationAllowsRigidVehicle =
-    operation?.isContainerized !== true &&
     !operation?.cargoVehicleType?.requiresTrailer &&
     !operation?.requiredTrailerType;
   const requiredTrailerType = operation?.requiredTrailerType;
@@ -470,7 +507,6 @@ export function OperationDispatchDrawer({
       driver?.isAvailable === true || driver?.id === operation?.driverId;
     const hasTrailer = Boolean(vehicle.trailerId && trailer);
     const requiresTrailer =
-      operation?.isContainerized === true ||
       Boolean(operation?.cargoVehicleType?.requiresTrailer) ||
       Boolean(operation?.requiredTrailerType);
     const hasRequiredTrailer = !requiresTrailer || hasTrailer;
@@ -705,6 +741,33 @@ export function OperationDispatchDrawer({
                   {formatDateTime(appointment)}
                 </span>
               </div>
+              <div className={styles.contextDetail}>
+                <Truck size={16} aria-hidden="true" />
+                <span>
+                  <strong>Tipología requerida</strong>
+                  {operation.cargoVehicleType?.name ??
+                    'Configuración no disponible'}
+                  {operation.cargoVehicleType?.maxPayloadKg != null
+                    ? ` · Hasta ${operation.cargoVehicleType.maxPayloadKg.toLocaleString('es-CO')} kg`
+                    : ''}
+                </span>
+              </div>
+              <div className={styles.contextDetail}>
+                <Truck size={16} aria-hidden="true" />
+                <span>
+                  <strong>Tipo de tráiler / carrocería requerido</strong>
+                  {operation.requiredTrailerType
+                    ? TRAILER_TYPE_LABELS[operation.requiredTrailerType]
+                    : 'Cualquiera / sin restricción'}
+                </span>
+              </div>
+              <div className={styles.contextDetail}>
+                <span className={styles.sealIcon} aria-hidden="true">kg</span>
+                <span>
+                  <strong>Peso de la carga</strong>
+                  {formatCapacity(operation.weight ?? null)}
+                </span>
+              </div>
               {operation.isContainerized === true ? (
                 <>
                   <div className={styles.contextDetail}>
@@ -724,30 +787,6 @@ export function OperationDispatchDrawer({
                 </>
               ) : (
                 <>
-                  <div className={styles.contextDetail}>
-                    <Truck size={16} aria-hidden="true" />
-                    <span>
-                      <strong>Configuración vehicular requerida</strong>
-                      {operation.cargoVehicleType?.name ??
-                        'Configuración no disponible'}
-                    </span>
-                  </div>
-                  <div className={styles.contextDetail}>
-                    <Truck size={16} aria-hidden="true" />
-                    <span>
-                      <strong>Tipo de tráiler / carrocería</strong>
-                      {operation.requiredTrailerType
-                        ? TRAILER_TYPE_LABELS[operation.requiredTrailerType]
-                        : 'Sin requisito específico'}
-                    </span>
-                  </div>
-                  <div className={styles.contextDetail}>
-                    <span className={styles.sealIcon} aria-hidden="true">kg</span>
-                    <span>
-                      <strong>Peso de la carga</strong>
-                      {formatCapacity(operation.weight ?? null)}
-                    </span>
-                  </div>
                   <div className={styles.contextDetail}>
                     <span className={styles.sealIcon} aria-hidden="true">#</span>
                     <span>
@@ -899,10 +938,23 @@ export function OperationDispatchDrawer({
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              Cabezote: {vehicle.axles ?? '—'} ejes · Tráiler:{' '}
+                              Vehículo: {vehicle.type} · Cabezote: {vehicle.axles ?? '—'} ejes · Tráiler:{' '}
                               {eligibility.trailer
                                 ? `${eligibility.trailer.trailerType ? TRAILER_TYPE_LABELS[eligibility.trailer.trailerType] : 'Tipo sin registrar'} · ${eligibility.trailer.axles ?? '—'} ejes`
                                 : 'no acoplado'}
+                            </span>
+                            <span>
+                              <Truck size={15} aria-hidden="true" />
+                              Configuración resultante:{' '}
+                              {vehicle.configurationCode ?? 'Sin calcular'}
+                            </span>
+                            <span>
+                              <Truck size={15} aria-hidden="true" />
+                              Capacidad efectiva: {formatCapacity(vehicle.effectiveCapacityKg)}
+                            </span>
+                            <span>
+                              <Truck size={15} aria-hidden="true" />
+                              Carga: {formatCapacity(operation.weight ?? null)}
                             </span>
                             <span>
                               <Clock3 size={15} aria-hidden="true" />
@@ -929,24 +981,22 @@ export function OperationDispatchDrawer({
                                 Falta tráiler requerido
                               </span>
                             )}
-                            {operation.isContainerized !== true && (
-                              <span
-                                className={
-                                  eligibility.compatibility.compatible
-                                    ? styles.badgeSuccess
-                                    : styles.badgeDanger
-                                }
-                              >
-                                {eligibility.compatibility.compatible ? (
-                                  <CheckCircle2 size={13} />
-                                ) : (
-                                  <AlertTriangle size={13} />
-                                )}
-                                {eligibility.compatibility.compatible
-                                  ? 'Compatible'
-                                  : `Incompatible: ${eligibility.compatibility.reasons.join('; ')}`}
-                              </span>
-                            )}
+                            <span
+                              className={
+                                eligibility.compatibility.compatible
+                                  ? styles.badgeSuccess
+                                  : styles.badgeDanger
+                              }
+                            >
+                              {eligibility.compatibility.compatible ? (
+                                <CheckCircle2 size={13} />
+                              ) : (
+                                <AlertTriangle size={13} />
+                              )}
+                              {eligibility.compatibility.compatible
+                                ? 'Compatible'
+                                : `Incompatible: ${eligibility.compatibility.reasons.join('; ')}`}
+                            </span>
                             {eligibility.overlap && (
                               <span className={styles.badgeWarning}>
                                 <AlertTriangle size={13} />
@@ -969,11 +1019,11 @@ export function OperationDispatchDrawer({
             ) : (
               <form className={styles.externalForm} onSubmit={assignExternalFleet} noValidate>
                 <p className={styles.formIntro}>
-                  Registra el cabezote, el conductor externo y el flete acordado para esta operación.
+                  Registra el vehículo, el conductor externo y el flete acordado para esta operación.
                 </p>
                 <div className={styles.externalFields}>
                   <FormField
-                    label="Placa del cabezote"
+                    label="Placa del vehículo"
                     error={externalForm.formState.errors.plate?.message}
                   >
                     <input
@@ -1013,9 +1063,7 @@ export function OperationDispatchDrawer({
                       <option value="3">3 ejes</option>
                     </select>
                   </FormField>
-                  {operation.isContainerized !== true && (
-                    <>
-                      <FormField
+                  <FormField
                         label={
                           operation.cargoVehicleType?.requiresTrailer ||
                           operation.requiredTrailerType
@@ -1033,8 +1081,8 @@ export function OperationDispatchDrawer({
                             <option key={value} value={value}>{label}</option>
                           ))}
                         </select>
-                      </FormField>
-                      <FormField
+                  </FormField>
+                  <FormField
                         label={
                           operation.cargoVehicleType?.requiresTrailer ||
                           operation.requiredTrailerType
@@ -1051,11 +1099,12 @@ export function OperationDispatchDrawer({
                           aria-invalid={Boolean(externalForm.formState.errors.trailerAxles)}
                         >
                           <option value="">Selecciona ejes</option>
+                          <option value="1">1 eje</option>
                           <option value="2">2 ejes</option>
                           <option value="3">3 ejes</option>
                         </select>
-                      </FormField>
-                      <FormField
+                  </FormField>
+                  <FormField
                         label="Capacidad de carga (kg) · opcional"
                         error={externalForm.formState.errors.cargoCapacityKg?.message}
                       >
@@ -1076,9 +1125,7 @@ export function OperationDispatchDrawer({
                               = {(thirdPartyCapacityKg / 1000).toFixed(1)} Ton
                             </small>
                           )}
-                      </FormField>
-                    </>
-                  )}
+                  </FormField>
                   <FormField
                     label="Nombre completo del conductor"
                     error={externalForm.formState.errors.driverName?.message}

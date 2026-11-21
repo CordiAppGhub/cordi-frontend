@@ -74,7 +74,7 @@ export function DriverNovedadesTab({
           key: `0:${vehicle.id}`,
           operationId: undefined,
           vehicle,
-          label: `${vehicle.type === 'MULA' ? 'Mula (C3)' : 'Patineta (C2)'} · ${vehicle.plate}`,
+          label: `${vehicle.type === 'MULA' ? 'Mula (3 ejes)' : vehicle.type === 'C2' ? 'Camión rígido C2' : vehicle.type === 'C3' ? 'Camión rígido C3' : 'Patineta (2 ejes)'} · ${vehicle.plate}`,
         })),
     ];
   }, [operations, vehicles]);
@@ -285,7 +285,13 @@ export function DriverNovedadesTab({
             <p style={{ margin: '6px 0 0' }}>{item.description}</p>
             {item.vehicle && (
               <p style={{ margin: '6px 0 0' }}>
-                {item.vehicle.type === 'MULA' ? 'Mula (C3)' : 'Patineta (C2)'} ·{' '}
+                {item.vehicle.type === 'MULA'
+                  ? 'Mula (3 ejes)'
+                  : item.vehicle.type === 'C2'
+                    ? 'Camión rígido C2'
+                    : item.vehicle.type === 'C3'
+                      ? 'Camión rígido C3'
+                      : 'Patineta (2 ejes)'} ·{' '}
                 {item.vehicle.plate}
               </p>
             )}

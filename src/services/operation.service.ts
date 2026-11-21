@@ -5,7 +5,10 @@ import {
   OperationsClientGroup,
   Evidence,
 } from "@/types/operation-types";
-import type { TrailerType } from "@/types/vehicles";
+import type {
+  CargoVehicleTypeCode,
+  TrailerType,
+} from "@/types/vehicles";
 import type { CargoStatus, OperationContainerStatus } from "@/types/driver-portal.types";
 
 export async function correctContainerState(
@@ -121,7 +124,11 @@ export interface PaginatedHistoricalOperations {
 
 export interface AmparoSuggestionOperation {
   id: number;
-  type: "EXPORTACION" | "IMPORTACION";
+  type:
+    | "EXPORTACION"
+    | "IMPORTACION"
+    | "RETIRO_VACIO"
+    | "DEVOLUCION_VACIO";
   status: string;
   isContainerized: boolean;
   numeroPedido?: string | null;
@@ -145,6 +152,7 @@ export interface AmparoSuggestionOperation {
 }
 
 export interface AmparoSuggestion {
+  kind?: "PUERTO" | "PATIO";
   exportOperation: AmparoSuggestionOperation;
   importOperation: AmparoSuggestionOperation;
   hasAssignedDriver: boolean;
@@ -152,10 +160,34 @@ export interface AmparoSuggestion {
 }
 
 export interface ConfirmAmparoPayload {
+  kind?: "PUERTO" | "PATIO";
   exportOperationId: number;
   importOperationId: number;
   driverId?: number;
   vehicleId: number;
+}
+
+export interface CreateBulkOperationsPayload {
+  clientId: number;
+  type: "IMPORTACION" | "EXPORTACION";
+  numeroPedido: string;
+  shippingLineId: number;
+  cargoVehicleTypeCode: CargoVehicleTypeCode;
+  requiredTrailerType?: TrailerType | null;
+  routeScope: "URBANO" | "NACIONAL";
+  origenId: number;
+  cargueId?: number;
+  destinoId: number;
+  depositoDevolucionId?: number;
+  scheduledAt: string;
+  fechaCitaOrigen?: string | null;
+  fechaCitaDestino?: string | null;
+  requiresInspection?: boolean;
+  containers: Array<{
+    containerNumber?: string | null;
+    containerType: string;
+    weight: number;
+  }>;
 }
 
 export interface ShippingLine {
@@ -201,6 +233,7 @@ export type UpdateOperationPayload = Partial<{
   }>;
   isContainerized: boolean;
   vehicleCapacityId: number | null;
+  cargoVehicleTypeCode: CargoVehicleTypeCode | null;
   requiredTrailerType: TrailerType | null;
   clientId: number;
   isAnticipada: boolean;
@@ -252,7 +285,7 @@ export interface AssignExternalResourcesPayload {
   trailerPlate?: string;
   tractorAxles?: 2 | 3;
   trailerType?: TrailerType;
-  trailerAxles?: 2 | 3;
+  trailerAxles?: 1 | 2 | 3;
   cargoCapacityKg?: number;
   force?: boolean;
   driverName: string;
@@ -338,6 +371,13 @@ export const operationService = {
     operationData: Record<string, unknown>,
   ): Promise<Operation> => {
     const response = await api.post<Operation>("/operations", operationData);
+    return response.data;
+  },
+
+  createBulkOperations: async (
+    payload: CreateBulkOperationsPayload,
+  ): Promise<Operation[]> => {
+    const response = await api.post<Operation[]>("/operations/bulk", payload);
     return response.data;
   },
 

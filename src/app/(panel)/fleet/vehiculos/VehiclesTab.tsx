@@ -20,7 +20,9 @@ import { useAssignments } from '@/hooks/useFleet';
 import { locationService } from '@/services/location.service';
 import { vehiclesService } from '@/services/vehicles.service';
 import { trailersService } from '@/services/trailers.service';
+import { tariffService } from '@/services/tariff.service';
 import { showToast } from '@/utils/alerts';
+import type { CargoVehicleType } from '@/types/tariff-ypes';
 import type {
   CreateVehicleDto,
   Trailer,
@@ -28,6 +30,7 @@ import type {
   UpdateVehicleDto,
   Vehicle,
 } from '@/types/vehicles';
+import { getFleetConfigurationCode } from '@/types/vehicles';
 import type { CreateVehicleFormValues } from '@/schemas/vehicle.schema';
 
 import styles from '../components/fleet-cards.module.css';
@@ -115,6 +118,15 @@ export const VehiclesTab = () => {
     queryFn: trailersService.getAll,
     staleTime: 1000 * 60,
   });
+  const {
+    data: cargoVehicleTypes = [],
+    isLoading: isLoadingCargoVehicleTypes,
+    isError: cargoVehicleTypesError,
+  } = useQuery<CargoVehicleType[]>({
+    queryKey: ['cargo-vehicle-types'],
+    queryFn: tariffService.getCargoVehicleTypes,
+    staleTime: 1000 * 60 * 60,
+  });
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createAssetType, setCreateAssetType] = useState<'vehicle' | 'trailer'>('vehicle');
@@ -135,7 +147,9 @@ export const VehiclesTab = () => {
   const handleCreateVehicle = async (formData: CreateVehicleFormValues) => {
     if (formData.type === 'TRAILER') {
       if (
-        (formData.axles !== 2 && formData.axles !== 3) ||
+        (formData.axles !== 1 &&
+          formData.axles !== 2 &&
+          formData.axles !== 3) ||
         !formData.trailerType ||
         !formData.currentLocationId
       ) {
@@ -173,6 +187,12 @@ export const VehiclesTab = () => {
     const payload: CreateVehicleDto = {
       plate: formData.plate,
       type: formData.type,
+      axles:
+        formData.type === 'MULA' || formData.type === 'C3'
+          ? 3
+          : 2,
+      requiresTrailer:
+        formData.type === 'PATINETA' || formData.type === 'MULA',
       brand: formData.brand ?? '',
       modelYear: formData.modelYear ?? new Date().getFullYear(),
       affiliation: formData.affiliation ?? 'CORDIVEHICULOS',
@@ -307,6 +327,35 @@ export const VehiclesTab = () => {
   const availableTrailers = trailers.filter(
     (trailer) => trailer.status === 'AVAILABLE_IN_YARD',
   );
+  const selectedCouplingTrailer =
+    trailerAction?.type === 'couple'
+      ? availableTrailers.find(
+          (trailer) => trailer.id === selectedTrailerId,
+        )
+      : undefined;
+  const selectedCouplingConfigurationCode =
+    selectedVehicle && selectedCouplingTrailer
+      ? getFleetConfigurationCode(
+          selectedVehicle.axles,
+          selectedCouplingTrailer.axles,
+          selectedVehicle.type,
+        )
+      : null;
+  const selectedCouplingConfiguration = cargoVehicleTypes.find(
+    (vehicleType) => vehicleType.code === selectedCouplingConfigurationCode,
+  );
+  const couplingEffectiveCapacityKg =
+    selectedVehicle?.cargoCapacity != null &&
+    selectedVehicle.cargoCapacity > 0 &&
+    selectedCouplingTrailer?.capacity != null &&
+    selectedCouplingTrailer.capacity > 0 &&
+    selectedCouplingConfiguration?.maxPayloadKg != null
+      ? Math.min(
+          selectedVehicle.cargoCapacity,
+          selectedCouplingTrailer.capacity,
+          selectedCouplingConfiguration.maxPayloadKg,
+        )
+      : null;
   const normalizedVehicleSearch = vehiclePlateSearch.trim().toLocaleUpperCase();
   const filteredVehicles = vehicles.filter((vehicle) =>
     vehicle.plate.toLocaleUpperCase().includes(normalizedVehicleSearch),
@@ -608,6 +657,37 @@ export const VehiclesTab = () => {
                   <small>Registra o marca una ubicación como patio propio.</small>
                 )}
               </label>
+            )}
+            {trailerAction.type === 'couple' && selectedTrailerId && (
+              <div className={styles.couplingCapacityPreview} aria-live="polite">
+                {selectedCouplingConfigurationCode ? (
+                  <>
+                    <strong>
+                      Tipología resultante: {selectedCouplingConfigurationCode}
+                    </strong>
+                    {isLoadingCargoVehicleTypes ? (
+                      <small>Calculando capacidad efectiva...</small>
+                    ) : cargoVehicleTypesError ? (
+                      <small role="alert">
+                        No se pudo cargar el catálogo de báscula para calcular la capacidad.
+                      </small>
+                    ) : couplingEffectiveCapacityKg !== null ? (
+                      <span>
+                        Capacidad efectiva:{' '}
+                        {couplingEffectiveCapacityKg.toLocaleString('es-CO')} kg
+                      </span>
+                    ) : (
+                      <small>
+                        Registra la capacidad del cabezote y del tráiler para calcular la capacidad efectiva.
+                      </small>
+                    )}
+                  </>
+                ) : (
+                  <small role="alert">
+                    La combinación seleccionada no corresponde a una tipología válida.
+                  </small>
+                )}
+              </div>
             )}
             <div className={styles.trailerActionButtons}>
               <Button variant="secondary" onClick={closeTrailerAction} disabled={isManagingTrailer}>

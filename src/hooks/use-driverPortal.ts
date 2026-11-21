@@ -218,11 +218,13 @@ export function useDriverPortal() {
     mutationFn: ({
       operationId,
       file,
+      reason,
     }: {
       operationId: number;
       file: File | File[];
+      reason: "AVERIA_NO_APTO" | "PATIO_LLENO";
     }) =>
-      driverPortalService.reportDeviation(operationId, file),
+      driverPortalService.reportDeviation(operationId, file, reason),
     onSuccess: async () => {
       showToast.success(
         "Desvío reportado. El analista recibió el comodato y debe confirmar el destino.",
@@ -346,8 +348,9 @@ export function useDriverPortal() {
   const reportDeviation = async (
     operationId: number,
     file: File | File[],
+    reason: "AVERIA_NO_APTO" | "PATIO_LLENO" = "AVERIA_NO_APTO",
   ): Promise<void> => {
-    await reportDeviationMutation.mutateAsync({ operationId, file });
+    await reportDeviationMutation.mutateAsync({ operationId, file, reason });
   };
 
   const updateTravelState = async (

@@ -1,6 +1,8 @@
 const evidenceTypeLabels: Record<string, string> = {
   INGRESO_PUERTO: 'ARIN de ingreso a puerto',
+  ARIN_INGRESO: 'ARIN de ingreso a puerto',
   SALIDA_PUERTO: 'ARIN de salida del puerto',
+  ARIN_SALIDA: 'ARIN de salida del puerto',
   SELLOS_CONTENEDOR: 'Fotos de los sellos',
   TIRILLA_EIR: 'Tirilla de devolución (EIR)',
   COMODATO: 'Documento de comodato',
@@ -14,6 +16,26 @@ const evidenceTypeLabels: Record<string, string> = {
   ANOMALY_PHOTO: 'Fotos de anomalías en la mercancía',
   'NÚMERO DE CONTENEDOR': 'Número de contenedor',
   'SOPORTE DE CIERRE': 'Soporte de cierre',
+};
+
+const operationStateLabels: Record<string, string> = {
+  EN_PISO: 'Bajado a piso',
+  PENDIENTE: 'Pendiente',
+  PENDIENTE_CARGUE: 'Pendiente de cargue',
+  EN_CARGUE: 'En cargue',
+  CARGADO: 'Cargado',
+  EN_DESCARGUE: 'En descargue',
+  DESCARGADO: 'Descargado',
+  EN_PUERTO: 'En puerto',
+  LLEGADA_ORIGEN: 'Llegada al origen',
+  LLEGADA_DESTINO: 'Llegada al destino',
+  EN_RUTA_ORIGEN: 'En ruta al origen',
+  EN_RUTA_DESTINO: 'En ruta al destino',
+  RUMBO_AL_CLIENTE: 'En ruta al cliente',
+  RUMBO_AL_PUERTO: 'En ruta al puerto',
+  DESENGANCHADO: 'Tráiler desenganchado',
+  DESVIO_PATIO_PENDIENTE: 'Desvío de patio pendiente',
+  PENDIENTE_LLENO: 'Pendiente de llenado en cliente',
 };
 
 const extraChargeTypeLabels: Record<string, string> = {
@@ -63,6 +85,10 @@ function lookupLabel(value: string, labels: Record<string, string>): string {
 
 export function formatEvidenceTypeLabel(type: string): string {
   return lookupLabel(type, evidenceTypeLabels);
+}
+
+export function formatOperationStateLabel(state?: string | null): string {
+  return state ? lookupLabel(state, operationStateLabels) : '';
 }
 
 export function formatExtraChargeTypeLabel(type: string): string {

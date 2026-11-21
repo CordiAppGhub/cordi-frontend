@@ -1,13 +1,16 @@
 import { api } from '@/services/api.service';
-import type { TrailerType } from '@/types/vehicles';
+import type { TrailerType, VehicleType } from '@/types/vehicles';
 
 export type FleetLiveStatus = 'AVAILABLE' | 'ENDING_SOON' | 'BUSY' | 'UNAVAILABLE';
 
 export interface FleetLiveVehicle {
   id: number;
   plate: string;
+  type: VehicleType;
   axles: number | null;
   cargoCapacity: number | null;
+  configurationCode: string | null;
+  effectiveCapacityKg: number | null;
   ownershipType: 'PROPIO' | 'TERCERO';
   driverId: number | null;
   trailerId: string | null;

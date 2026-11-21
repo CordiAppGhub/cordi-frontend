@@ -8,8 +8,39 @@ export interface DriverInfo {
 export type VehicleOwnershipType = 'PROPIO' | 'TERCERO';
 export type VehicleAffiliation = 'CORDIVEHICULOS' | 'CORDIHUB' | 'TERCEROS';
 export type VehicleStatus = 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
-export type VehicleType = 'PATINETA' | 'MULA';
+export type VehicleType = 'PATINETA' | 'MULA' | 'C2' | 'C3';
 export type FleetAssetType = VehicleType | 'TRAILER';
+export const VEHICLE_TYPES = ['PATINETA', 'MULA'] as const satisfies readonly VehicleType[];
+export const TRACTOR_AXLE_OPTIONS = [2, 3] as const;
+export const TRAILER_AXLE_OPTIONS = [1, 2, 3] as const;
+export const CARGO_VEHICLE_TYPE_CODES = [
+  'C2',
+  '2S1',
+  'C3',
+  '3S1',
+  '2S2',
+  '2S3',
+  '3S2',
+  '3S3',
+] as const;
+export type CargoVehicleTypeCode =
+  (typeof CARGO_VEHICLE_TYPE_CODES)[number];
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  PATINETA: 'Patineta (2 ejes)',
+  MULA: 'Mula (3 ejes)',
+  C2: 'C2 · Camión sencillo rígido (2 ejes)',
+  C3: 'C3 · Camión dobletroque rígido (3 ejes)',
+};
+export const FLEET_VEHICLE_TYPES = [
+  'PATINETA',
+  'MULA',
+  'C2',
+  'C3',
+] as const satisfies readonly VehicleType[];
+export const VEHICLE_TYPE_OPTIONS = FLEET_VEHICLE_TYPES.map((value) => ({
+  value,
+  label: VEHICLE_TYPE_LABELS[value],
+}));
 export type TrailerStatus =
   | 'COUPLED'
   | 'AVAILABLE_IN_YARD'
@@ -24,6 +55,7 @@ export const TRAILER_TYPES = [
   'CAMA_BAJA',
   'PORTACONTENEDOR',
 ] as const;
+export const DEFAULT_CONTAINER_TRAILER_TYPE = 'PORTACONTENEDOR' satisfies (typeof TRAILER_TYPES)[number];
 
 export type TrailerType = (typeof TRAILER_TYPES)[number];
 
@@ -42,14 +74,34 @@ export const TRAILER_TYPE_OPTIONS = TRAILER_TYPES.map((value) => ({
   label: TRAILER_TYPE_LABELS[value],
 }));
 
+export const getFleetConfigurationCode = (
+  tractorAxles?: number | null,
+  trailerAxles?: number | null,
+  vehicleType?: string | null,
+): string | null =>
+  (tractorAxles === 2 || tractorAxles === 3) &&
+  (trailerAxles === 1 || trailerAxles === 2 || trailerAxles === 3) &&
+  (vehicleType == null ||
+    (vehicleType === 'PATINETA' && tractorAxles === 2) ||
+    (vehicleType === 'MULA' && tractorAxles === 3))
+    ? `${tractorAxles}S${trailerAxles}`
+    : trailerAxles == null &&
+        (vehicleType === 'C2' || vehicleType === 'C3') &&
+        tractorAxles === (vehicleType === 'C2' ? 2 : 3)
+      ? vehicleType
+      : null;
+
 export interface Vehicle {
   id: number;
   plate: string;
   type: VehicleType;
   axles: number | null;
+  requiresTrailer?: boolean;
   brand: string | null;
   modelYear: number | null;
   cargoCapacity: number | null;
+  configurationCode?: string | null;
+  effectiveCapacityKg?: number | null;
   status: VehicleStatus; 
 
   affiliation: VehicleAffiliation;
@@ -73,7 +125,7 @@ export interface Trailer {
   id: string;
   plate: string;
   trailerType: TrailerType;
-  axles: 2 | 3;
+  axles: 1 | 2 | 3;
   brand: string | null;
   capacity: number | null;
   status: TrailerStatus;
@@ -88,7 +140,7 @@ export interface Trailer {
 export interface CreateTrailerInput {
   plate: string;
   trailerType: TrailerType;
-  axles: 2 | 3;
+  axles: 1 | 2 | 3;
   currentLocationId: number;
   notes?: string;
   brand?: string;
@@ -115,6 +167,7 @@ export type CreateVehicleDto = Omit<
   | 'tecnomecanicaExpiration'
 > & {
   axles?: 2 | 3;
+  requiresTrailer?: boolean;
   affiliation: VehicleAffiliation;
   status?: VehicleStatus;
   insuranceFileUrl?: string | null;

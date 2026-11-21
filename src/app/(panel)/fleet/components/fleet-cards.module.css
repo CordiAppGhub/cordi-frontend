@@ -50,6 +50,7 @@
 .mainTitle {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   font-size: 1rem;
   font-weight: 700;
@@ -64,6 +65,35 @@
   border-radius: 6px;
   font-weight: 600;
   border: 1px solid #e2e8f0;
+}
+
+.typologyBadge,
+.incompleteBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.typologyBadge {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.incompleteBadge {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.cardHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .subTitle {
@@ -104,8 +134,21 @@
   color: #0f172a;
 }
 
+.metricSubtext {
+  display: grid;
+  gap: 3px;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
 .metricHighlight {
   color: #1d4ed8;
+}
+
+.mutedValue {
+  color: #94a3b8;
 }
 
 /* Documentos */
@@ -149,7 +192,19 @@
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: #16a34a;
+  color: #334155;
+}
+
+.docvalid {
+  color: #15803d;
+}
+
+.docmissing {
+  color: #b45309;
+}
+
+.docexpired {
+  color: #b91c1c;
 }
 
 /* NUEVO: Footer para acciones */
@@ -466,6 +521,20 @@
 .trailerActionModal small {
   color: #64748b;
   font-weight: 400;
+}
+
+.couplingCapacityPreview {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.couplingCapacityPreview small {
+  color: #475569;
 }
 
 .trailerActionButtons {

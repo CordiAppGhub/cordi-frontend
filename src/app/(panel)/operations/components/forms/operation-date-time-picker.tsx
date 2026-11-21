@@ -11,6 +11,7 @@ registerLocale("es", es);
 interface OperationDateTimePickerProps {
   value: string;
   onChange: (value: string) => void;
+  placeholderText?: string;
 }
 
 function formatLocalDateTime(date: Date): string {
@@ -22,6 +23,7 @@ function formatLocalDateTime(date: Date): string {
 export function OperationDateTimePicker({
   value,
   onChange,
+  placeholderText = "Selecciona fecha y hora",
 }: OperationDateTimePickerProps) {
   const parsedValue = value ? new Date(value) : null;
   const selectedDate =
@@ -43,7 +45,7 @@ export function OperationDateTimePicker({
         locale="es"
         calendarStartDay={1}
         isClearable
-        placeholderText="Selecciona fecha y hora"
+        placeholderText={placeholderText}
         className={styles.input}
         calendarClassName={styles.calendar}
         showPopperArrow={false}

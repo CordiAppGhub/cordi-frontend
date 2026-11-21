@@ -63,10 +63,14 @@ export function DriverProfile({ driver }: { driver: DriverPortalData }) {
                 <strong>{vehicle.plate}</strong>
                 <span>
                   {vehicle.type === 'PATINETA'
-                    ? 'Patineta (C2)'
+                    ? 'Patineta (2 ejes)'
                     : vehicle.type === 'MULA'
-                      ? 'Mula (C3)'
-                      : 'Vehículo asignado'}
+                      ? 'Mula (3 ejes)'
+                      : vehicle.type === 'C2'
+                        ? 'Camión rígido C2 (2 ejes)'
+                        : vehicle.type === 'C3'
+                          ? 'Camión rígido C3 (3 ejes)'
+                          : 'Vehículo asignado'}
                 </span>
               </li>
             ))}

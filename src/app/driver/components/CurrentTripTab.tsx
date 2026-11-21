@@ -13,6 +13,7 @@ import type {
   Vehicle,
 } from "@/types/driver-portal.types";
 import { generateDriverOperationRoute } from "@/utils/driver-operation-route";
+import { formatOperationStateLabel } from "@/utils/format-labels";
 
 interface CurrentTripTabProps {
   driver: DriverPortalData;
@@ -36,7 +37,7 @@ interface CurrentTripTabProps {
     operationId: number,
     sealNumber: string,
   ) => Promise<void>;
-  onReportDeviation: () => void;
+  onReportDeviation: (reason?: "AVERIA_NO_APTO" | "PATIO_LLENO") => void;
   onReportExtra: (
     operationId: number,
     defaultType?: "EN_PISO",
@@ -135,14 +136,14 @@ export function CurrentTripTab({
                       operation.vehiclePlate ||
                       "Vehículo sin placa"}
                     {" · "}
-                    {operation.estadoViaje?.replace(/_/g, " ") ||
+                    {formatOperationStateLabel(operation.estadoViaje) ||
                       operation.status ||
                       "ASIGNADO"}
                   </span>
                   <span>
                     {operation.isContainerized !== true
                       ? "Carga suelta"
-                      : `Contenedor: ${(operation.containerStatus || "PENDIENTE").replace(/_/g, " ")}`}
+                      : `Contenedor: ${formatOperationStateLabel(operation.containerStatus || "PENDIENTE")}`}
                   </span>
                 </span>
                 <span

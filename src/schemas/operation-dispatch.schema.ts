@@ -8,9 +8,14 @@ const plateSchema = z
   .max(10, 'La placa no puede superar 10 caracteres.')
   .regex(/^[A-Za-z0-9-]+$/, 'Usa solo letras, números y guiones.');
 
-const optionalAxles = z.preprocess(
+const optionalTractorAxles = z.preprocess(
   (value) => (value === '' || value === null ? undefined : Number(value)),
   z.union([z.literal(2), z.literal(3)]).optional(),
+);
+
+const optionalTrailerAxles = z.preprocess(
+  (value) => (value === '' || value === null ? undefined : Number(value)),
+  z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
 );
 
 const optionalCapacity = z.preprocess(
@@ -31,9 +36,9 @@ export const externalFleetDispatchSchema = z.object({
       (value) => !value || /^[A-Za-z0-9-]{5,10}$/.test(value),
       'Ingresa una placa de tráiler válida.',
     ),
-  tractorAxles: optionalAxles,
+  tractorAxles: optionalTractorAxles,
   trailerType: z.enum(TRAILER_TYPES).optional(),
-  trailerAxles: optionalAxles,
+  trailerAxles: optionalTrailerAxles,
   cargoCapacityKg: optionalCapacity,
   driverName: z
     .string()
@@ -61,7 +66,6 @@ export const externalFleetDispatchSchema = z.object({
 });
 
 export const createExternalFleetDispatchSchema = (requirements: {
-  isLooseCargo: boolean;
   tractorAxles: number | null;
   requiresTrailer: boolean;
   trailerAxles: number | null;
@@ -105,16 +109,14 @@ export const createExternalFleetDispatchSchema = (requirements: {
       });
     } else if (
       requirements.tractorAxles !== null &&
-      values.tractorAxles !== requirements.tractorAxles
+      values.tractorAxles < requirements.tractorAxles
     ) {
       context.addIssue({
         code: 'custom',
         path: ['tractorAxles'],
-        message: `La configuración requiere un cabezote de ${requirements.tractorAxles} ejes.`,
+        message: `La configuración requiere un cabezote de al menos ${requirements.tractorAxles} ejes.`,
       });
     }
-
-    if (!requirements.isLooseCargo) return;
 
     const trailerRequired =
       requirements.requiresTrailer || Boolean(requirements.requiredTrailerType);
@@ -154,12 +156,12 @@ export const createExternalFleetDispatchSchema = (requirements: {
         });
       } else if (
         requirements.trailerAxles !== null &&
-        values.trailerAxles !== requirements.trailerAxles
+        values.trailerAxles < requirements.trailerAxles
       ) {
         context.addIssue({
           code: 'custom',
           path: ['trailerAxles'],
-          message: `La configuración requiere un tráiler de ${requirements.trailerAxles} ejes.`,
+          message: `La configuración requiere un tráiler de al menos ${requirements.trailerAxles} ejes.`,
         });
       }
     }

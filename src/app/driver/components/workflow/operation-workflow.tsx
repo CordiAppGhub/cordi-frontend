@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./operation-workflow.module.css";
 import { Button } from "@/components/atoms/button/button";
 import { Select } from "@/components/atoms/select/select";
@@ -11,7 +11,10 @@ import type {
   CargoStatus,
   OperationContainerStatus,
 } from "@/types/driver-portal.types";
-import { formatEvidenceTypeLabel } from "@/utils/format-labels";
+import {
+  formatEvidenceTypeLabel,
+  formatOperationStateLabel,
+} from "@/utils/format-labels";
 
 const PORT_ENTRY_EVIDENCE = "INGRESO_PUERTO";
 const SEAL_EVIDENCE = "SELLOS_CONTENEDOR";
@@ -85,6 +88,8 @@ interface OperationData {
   trailer?: { plate: string };
   isAmparado?: boolean;
   amparoExportOperationId?: number | null;
+  origen?: { name: string; isPort?: boolean } | null;
+  destino?: { name: string; isPort?: boolean } | null;
 }
 
 interface OperationWorkflowProps {
@@ -107,7 +112,7 @@ interface OperationWorkflowProps {
     operationId: number,
     sealNumber: string,
   ) => Promise<void>;
-  onReportDeviation: () => void;
+  onReportDeviation: (reason?: "AVERIA_NO_APTO" | "PATIO_LLENO") => void;
   onReportExtra: (
     operationId: number,
     defaultType?: "EN_PISO",
@@ -173,8 +178,10 @@ const EXPORT_STATE_ORDER = [
 
 const EMPTY_PICKUP_STATE_ORDER = [
   "ASIGNADO",
-  "RUMBO_AL_CLIENTE",
-  "EN_CLIENTE",
+  "EN_RUTA_ORIGEN",
+  "LLEGADA_ORIGEN",
+  "EN_RUTA_DESTINO",
+  "LLEGADA_DESTINO",
   "FINALIZADO",
 ];
 
@@ -238,7 +245,7 @@ function getTravelStartDate(
     nextState === "EN_RUTA_ORIGEN" &&
     operation.containerStatus === "PENDIENTE_DEVOLUCION"
   ) {
-    return operation.fechaCitaDesvio ?? null;
+    return operation.fechaCitaDesvio ?? operation.scheduledAt ?? null;
   }
   if (nextState === "EN_RUTA_DESTINO") {
     return destinationAppointment ?? operation.scheduledAt ?? null;
@@ -338,10 +345,16 @@ const getMilestoneContainerStatuses = (
   state: string,
 ): OperationContainerStatus[] => {
   if (operation.isContainerized !== true) return [];
-  if (operation.type === "EXPORTACION" && state === "EN_CLIENTE") {
+  if ((operation.type === "EXPORTACION" || operation.isAnticipada) && state === "EN_CLIENTE") {
     return ["EN_CARGUE", "CARGADO"];
   }
-  if (operation.type === "EXPORTACION" && state === "EN_PUERTO") {
+  if ((operation.type === "EXPORTACION" || operation.isAnticipada) && state === "EN_PUERTO") {
+    return ["EN_DESCARGUE", "DESCARGADO"];
+  }
+  if (operation.type === "MOVIMIENTO_INTERNO" && state === "LLEGADA_ORIGEN") {
+    return ["EN_CARGUE", "CARGADO"];
+  }
+  if (operation.type === "MOVIMIENTO_INTERNO" && state === "LLEGADA_DESTINO") {
     return ["EN_DESCARGUE", "DESCARGADO"];
   }
   if (operation.type === "IMPORTACION" && state === "EN_CLIENTE") {
@@ -349,6 +362,12 @@ const getMilestoneContainerStatuses = (
   }
   if (operation.type === "RETIRO_VACIO" && state === "EN_CLIENTE") {
     return ["EN_PISO"];
+  }
+  if (operation.type === "RETIRO_VACIO" && state === "LLEGADA_ORIGEN") {
+    return ["EN_CARGUE", "CARGADO"];
+  }
+  if (operation.type === "RETIRO_VACIO" && state === "LLEGADA_DESTINO") {
+    return ["EN_DESCARGUE", "DESCARGADO", "EN_PISO"];
   }
   if (
     operation.type === "DEVOLUCION_VACIO" &&
@@ -496,34 +515,79 @@ const STANDARD_WORKFLOW_STEPS: WorkflowStep[] = [
 
 const EMPTY_PICKUP_STEPS: WorkflowStep[] = [
   {
-    id: "empty-pickup-ocr",
+    id: "empty-pickup-depart-yard",
     travelState: "ASIGNADO",
-    label: "ESCANEAR CONTENEDOR (OCR)",
+    label: "INICIAR RUTA AL PATIO DE VACÍOS",
+    nextState: "EN_RUTA_ORIGEN",
+    action: "update",
+  },
+  {
+    id: "empty-pickup-arrive-yard",
+    travelState: "EN_RUTA_ORIGEN",
+    label: "REPORTAR LLEGADA AL PATIO DE VACÍOS",
+    nextState: "LLEGADA_ORIGEN",
+    action: "update",
+  },
+  {
+    id: "empty-pickup-ocr",
+    travelState: "LLEGADA_ORIGEN",
+    label: "ESCANEAR CONTENEDOR VACÍO (OCR)",
     action: "ocr",
   },
   {
-    id: "empty-pickup-depart",
-    travelState: "ASIGNADO",
-    label: "REPORTAR SALIDA DEL PATIO",
-    nextState: "RUMBO_AL_CLIENTE",
-    action: "update",
+    id: "empty-pickup-comodato",
+    travelState: "LLEGADA_ORIGEN",
+    label: "SUBIR COMODATO DE RETIRO",
+    action: "evidence",
+    evidenceTypes: [COMODATO_EVIDENCE],
     requiresEvidence: [CONTAINER_NUMBER_EVIDENCE],
-    requiresSeal: true,
   },
   {
-    id: "empty-pickup-arrive",
-    travelState: "RUMBO_AL_CLIENTE",
-    label: "REPORTAR LLEGADA AL CLIENTE",
-    nextState: "EN_CLIENTE",
+    id: "empty-pickup-depart-client",
+    travelState: "LLEGADA_ORIGEN",
+    label: "INICIAR RUTA AL DESTINO",
+    nextState: "EN_RUTA_DESTINO",
+    action: "update",
+    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE, COMODATO_EVIDENCE],
+    requiresContainerStatus: ["CARGADO"],
+  },
+  {
+    id: "empty-pickup-arrive-destination",
+    travelState: "EN_RUTA_DESTINO",
+    label: "REPORTAR LLEGADA AL DESTINO",
+    nextState: "LLEGADA_DESTINO",
     action: "update",
   },
   {
     id: "empty-pickup-close",
-    travelState: "EN_CLIENTE",
-    label: "SUBIR SOPORTE Y FINALIZAR",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR SOPORTE DE ENTREGA Y FINALIZAR",
     nextState: "FINALIZADO",
-    action: "close",
-    requiresContainerStatus: ["EN_PISO"],
+    action: "evidence",
+    evidenceTypes: [DELIVERY_DOC_EVIDENCE],
+    requiresContainerStatus: ["DESCARGADO", "EN_PISO"],
+  },
+];
+
+const EMPTY_PICKUP_TO_PORT_STEPS: WorkflowStep[] = [
+  ...EMPTY_PICKUP_STEPS.slice(0, 6),
+  {
+    id: "empty-pickup-port-entry",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR ARIN DE INGRESO AL PUERTO",
+    action: "evidence",
+    evidenceTypes: [PORT_ENTRY_EVIDENCE],
+    requiresContainerStatus: ["EN_DESCARGUE", "DESCARGADO"],
+  },
+  {
+    id: "empty-pickup-port-exit",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR ARIN DE SALIDA Y FINALIZAR",
+    nextState: "FINALIZADO",
+    action: "evidence",
+    evidenceTypes: [PORT_EXIT_EVIDENCE],
+    requiresEvidence: [PORT_ENTRY_EVIDENCE],
+    requiresContainerStatus: ["DESCARGADO"],
   },
 ];
 
@@ -543,12 +607,21 @@ const EMPTY_RETURN_STEPS: WorkflowStep[] = [
     action: "update",
   },
   {
+    id: "empty-return-ocr",
+    travelState: "LLEGADA_ORIGEN",
+    label: "FOTO OCR DEL CONTENEDOR VACÍO",
+    action: "ocr",
+    requiresContainerStatus: ["CARGADO"],
+    instruction: "Confirma el contenedor vacío antes de salir del origen.",
+  },
+  {
     id: "empty-return-depart-destination",
     travelState: "LLEGADA_ORIGEN",
     label: "INICIAR TRASLADO AL DEPÓSITO O PUERTO",
     nextState: "EN_RUTA_DESTINO",
     action: "update",
     requiresContainerStatus: ["CARGADO"],
+    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE],
   },
   {
     id: "empty-return-arrive-destination",
@@ -558,13 +631,56 @@ const EMPTY_RETURN_STEPS: WorkflowStep[] = [
     action: "update",
   },
   {
+    id: "empty-return-comodato",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR COMODATO DE DEVOLUCIÓN",
+    action: "evidence",
+    evidenceTypes: [COMODATO_EVIDENCE],
+    requiresContainerStatus: ["DESCARGADO"],
+  },
+  {
     id: "empty-return-close",
     travelState: "LLEGADA_DESTINO",
-    label: "SUBIR TIRILLA EIR Y FINALIZAR",
+    label: "CERRAR DEVOLUCIÓN DE VACÍO",
     nextState: "FINALIZADO",
     action: "close",
     requiresContainerStatus: ["DESCARGADO"],
+    requiresEvidence: [COMODATO_EVIDENCE],
   },
+];
+
+const EMPTY_RETURN_FROM_PORT_STEPS: WorkflowStep[] = [
+  ...EMPTY_RETURN_STEPS.slice(0, 2),
+  {
+    id: "empty-return-port-entry",
+    travelState: "LLEGADA_ORIGEN",
+    label: "SUBIR ARIN DE INGRESO AL PUERTO",
+    action: "evidence",
+    evidenceTypes: [PORT_ENTRY_EVIDENCE],
+  },
+  {
+    id: "empty-return-port-exit",
+    travelState: "LLEGADA_ORIGEN",
+    label: "SUBIR ARIN DE SALIDA DEL PUERTO",
+    action: "evidence",
+    evidenceTypes: [PORT_EXIT_EVIDENCE],
+    requiresEvidence: [PORT_ENTRY_EVIDENCE],
+    requiresContainerStatus: ["CARGADO"],
+  },
+  {
+    ...EMPTY_RETURN_STEPS[3],
+    requiresEvidence: [PORT_ENTRY_EVIDENCE, PORT_EXIT_EVIDENCE],
+  },
+  {
+    id: "empty-return-ocr-outside-port",
+    travelState: "EN_RUTA_DESTINO",
+    label: "FUERA DEL PUERTO: FOTO OCR DEL CONTENEDOR VACÍO",
+    action: "ocr",
+    evidenceStage: "EN_RUTA_DESTINO",
+    requiresEvidence: [PORT_EXIT_EVIDENCE],
+    requiresContainerStatus: ["CARGADO"],
+  },
+  ...EMPTY_RETURN_STEPS.slice(4),
 ];
 
 const INTERNAL_MOVEMENT_STEPS: WorkflowStep[] = [
@@ -584,11 +700,22 @@ const INTERNAL_MOVEMENT_STEPS: WorkflowStep[] = [
     instruction: "Realiza el cargue o enganche en el origen antes de continuar.",
   },
   {
+    id: "internal-movement-loading",
+    travelState: "LLEGADA_ORIGEN",
+    label: "SUBIR FOTO DEL CARGUE",
+    action: "evidence",
+    evidenceTypes: [LOADING_PHOTO_EVIDENCE],
+    requiresContainerStatus: ["CARGADO"],
+    requiresSeal: true,
+  },
+  {
     id: "internal-movement-depart-destination",
     travelState: "LLEGADA_ORIGEN",
     label: "INICIAR RUTA AL DESTINO",
     nextState: "EN_RUTA_DESTINO",
     action: "update",
+    requiresContainerStatus: ["CARGADO"],
+    requiresEvidence: [LOADING_PHOTO_EVIDENCE],
   },
   {
     id: "internal-movement-arrive-destination",
@@ -598,11 +725,21 @@ const INTERNAL_MOVEMENT_STEPS: WorkflowStep[] = [
     action: "update",
   },
   {
+    id: "internal-movement-unloading",
+    travelState: "LLEGADA_DESTINO",
+    label: "SUBIR FOTO DE LA ENTREGA",
+    action: "evidence",
+    evidenceTypes: [DELIVERY_DOC_EVIDENCE],
+    requiresContainerStatus: ["EN_DESCARGUE"],
+  },
+  {
     id: "internal-movement-close",
     travelState: "LLEGADA_DESTINO",
-    label: "SUBIR SOPORTE Y CERRAR MOVIMIENTO",
+    label: "CERRAR MOVIMIENTO INTERNO",
     nextState: "FINALIZADO",
     action: "close",
+    requiresContainerStatus: ["DESCARGADO"],
+    requiresEvidence: [DELIVERY_DOC_EVIDENCE],
   },
 ];
 
@@ -620,7 +757,7 @@ const INTERNAL_MOVEMENT_LOOSE_CARGO_STEPS: WorkflowStep[] = [
     instruction:
       "Envía cuatro fotos de la carga: de frente, de atrás y de ambos lados.",
   },
-  INTERNAL_MOVEMENT_STEPS[3],
+  INTERNAL_MOVEMENT_STEPS[4],
   {
     id: "internal-movement-loose-arrival",
     travelState: "LLEGADA_DESTINO",
@@ -811,7 +948,6 @@ const IMPORT_TO_YARD_STEPS: WorkflowStep[] = [
       [CONTAINER_NUMBER_EVIDENCE]: "EN_PUERTO_CARGADO",
     },
     requiresContainerStatus: ["CARGADO"],
-    requiresSeal: true,
   },
   {
     id: "impo-arrive-client",
@@ -913,14 +1049,16 @@ const EXPORT_STEPS: WorkflowStep[] = [
     action: "update",
   },
   {
-    id: "expo-loading-photo",
+    id: "expo-seal-and-closed-container-photo",
     travelState: "EN_CLIENTE",
-    label: "SUBIR FOTO CARGANDO EL CONTENEDOR",
+    label: "REGISTRAR SELLO Y FOTO DEL CONTENEDOR CERRADO (EN CLIENTE)",
     action: "evidence",
     evidenceTypes: [LOADING_PHOTO_EVIDENCE],
-    requiresContainerStatus: ["EN_CARGUE"],
+    evidenceStage: "EN_CLIENTE",
+    requiresContainerStatus: ["CARGADO"],
+    requiresSeal: true,
     instruction:
-      "Toma la foto del cargue y reporta el estado del contenedor como EN CARGUE.",
+      "Con la mercancía cargada y el contenedor cerrado, registra el número de sello y sube una foto donde se vea el sello.",
   },
   {
     id: "expo-to-port",
@@ -928,28 +1066,12 @@ const EXPORT_STEPS: WorkflowStep[] = [
     label: "INICIAR VIAJE AL PUERTO",
     nextState: "RUMBO_AL_PUERTO",
     action: "update",
-    requiresEvidence: [LOADING_PHOTO_EVIDENCE, CONTAINER_NUMBER_EVIDENCE],
+    requiresEvidence: [LOADING_PHOTO_EVIDENCE],
+    requiresEvidenceStage: "EN_CLIENTE",
     requiresContainerStatus: ["CARGADO"],
     requiresSeal: true,
     instruction:
-      "Antes de salir al puerto, finaliza el cargue y reporta el contenedor como CARGADO.",
-  },
-  {
-    id: "expo-pre-port-ocr",
-    travelState: "RUMBO_AL_PUERTO",
-    label: "FOTO OCR DEL CONTENEDOR CARGADO (FUERA DEL PUERTO)",
-    action: "ocr",
-    evidenceStage: "PRE_INGRESO_PUERTO",
-  },
-  {
-    id: "expo-pre-port-seals",
-    travelState: "RUMBO_AL_PUERTO",
-    label: "SUBIR FOTO DEL SELLO (FUERA DEL PUERTO)",
-    action: "evidence",
-    evidenceTypes: [SEAL_EVIDENCE],
-    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE],
-    requiresEvidenceStage: "PRE_INGRESO_PUERTO",
-    evidenceStage: "PRE_INGRESO_PUERTO",
+      "Antes de salir al puerto, confirma que el contenedor esté CARGADO, que el número de sello esté registrado y que la foto del contenedor cerrado se haya subido en cliente.",
   },
   {
     id: "expo-arrive-port",
@@ -957,8 +1079,6 @@ const EXPORT_STEPS: WorkflowStep[] = [
     label: "REPORTAR LLEGADA AL PUERTO",
     nextState: "EN_PUERTO",
     action: "update",
-    requiresEvidence: [CONTAINER_NUMBER_EVIDENCE, SEAL_EVIDENCE],
-    requiresEvidenceStage: "PRE_INGRESO_PUERTO",
   },
   {
     id: "expo-port-entry",
@@ -966,7 +1086,6 @@ const EXPORT_STEPS: WorkflowStep[] = [
     label: "SUBIR ARIN DE INGRESO A PUERTO",
     action: "evidence",
     evidenceTypes: [PORT_ENTRY_EVIDENCE],
-    requiresContainerStatus: ["EN_DESCARGUE", "DESCARGADO"],
   },
   {
     id: "expo-close",
@@ -1076,10 +1195,14 @@ const AMPARADO_IMPORT_STEPS: WorkflowStep[] = [
 
 const getLooseCargoTradeSteps = (operation: OperationData): WorkflowStep[] => {
   const isImport = operation.type === "IMPORTACION";
-  const isExport = operation.type === "EXPORTACION";
+  const isExport =
+    operation.type === "EXPORTACION" ||
+    operation.type === "EXPORTACION_ANTICIPADA";
   if (!isImport && !isExport) return LOOSE_CARGO_STEPS;
 
-  const operationLabel = operation.isAnticipada
+  const operationLabel =
+    operation.isAnticipada ||
+    operation.type === "EXPORTACION_ANTICIPADA"
     ? `EXPO ANTICIPADA #${operation.id}`
     : `${isImport ? "IMPO" : "EXPO"} #${operation.id}`;
   const suffix = operation.isAmparado ? ` · ${operationLabel}` : "";
@@ -1177,6 +1300,67 @@ const PENDING_RETURN_STEPS: WorkflowStep[] = [
   },
 ];
 
+export function resolveDriverWorkflowSteps(
+  operation: OperationData,
+): WorkflowStep[] {
+  if (operation.type === "MOVIMIENTO_INTERNO") {
+    return operation.isContainerized !== true
+      ? INTERNAL_MOVEMENT_LOOSE_CARGO_STEPS
+      : INTERNAL_MOVEMENT_STEPS;
+  }
+
+  let steps: WorkflowStep[] = STANDARD_WORKFLOW_STEPS;
+  if (operation.type === "IMPORTACION") {
+    if (operation.containerStatus === "PENDIENTE_DEVOLUCION") {
+      steps = PENDING_RETURN_STEPS;
+    } else if (operation.isAmparado) {
+      steps = operation.containerStatus === "EN_PISO"
+        ? AMPARADO_IMPORT_FLOOR_STEPS
+        : AMPARADO_IMPORT_STEPS;
+    } else {
+      steps = operation.containerStatus === "EN_PISO"
+        ? IMPORT_TO_FLOOR_STEPS
+        : IMPORT_TO_YARD_STEPS;
+    }
+  } else if (
+    operation.type === "EXPORTACION" ||
+    operation.type === "EXPORTACION_ANTICIPADA" ||
+    operation.isAnticipada
+  ) {
+    steps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
+  }
+
+  if (operation.isContainerized !== true) {
+    steps = getLooseCargoTradeSteps(operation);
+  } else if (operation.type === "DEVOLUCION_VACIO") {
+    steps = operation.origen?.isPort
+      ? EMPTY_RETURN_FROM_PORT_STEPS
+      : EMPTY_RETURN_STEPS;
+  } else if (operation.type === "RETIRO_VACIO") {
+    steps = operation.destino?.isPort
+      ? EMPTY_PICKUP_TO_PORT_STEPS
+      : EMPTY_PICKUP_STEPS;
+  }
+
+  if (operation.isAmparado) {
+    const operationLabel = operation.isAnticipada
+      ? `EXPO ANTICIPADA #${operation.id}`
+      : `${operation.type === "IMPORTACION" ? "IMPO" : "EXPO"} #${operation.id}`;
+    steps = steps.map((step) => {
+      if (!step.evidenceTypes?.some(
+        (type) => type === PORT_ENTRY_EVIDENCE || type === PORT_EXIT_EVIDENCE,
+      )) return step;
+      return {
+        ...step,
+        label: step.label.includes(operationLabel)
+          ? step.label
+          : `${step.label} · ${operationLabel}`,
+      };
+    });
+  }
+  return [PLATE_VERIFICATION_STEP, ...steps];
+}
+
 export function OperationWorkflow({
   operation,
   containerCardRef,
@@ -1231,65 +1415,13 @@ export function OperationWorkflow({
         ? EMPTY_RETURN_STATE_ORDER
         : operation.type === "RETIRO_VACIO"
           ? EMPTY_PICKUP_STATE_ORDER
-          : operation.type === "EXPORTACION"
+          : operation.type === "EXPORTACION" ||
+              operation.type === "EXPORTACION_ANTICIPADA" ||
+              operation.isAnticipada
             ? EXPORT_STATE_ORDER
             : IMPORT_STATE_ORDER;
 
-  let workflowSteps: WorkflowStep[];
-
-  if (operation.type === "MOVIMIENTO_INTERNO") {
-    workflowSteps =
-      operation.isContainerized !== true
-        ? INTERNAL_MOVEMENT_LOOSE_CARGO_STEPS
-        : INTERNAL_MOVEMENT_STEPS;
-  } else {
-    workflowSteps = STANDARD_WORKFLOW_STEPS;
-
-    if (operation.type === "IMPORTACION") {
-      if (operation.containerStatus === "PENDIENTE_DEVOLUCION") {
-        workflowSteps = PENDING_RETURN_STEPS;
-      } else if (operation.isAmparado) {
-        workflowSteps =
-          operation.containerStatus === "EN_PISO"
-            ? AMPARADO_IMPORT_FLOOR_STEPS
-            : AMPARADO_IMPORT_STEPS;
-      } else {
-        workflowSteps =
-          operation.containerStatus === "EN_PISO"
-            ? IMPORT_TO_FLOOR_STEPS
-            : IMPORT_TO_YARD_STEPS;
-      }
-    } else if (operation.type === "EXPORTACION") {
-      workflowSteps = operation.isAmparado ? AMPARADO_EXPORT_STEPS : EXPORT_STEPS;
-    }
-
-    if (operation.isContainerized !== true) {
-      workflowSteps = getLooseCargoTradeSteps(operation);
-    } else if (operation.type === "DEVOLUCION_VACIO") {
-      workflowSteps = EMPTY_RETURN_STEPS;
-    } else if (operation.type === "RETIRO_VACIO") {
-      workflowSteps = EMPTY_PICKUP_STEPS;
-    }
-  }
-  if (operation.isAmparado) {
-    const operationLabel = operation.isAnticipada
-      ? `EXPO ANTICIPADA #${operation.id}`
-      : `${operation.type === "IMPORTACION" ? "IMPO" : "EXPO"} #${operation.id}`;
-    workflowSteps = workflowSteps.map((step) => {
-      if (!step.evidenceTypes?.some(
-        (type) => type === PORT_ENTRY_EVIDENCE || type === PORT_EXIT_EVIDENCE,
-      )) {
-        return step;
-      }
-      return {
-        ...step,
-        label: step.label.includes(operationLabel)
-          ? step.label
-          : `${step.label} · ${operationLabel}`,
-      };
-    });
-  }
-  workflowSteps = [PLATE_VERIFICATION_STEP, ...workflowSteps];
+  const workflowSteps = resolveDriverWorkflowSteps(operation);
 
   const currentIndex = isFinished
     ? workflowSteps.length
@@ -1309,9 +1441,6 @@ export function OperationWorkflow({
         );
   const currentCargoStatus = operation.cargoStatus || "PENDIENTE";
   const requiredCargoStatuses = activeStep?.requiresCargoStatus ?? [];
-  const missingContainerStatus = Boolean(
-    activeStep?.requiresContainerStatus?.length,
-  ) && !isContainerReady(operation, activeStep?.requiresContainerStatus);
   const missingCargoStatus =
     requiredCargoStatuses.length > 0 &&
     !requiredCargoStatuses.includes(currentCargoStatus);
@@ -1322,44 +1451,23 @@ export function OperationWorkflow({
       LOOSE_CARGO_STATUS_TRANSITIONS[currentCargoStatus]?.[0] ??
       requiredCargoStatuses[0])
     : null;
-  const scrollToStatusCard = useCallback(() => {
+  const scrollToStatusCard = () => {
     if (requiredContainerAction) {
       setSelectedContainerStatus(requiredContainerAction);
     } else if (requiredCargoAction) {
       setSelectedCargoStatus(requiredCargoAction);
     }
 
-    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)")
-      .matches
-      ? "auto"
-      : "smooth";
     containerCardRef.current?.scrollIntoView({
-      behavior,
-      block: "start",
+      behavior: "smooth",
+      block: "center",
     });
     const selectId =
       operation.isContainerized === true
         ? `container-status-${operation.id}`
         : `cargo-status-${operation.id}`;
     document.getElementById(selectId)?.focus({ preventScroll: true });
-  }, [
-    containerCardRef,
-    operation.id,
-    operation.isContainerized,
-    requiredCargoAction,
-    requiredContainerAction,
-  ]);
-  useEffect(() => {
-    if (missingContainerStatus || missingCargoStatus) {
-      scrollToStatusCard();
-    }
-  }, [
-    activeStep?.id,
-    operation.id,
-    missingContainerStatus,
-    missingCargoStatus,
-    scrollToStatusCard,
-  ]);
+  };
   const travelStartDate = getTravelStartDate(operation, activeStep?.nextState);
   const isTravelStartBlocked =
     Boolean(activeStep?.nextState) &&
@@ -1444,7 +1552,7 @@ export function OperationWorkflow({
                         <div>{stop.cargoDescription}</div>
                       )}
                       {stop.weightKg != null && <div>{stop.weightKg} kg</div>}
-                      <div>Estado: {stop.status.replace(/_/g, " ")}</div>
+                          <div>Estado: {formatOperationStateLabel(stop.status)}</div>
                       {stop.status !== "COMPLETADA" &&
                         ((stop.stopType === "CARGUE" &&
                           currentState === "LLEGADA_ORIGEN") ||
@@ -1492,7 +1600,7 @@ export function OperationWorkflow({
           <p>Dimensiones: {operation.dimensions || "Pendientes"}</p>
           <p>
             Estado de la carga:{" "}
-            {(operation.cargoStatus || "PENDIENTE").replace(/_/g, " ")}
+            {formatOperationStateLabel(operation.cargoStatus || "PENDIENTE")}
           </p>
           <label
             className={styles.containerStatusLabel}
@@ -1510,7 +1618,7 @@ export function OperationWorkflow({
             disabled={isLoading}
           >
             <option value={operation.cargoStatus || "PENDIENTE"}>
-              {(operation.cargoStatus || "PENDIENTE").replace(/_/g, " ")}
+              {formatOperationStateLabel(operation.cargoStatus || "PENDIENTE")}
             </option>
             {(
               LOOSE_CARGO_STATUS_TRANSITIONS[
@@ -1527,7 +1635,7 @@ export function OperationWorkflow({
                     currentState !== "LLEGADA_DESTINO")
                 }
               >
-                {status.replace(/_/g, " ")}
+                {formatOperationStateLabel(status)}
               </option>
             ))}
           </Select>
@@ -1605,7 +1713,7 @@ export function OperationWorkflow({
           <p className={styles.containerStatusCurrent}>
             Estado actual:{" "}
             <strong>
-              {(operation.containerStatus || "PENDIENTE").replace(/_/g, " ")}
+              {formatOperationStateLabel(operation.containerStatus || "PENDIENTE")}
             </strong>
           </p>
           {(operation.status === "ASIGNADO" || operation.status === "EN_CURSO") && (
@@ -1623,7 +1731,7 @@ export function OperationWorkflow({
           {requiredContainerAction && (
             <p className={styles.containerHint} role="alert">
               Antes de continuar, actualiza el contenedor a{" "}
-              <strong>{requiredContainerAction.replace(/_/g, " ")}</strong> y
+              <strong>{formatOperationStateLabel(requiredContainerAction)}</strong> y
               confirma el cambio.
             </p>
           )}
@@ -1726,9 +1834,20 @@ export function OperationWorkflow({
               <Button
                 variant="secondary"
                 disabled={isLoading}
-                onClick={onReportDeviation}
+                onClick={() => onReportDeviation()}
               >
                 Reportar desvío
+              </Button>
+            )}
+          {(operation.type === "IMPORTACION" ||
+            operation.type === "DEVOLUCION_VACIO") &&
+            currentState === "LLEGADA_DESTINO" && (
+              <Button
+                variant="secondary"
+                disabled={isLoading}
+                onClick={() => onReportDeviation("PATIO_LLENO")}
+              >
+                Reportar desvío de patio
               </Button>
             )}
           <div className={styles.containerTimes}>
@@ -1814,7 +1933,7 @@ export function OperationWorkflow({
             missingContainerStatus
           ) {
             missingRequirements.push(
-              `Estado del contenedor: ${(step.requiresContainerStatus ?? []).map((status) => status.replace(/_/g, " ")).join(" o ")}.`,
+              `Estado del contenedor: ${(step.requiresContainerStatus ?? []).map(formatOperationStateLabel).join(" o ")}.`,
             );
           }
           if (isActive) {
@@ -1837,7 +1956,7 @@ export function OperationWorkflow({
             }
             if (missingCargoStatus) {
               missingRequirements.push(
-                `Estado de carga: ${(step.requiresCargoStatus ?? []).map((status) => status.replace(/_/g, " ")).join(" o ")}.`,
+                `Estado de carga: ${(step.requiresCargoStatus ?? []).map(formatOperationStateLabel).join(" o ")}.`,
               );
             }
           }

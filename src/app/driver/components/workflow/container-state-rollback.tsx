@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Swal from "sweetalert2";
+import { showAlert } from "@/utils/alerts";
 import { driverPortalService } from "@/services/driverPortal.service";
 import type { ContainerRollbackReason } from "@/services/driverPortal.service";
 import type { DriverPortalData, OperationContainerStatus } from "@/types/driver-portal.types";
@@ -48,7 +48,7 @@ export function ContainerStateRollback({ operationId, status, disabled }: {
         });
       }
     },
-    onSuccess: () => Swal.fire({ icon: "success", title: "Estado corregido", timer: 1800, showConfirmButton: false }),
+    onSuccess: () => showAlert({ icon: "success", title: "Estado corregido", timer: 1800, showConfirmButton: false }),
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: profileKey }),
@@ -59,14 +59,14 @@ export function ContainerStateRollback({ operationId, status, disabled }: {
 
   const confirm = async () => {
     if (!candidate) {
-      await Swal.fire({
+      await showAlert({
         icon: "info",
         title: "Necesitas ayuda del analista",
         text: "No hay una corrección automática segura para este paso. El analista puede revisar y corregir el estado desde el detalle de la operación.",
       });
       return;
     }
-    const result = await Swal.fire<ContainerRollbackReason>({
+    const result = await showAlert<ContainerRollbackReason>({
       title: `¿Volver a ${candidate.previousStatus.replace(/_/g, " ")}?`,
       text: "Se registrará la corrección para la Torre de Control.",
       input: "select",

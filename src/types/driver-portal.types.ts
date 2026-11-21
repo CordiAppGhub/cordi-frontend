@@ -58,8 +58,11 @@ export type ModalType = "DETAILS" | "OCR" | "CLOSING";
 export type ViewMode = "table" | "cards";
 
 export interface Location {
+  id?: number;
   name: string;
   address?: string | null;
+  isPort?: boolean;
+  isDepot?: boolean;
 }
 
 export interface DriverDeviationNotice {

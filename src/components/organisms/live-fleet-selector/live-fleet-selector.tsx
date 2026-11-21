@@ -53,6 +53,10 @@ export function LiveFleetSelector({
   const vehicleTitle = (vehicle: FleetLiveVehicle) =>
     [
       labels[vehicle.status],
+      vehicle.configurationCode ?? 'Tipología sin calcular',
+      vehicle.effectiveCapacityKg !== null
+        ? `Capacidad efectiva ${vehicle.effectiveCapacityKg.toLocaleString('es-CO')} kg`
+        : 'Capacidad efectiva sin registrar',
       vehicle.ownershipType === 'TERCERO' ? 'Vehículo externo' : null,
       !vehicle.driverId ? 'Sin conductor' : null,
       !vehicle.trailerId ? 'Sin tráiler' : null,

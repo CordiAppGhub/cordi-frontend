@@ -1,8 +1,17 @@
-import React from 'react';
-import { CheckCircle2, Link2, Pencil, Unplug, UserRound } from 'lucide-react';
-import { Vehicle } from '@/types/vehicles';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Link2,
+  Pencil,
+  Unplug,
+  UserRound,
+} from 'lucide-react';
+import type { Vehicle } from '@/types/vehicles';
+import { TRAILER_TYPE_LABELS } from '@/types/vehicles';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { Button } from '@/components/atoms/button/button';
+import { resolveFleetUnitConfiguration } from '@/utils/fleet-configuration';
 import styles from './fleet-cards.module.css';
 
 interface VehicleCardProps {
@@ -15,7 +24,65 @@ interface VehicleCardProps {
   onUncoupleTrailer: () => void;
 }
 
-export const VehicleCard: React.FC<VehicleCardProps> = ({
+type ExpirationState = 'valid' | 'missing' | 'expired';
+
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getExpirationState(expiration: string | null): ExpirationState {
+  if (!expiration) return 'missing';
+  return expiration.slice(0, 10) < getLocalDateString(new Date())
+    ? 'expired'
+    : 'valid';
+}
+
+function formatDate(expiration: string): string {
+  const [year, month, day] = expiration.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function formatKilograms(value: number): string {
+  return value.toLocaleString('es-CO');
+}
+
+function ExpirationDocument({
+  label,
+  expiration,
+}: {
+  label: string;
+  expiration: string | null;
+}) {
+  const state = getExpirationState(expiration);
+  const statusLabel =
+    state === 'missing'
+      ? 'Sin registrar'
+      : state === 'expired'
+        ? `Vencido · ${formatDate(expiration ?? '')}`
+        : formatDate(expiration ?? '');
+  const icon =
+    state === 'valid' ? (
+      <CheckCircle2 size={14} aria-hidden="true" />
+    ) : state === 'expired' ? (
+      <Clock size={14} aria-hidden="true" />
+    ) : (
+      <AlertCircle size={14} aria-hidden="true" />
+    );
+
+  return (
+    <div className={`${styles.docItem} ${styles[`doc${state}`]}`}>
+      {icon}
+      <span>
+        {label}: {statusLabel}
+      </span>
+    </div>
+  );
+}
+
+export const VehicleCard = ({
   vehicle,
   driverName,
   onClickEdit,
@@ -23,20 +90,41 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
   onUnassignDriver,
   onCoupleTrailer,
   onUncoupleTrailer,
-}) => {
+}: VehicleCardProps) => {
+  const configuration = resolveFleetUnitConfiguration(vehicle);
+  const referenceTypology =
+    vehicle.type === 'MULA' ? '3S3' : vehicle.type === 'PATINETA' ? '2S3' : null;
+  const trailerTypeLabel = vehicle.currentTrailer?.trailerType
+    ? TRAILER_TYPE_LABELS[vehicle.currentTrailer.trailerType]
+    : 'Tipo sin registrar';
+
   return (
-    <div className={styles.cardContainer} onClick={() => onClickEdit(vehicle.id)}>
-      
-      {/* 1. CABECERA */}
+    <div
+      className={styles.cardContainer}
+      onClick={() => onClickEdit(vehicle.id)}
+    >
       <div className={styles.cardHeader}>
         <div className={styles.titleGroup}>
           <div className={styles.mainTitle}>
-            {vehicle.plate} 
-            <span className={styles.brandBadge}>{vehicle.brand || 'N/A'} {vehicle.modelYear || ''}</span>
+            <span>{vehicle.plate}</span>
+            <span className={styles.brandBadge}>
+              {vehicle.brand || 'N/A'} {vehicle.modelYear || ''}
+            </span>
+            {configuration.typologyCode ? (
+              <span className={styles.typologyBadge}>
+                {configuration.typologyCode}
+              </span>
+            ) : (
+              <span className={styles.incompleteBadge}>
+                {configuration.hasTrailer ? 'Ejes inválidos' : 'Sin chasis'}
+              </span>
+            )}
           </div>
-          <span className={styles.subTitle}>{vehicle.affiliation || 'Sin afiliación asignada'}</span>
+          <span className={styles.subTitle}>
+            {vehicle.affiliation || 'Sin afiliación asignada'}
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className={styles.cardHeaderActions}>
           <StatusBadge status={vehicle.status} />
           <Button
             type="button"
@@ -53,56 +141,99 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         </div>
       </div>
 
-      {/* 2. MÉTRICAS (Fondo gris tenue y borde interno) */}
       <div className={styles.metricsBox}>
         <div className={styles.metricItem}>
-          <span className={styles.metricLabel}>Capacidad (kg)</span>
+          <span className={styles.metricLabel}>Capacidad útil</span>
           <span className={styles.metricValue}>
-            {vehicle.cargoCapacity ? `${vehicle.cargoCapacity.toLocaleString()} kg` : '--'}
+            {formatKilograms(configuration.effectivePayloadKg)} kg
+            {!configuration.hasTrailer &&
+              !configuration.isRigid &&
+              referenceTypology &&
+              ` (máx. ref. ${referenceTypology})`}
           </span>
+          <div className={styles.metricSubtext}>
+            {configuration.maxLegalPbvKg !== null && (
+              <span>
+                PBV Legal: {formatKilograms(configuration.maxLegalPbvKg)} kg
+              </span>
+            )}
+            {configuration.effectivePayloadKg !==
+              configuration.baseTractorPayloadKg && (
+              <span>
+                Base cabezote:{' '}
+                {formatKilograms(configuration.baseTractorPayloadKg)} kg
+              </span>
+            )}
+            <span>{configuration.limitingFactorLabel}</span>
+          </div>
         </div>
+
         <div className={styles.metricItem}>
-          <span className={styles.metricLabel}>Ejes</span>
+          <span className={styles.metricLabel}>Ejes del conjunto</span>
           <span className={`${styles.metricValue} ${styles.metricHighlight}`}>
-            {vehicle.axles ?? '--'}
+            {configuration.hasTrailer && configuration.trailerAxles !== null
+              ? `${configuration.totalAxles} ejes`
+              : `${configuration.tractorAxles} ejes`}
+          </span>
+          <span className={styles.metricSubtext}>
+            {configuration.hasTrailer && configuration.trailerAxles !== null
+              ? `${configuration.tractorAxles} cabezote + ${configuration.trailerAxles} chasis`
+              : configuration.isRigid
+                ? 'Rígido sin chasis'
+                : `${configuration.tractorAxles} ejes (cabezote)`}
           </span>
         </div>
+
         <div className={styles.metricItem}>
           <span className={styles.metricLabel}>Conductor</span>
-          <span className={styles.metricValue} style={{ color: driverName ? '#0f172a' : '#94a3b8' }}>
+          <span
+            className={`${styles.metricValue} ${driverName ? '' : styles.mutedValue}`}
+          >
             {driverName || 'Sin asignar'}
           </span>
         </div>
+
         <div className={styles.metricItem}>
-          <span className={styles.metricLabel}>Chasis Acoplado</span>
-          <span className={styles.metricValue}>
-            {vehicle.currentTrailer?.plate || '--'}
-          </span>
+          <span className={styles.metricLabel}>Chasis acoplado</span>
+          {configuration.hasTrailer ? (
+            <>
+              <strong className={styles.metricValue}>
+                {vehicle.currentTrailer?.plate || 'Sin placa'}
+              </strong>
+              <span className={styles.metricSubtext}>
+                {configuration.trailerAxles ?? '--'} ejes · {trailerTypeLabel}
+              </span>
+            </>
+          ) : (
+            <span className={styles.metricValue}>
+              {configuration.isRigid ? 'No aplica (Rígido)' : 'Sin acoplar'}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 3. DOCUMENTOS (Separados por línea superior) */}
       <div className={styles.docsSection}>
         <div className={styles.docsTitle}>Documentos Portuarios:</div>
         <div className={styles.docsGrid}>
-          <div className={styles.docItem}>
-             <CheckCircle2 size={14} /> 
-             {vehicle.soatExpiration ? `SOAT: ${new Date(vehicle.soatExpiration).toLocaleDateString()}` : 'SOAT: Sin registrar'}
+          <ExpirationDocument
+            label="SOAT"
+            expiration={vehicle.soatExpiration}
+          />
+          <ExpirationDocument
+            label="Tecnomecánica"
+            expiration={vehicle.tecnoExpiration}
+          />
+          <div className={`${styles.docItem} ${styles.docmissing}`}>
+            <AlertCircle size={14} aria-hidden="true" />
+            <span>Póliza carga: Sin registrar</span>
           </div>
-          <div className={styles.docItem}>
-             <CheckCircle2 size={14} /> 
-             {vehicle.tecnoExpiration ? `Tecno: ${new Date(vehicle.tecnoExpiration).toLocaleDateString()}` : 'Tecno: Sin registrar'}
-          </div>
-          <div className={styles.docItem}>
-             <CheckCircle2 size={14} /> Póliza Carga
-          </div>
-          <div className={styles.docItem} style={{ color: '#2563eb' }}>
-             <CheckCircle2 size={14} /> BAPLIE: Vigente
+          <div className={`${styles.docItem} ${styles.docvalid}`}>
+            <CheckCircle2 size={14} aria-hidden="true" />
+            <span>BAPLIE: Vigente</span>
           </div>
         </div>
       </div>
 
-      {/* 4. FOOTER (Fondo diferente para separar acciones) */}
       <div className={styles.cardFooter}>
         <div className={styles.actionButtons}>
           {driverName ? (
@@ -110,8 +241,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               type="button"
               variant="secondary"
               className={styles.actionButton}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 onUnassignDriver();
               }}
             >
@@ -123,8 +254,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               type="button"
               variant="secondary"
               className={styles.actionButton}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 onAssignDriver();
               }}
             >
@@ -140,8 +271,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
             type="button"
             variant={vehicle.currentTrailerId ? 'secondary' : 'primary'}
             className={`${styles.actionButton} ${vehicle.currentTrailerId ? styles.uncoupleButton : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               if (vehicle.currentTrailerId) {
                 onUncoupleTrailer();
               } else {
@@ -158,7 +289,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           </Button>
         </div>
       </div>
-
     </div>
   );
 };

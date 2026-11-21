@@ -26,6 +26,7 @@ interface Props {
 }
 
 interface AmparoGroup {
+  kind: "PUERTO" | "PATIO";
   exportOperation: AmparoSuggestionOperation;
   importOptions: (AmparoSuggestionOperation & {
     suggestion: AmparoSuggestion;
@@ -33,14 +34,20 @@ interface AmparoGroup {
 }
 
 const groupSuggestions = (suggestions: AmparoSuggestion[]): AmparoGroup[] => {
-  const groups = new Map<number, AmparoGroup>();
+  const groups = new Map<string, AmparoGroup>();
 
   for (const suggestion of suggestions) {
+    const kind = suggestion.kind ?? "PUERTO";
     const exportId = suggestion.exportOperation.id;
-    let group = groups.get(exportId);
+    const groupKey = `${kind}:${exportId}`;
+    let group = groups.get(groupKey);
     if (!group) {
-      group = { exportOperation: suggestion.exportOperation, importOptions: [] };
-      groups.set(exportId, group);
+      group = {
+        kind,
+        exportOperation: suggestion.exportOperation,
+        importOptions: [],
+      };
+      groups.set(groupKey, group);
     }
     group.importOptions.push({ ...suggestion.importOperation, suggestion });
   }
@@ -178,6 +185,7 @@ export function OperationAmparosPanel({ enabled }: Props) {
     if (user?.role === "ANALISTA" && !agreementConfirmed) return;
 
     confirmMutation.mutate({
+      kind: selectedSuggestion.kind ?? "PUERTO",
       exportOperationId: selectedSuggestion.exportOperation.id,
       importOperationId: selectedSuggestion.importOperation.id,
       ...(selectedSuggestion.hasAssignedDriver ? {} : { driverId: Number(driverId) }),
@@ -199,7 +207,7 @@ export function OperationAmparosPanel({ enabled }: Props) {
             <h2 id="amparos-panel-title">Amparos disponibles</h2>
             <p>
               Operaciones de exportación e importación compatibles para
-              compartir recursos.
+              compartir recursos, además de dobles traslados en patios.
             </p>
           </div>
         </div>
@@ -261,11 +269,13 @@ export function OperationAmparosPanel({ enabled }: Props) {
       ) : (
         isOpen && (
           <ul className={styles.suggestionList}>
-            {groupedSuggestions.map(({ exportOperation, importOptions }) => (
+            {groupedSuggestions.map(({ kind, exportOperation, importOptions }) => (
               <li key={exportOperation.id}>
                 <article className={styles.groupCard}>
                   <span className={styles.rowExport}>
-                    Exportación #
+                    {kind === "PATIO"
+                      ? "Doble traslado / Amparo en patio · Retiro de vacío #"
+                      : "Exportación #"}
                     {exportOperation.numeroPedido?.trim() || "Sin pedido"}
                   </span>
                   <div className={styles.suggestionMeta}>
@@ -273,10 +283,13 @@ export function OperationAmparosPanel({ enabled }: Props) {
                       <MapPin size={14} aria-hidden="true" />
                       {exportOperation.port?.name ?? "Puerto sin nombre"}
                     </span>
-                    {exportOperation.isContainerized === true && (
+                    {(kind === "PATIO" ||
+                      exportOperation.isContainerized === true) && (
                       <span className={styles.metaItem}>
                         <CalendarClock size={14} aria-hidden="true" />
-                        {formatDestination(exportOperation.fechaCitaDestino)}
+                        {kind === "PATIO"
+                          ? formatAppointment(exportOperation.appointmentAt)
+                          : formatDestination(exportOperation.fechaCitaDestino)}
                       </span>
                     )}
                     <span>
@@ -293,8 +306,12 @@ export function OperationAmparosPanel({ enabled }: Props) {
                     <summary className={styles.groupSummary}>
                       <span>
                         {importOptions.length} {importOptions.length === 1
-                          ? "opción de importación"
-                          : "opciones de importación"}
+                          ? kind === "PATIO"
+                            ? "devolución compatible"
+                            : "opción de importación"
+                          : kind === "PATIO"
+                            ? "devoluciones compatibles"
+                            : "opciones de importación"}
                       </span>
                       <ChevronDown
                         className={styles.groupChevron}
@@ -307,7 +324,11 @@ export function OperationAmparosPanel({ enabled }: Props) {
                         <li key={option.id} className={styles.importOption}>
                           <div className={styles.importOptionInfo}>
                             <span className={styles.rowImport}>
-                              {option.isReturnAmparo ? "Devolución" : "Importación"}{" "}
+                              {kind === "PATIO"
+                                ? "Devolución"
+                                : option.isReturnAmparo
+                                  ? "Devolución"
+                                  : "Importación"}{" "}
                               #{option.numeroPedido?.trim() || "Sin pedido"}
                             </span>
                             <span>Responsable: {option.analyst?.name || "Sin responsable"}</span>
@@ -318,7 +339,9 @@ export function OperationAmparosPanel({ enabled }: Props) {
                             onClick={() => openConfirmation(option.suggestion)}
                             aria-label={`Seleccionar ${option.isReturnAmparo ? "devolución" : "importación"} ${option.numeroPedido?.trim() || `sin pedido, operación ${option.id}`} para la exportación ${exportOperation.numeroPedido?.trim() || `sin pedido, operación ${exportOperation.id}`}`}
                           >
-                            Seleccionar amparo
+                            {kind === "PATIO"
+                              ? "Seleccionar doble traslado"
+                              : "Seleccionar amparo"}
                           </button>
                         </li>
                       ))}
@@ -335,7 +358,11 @@ export function OperationAmparosPanel({ enabled }: Props) {
       <SuperModal
         isOpen={Boolean(selectedSuggestion)}
         onClose={closeConfirmation}
-        title="Confirmar amparo"
+        title={
+          selectedSuggestion?.kind === "PATIO"
+            ? "Confirmar doble traslado en patio"
+            : "Confirmar amparo"
+        }
         width="520px"
       >
         {selectedSuggestion && (
@@ -346,7 +373,11 @@ export function OperationAmparosPanel({ enabled }: Props) {
               <div
                 className={`${styles.modalOperation} ${styles.exportOperation}`}
               >
-                <p className={styles.operationType}>Exportación</p>
+                <p className={styles.operationType}>
+                  {selectedSuggestion.kind === "PATIO"
+                    ? "Retiro de vacío"
+                    : "Exportación"}
+                </p>
                 <p className={styles.modalOrder}>
                   Pedido:{" "}
                   {selectedSuggestion.exportOperation.numeroPedido ||
@@ -361,14 +392,22 @@ export function OperationAmparosPanel({ enabled }: Props) {
                     "Sin responsable"}
                 </p>
                 <p className={styles.modalOperationId}>
-                  Puerto: {selectedSuggestion.exportOperation.port?.name ?? "—"}
+                  {selectedSuggestion.kind === "PATIO" ? "Patio" : "Puerto"}:{" "}
+                  {selectedSuggestion.exportOperation.port?.name ?? "—"}
                 </p>
-                {selectedSuggestion.exportOperation.isContainerized === true && (
+                {(selectedSuggestion.kind === "PATIO" ||
+                  selectedSuggestion.exportOperation.isContainerized === true) && (
                   <p className={styles.modalOperationId}>
-                    Cita destino:{" "}
-                    {formatDestination(
-                      selectedSuggestion.exportOperation.fechaCitaDestino,
-                    )}
+                    {selectedSuggestion.kind === "PATIO"
+                      ? "Fecha programada: "
+                      : "Cita destino: "}
+                    {selectedSuggestion.kind === "PATIO"
+                      ? formatAppointment(
+                          selectedSuggestion.exportOperation.appointmentAt,
+                        )
+                      : formatDestination(
+                          selectedSuggestion.exportOperation.fechaCitaDestino,
+                        )}
                   </p>
                 )}
               </div>
@@ -376,9 +415,11 @@ export function OperationAmparosPanel({ enabled }: Props) {
                 className={`${styles.modalOperation} ${styles.importOperation}`}
               >
                 <p className={styles.operationType}>
-                  {selectedSuggestion.importOperation.isReturnAmparo
-                    ? "Devolución pendiente"
-                    : "Importación"}
+                  {selectedSuggestion.kind === "PATIO"
+                    ? "Devolución de vacío"
+                    : selectedSuggestion.importOperation.isReturnAmparo
+                      ? "Devolución pendiente"
+                      : "Importación"}
                 </p>
                 <p className={styles.modalOrder}>
                   Pedido:{" "}
@@ -394,7 +435,8 @@ export function OperationAmparosPanel({ enabled }: Props) {
                     "Sin responsable"}
                 </p>
                 <p className={styles.modalOperationId}>
-                  Puerto: {selectedSuggestion.importOperation.port?.name ?? "Por confirmar"}
+                  {selectedSuggestion.kind === "PATIO" ? "Patio" : "Puerto"}:{" "}
+                  {selectedSuggestion.importOperation.port?.name ?? "Por confirmar"}
                 </p>
                 {selectedSuggestion.importOperation.isContainerized === true && (
                   <p className={styles.modalOperationId}>

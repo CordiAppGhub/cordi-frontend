@@ -60,7 +60,7 @@ export interface Trailer {
   id: string;
   plate: string;
   trailerType?: TrailerType;
-  axles?: 2 | 3 | null;
+  axles?: 1 | 2 | 3 | null;
   capacity?: number | null;
   status?: string;
   currentLocation?: {
@@ -152,6 +152,9 @@ export interface Operation {
     tractorAxles: number | null;
     trailerAxles: number | null;
     requiresTrailer: boolean;
+    maxLegalPbvKg: number;
+    maxTolerancePbvKg: number;
+    approxTareKg: number;
     maxPayloadKg: number | null;
   } | null;
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba

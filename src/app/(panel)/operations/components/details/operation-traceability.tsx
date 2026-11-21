@@ -26,6 +26,10 @@ import {
   formatEvidenceTypeLabel,
   formatExtraChargeTypeLabel,
 } from '@/utils/format-labels';
+import {
+  getFleetConfigurationCode,
+  TRAILER_TYPE_LABELS,
+} from '@/types/vehicles';
 
 const containerPredecessors: Partial<Record<OperationContainerStatus, OperationContainerStatus[]>> = {
   EN_INSPECCION: ['PENDIENTE', 'EN_PISO'],
@@ -1217,12 +1221,38 @@ export function OperationTraceability({ operationId }: Props) {
                 </div>
                 <div className={styles.infoBlock}>
                   <span className={styles.label}>
-                    Configuración vehicular requerida
+                    Tipología vehicular requerida
                   </span>
                   <strong className={styles.value}>
                     {currentOperation.cargoVehicleType?.name ||
                       currentOperation.vehicleType?.name ||
                       'No especificada'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Carga útil máxima solicitada</span>
+                  <strong className={styles.value}>
+                    {currentOperation.cargoVehicleType?.maxPayloadKg != null
+                      ? `${currentOperation.cargoVehicleType.maxPayloadKg.toLocaleString('es-CO')} kg`
+                      : 'No registrada'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Tipo de tráiler requerido</span>
+                  <strong className={styles.value}>
+                    {currentOperation.requiredTrailerType
+                      ? TRAILER_TYPE_LABELS[currentOperation.requiredTrailerType]
+                      : 'Cualquiera / sin restricción'}
+                  </strong>
+                </div>
+                <div className={styles.infoBlock}>
+                  <span className={styles.label}>Configuración resultante</span>
+                  <strong className={styles.value}>
+                    {getFleetConfigurationCode(
+                      currentOperation.vehicle?.axles,
+                      currentOperation.trailer?.axles,
+                      currentOperation.vehicle?.type,
+                    ) ?? 'Sin calcular'}
                   </strong>
                 </div>
               </div>
@@ -1343,16 +1373,6 @@ export function OperationTraceability({ operationId }: Props) {
                         SUELTA
                       </strong>
                     </div>
-                    {currentOperation.requiredTrailerType && (
-                      <div className={styles.infoBlock}>
-                        <span className={styles.label}>
-                          Tipo de tráiler requerido
-                        </span>
-                        <strong className={styles.value}>
-                          {currentOperation.requiredTrailerType}
-                        </strong>
-                      </div>
-                    )}
                     <div className={styles.infoBlock}>
                       <span className={styles.label}>Peso (kg)</span>
                       <strong className={styles.value}>

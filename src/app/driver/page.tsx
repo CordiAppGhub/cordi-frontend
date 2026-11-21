@@ -21,7 +21,7 @@ import type { DriverTab } from "./components/DriverHeaderNav";
 import { CurrentTripTab } from "./components/CurrentTripTab";
 import { OperationDetailsCard } from "./components/operation-details-card";
 import { ReportExtraModal } from "./components/ReportExtraModal";
-import Swal from "sweetalert2";
+import { showAlert } from "@/utils/alerts";
 import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 import { compressFiles } from "@/utils/image-compressor";
 import { formatEvidenceTypeLabel } from "@/utils/format-labels";
@@ -88,7 +88,9 @@ export default function DriverPortalPage() {
   const [ocrStep, setOcrStep] = useState<"PLATE" | "CONTAINER">("PLATE");
   const [cabPlateImage, setCabPlateImage] = useState<File | null>(null);
   const [trailerPlateImage, setTrailerPlateImage] = useState<File | null>(null);
-  const [deviationReason, setDeviationReason] = useState("AVERIA_NO_APTO");
+  const [deviationReason, setDeviationReason] = useState<
+    "AVERIA_NO_APTO" | "PATIO_LLENO"
+  >("AVERIA_NO_APTO");
   const [activeTab, setActiveTab] = useState<DriverTab>("current");
   const [trailerLocationReport, setTrailerLocationReport] = useState<{
     operationId: number;
@@ -122,7 +124,7 @@ export default function DriverPortalPage() {
     if (rawFiles.length === 0) return;
 
     if (!selectedOperation) {
-      Swal.fire({
+      showAlert({
         title: "⚠️ Operación no encontrada",
         text: "No hay una operación activa seleccionada.",
         icon: "warning",
@@ -139,13 +141,13 @@ export default function DriverPortalPage() {
           const result = await scanPlate(selectedOperation.id, file);
           if (result?.legible && result?.codigo) {
             setOcrStep("CONTAINER");
-            Swal.fire({
+            showAlert({
               title: "✅ Placa detectada",
               text: `${result.codigo}\n\nAhora selecciona o toma la foto del contenedor.`,
               icon: "success",
             });
           } else {
-            Swal.fire({
+            showAlert({
               title: "⚠️ No legible",
               text: "No se pudo leer la placa. Intenta con una imagen más clara.",
               icon: "warning",
@@ -154,14 +156,14 @@ export default function DriverPortalPage() {
         } else {
           const result = await scanContainer(selectedOperation.id, file);
           if (result?.legible && result?.codigo) {
-            Swal.fire({
+            showAlert({
               title: "✅ Contenedor validado",
               text: result.codigo,
               icon: "success",
             });
             setIsModalOpen(false);
           } else {
-            Swal.fire({
+            showAlert({
               title: "⚠️ No detectado",
               text: "No se detectó un código válido. Intenta con otra imagen.",
               icon: "warning",
@@ -196,10 +198,10 @@ export default function DriverPortalPage() {
           setIsModalOpen(false);
         }
       } else if (modalType === "DEVIATION") {
-        if (deviationReason !== "AVERIA_NO_APTO") {
+        if (deviationReason !== "AVERIA_NO_APTO" && deviationReason !== "PATIO_LLENO") {
           throw new Error("Selecciona un motivo de desvío válido.");
         }
-        await reportDeviation(selectedOperation.id, files);
+        await reportDeviation(selectedOperation.id, files, deviationReason);
         setIsModalOpen(false);
       }
     } catch (err: unknown) {
@@ -208,7 +210,7 @@ export default function DriverPortalPage() {
         err,
         "Ocurrió un error al procesar la solicitud. Revisa el mensaje del servidor.",
       );
-      await Swal.fire({
+      await showAlert({
         title: "No se pudo completar",
         text: message,
         icon: "error",
@@ -221,7 +223,7 @@ export default function DriverPortalPage() {
 
   const handleVerifyFleetPlates = async () => {
     if (!selectedOperation || !cabPlateImage || !trailerPlateImage) {
-      await Swal.fire({
+      await showAlert({
         title: "Faltan fotos",
         text: "Adjunta las fotos de la placa del cabezote y del tráiler.",
         icon: "warning",
@@ -245,7 +247,7 @@ export default function DriverPortalPage() {
         cabImage,
         trailerImage,
       );
-      await Swal.fire({
+      await showAlert({
         title: "Flota verificada",
         text: `Cabezote: ${result.cabPlate} · Tráiler: ${result.trailerPlate}`,
         icon: "success",
@@ -254,7 +256,7 @@ export default function DriverPortalPage() {
       setTrailerPlateImage(null);
       setIsModalOpen(false);
     } catch (error: unknown) {
-      await Swal.fire({
+      await showAlert({
         title: "No se pudieron verificar las placas",
         text: getUserFriendlyErrorMessage(
           error,
@@ -280,7 +282,7 @@ export default function DriverPortalPage() {
       (item) => item.id === trailerLocationReport.operationId,
     );
     if (!operation?.trailer) {
-      await Swal.fire({
+      await showAlert({
         title: "Tráiler no encontrado",
         text: "Actualiza el portal e inténtalo nuevamente.",
         icon: "error",
@@ -325,7 +327,7 @@ export default function DriverPortalPage() {
             lng: position.coords.longitude,
           };
         } catch {
-          const continueWithoutGps = await Swal.fire({
+          const continueWithoutGps = await showAlert({
             title: "No se obtuvo la ubicación GPS",
             text: "Puedes continuar con la ubicación seleccionada; el reporte se guardará sin coordenadas.",
             icon: "warning",
@@ -337,7 +339,7 @@ export default function DriverPortalPage() {
           if (!continueWithoutGps.isConfirmed) return;
         }
       } else {
-        const continueWithoutGps = await Swal.fire({
+        const continueWithoutGps = await showAlert({
           title: "GPS no disponible",
           text: "Este navegador no permite obtener la ubicación. Puedes continuar sin coordenadas GPS.",
           icon: "warning",
@@ -358,7 +360,7 @@ export default function DriverPortalPage() {
       });
       setTrailerLocationReport(null);
     } catch (error: unknown) {
-      await Swal.fire({
+      await showAlert({
         title: "No se pudo reportar la ubicación",
         text: getUserFriendlyErrorMessage(
           error,
@@ -429,9 +431,9 @@ export default function DriverPortalPage() {
           onUpdateCargoStatus={updateCargoStatus}
           onCompleteStop={completeStop}
           onUpdateSealNumber={updateSealNumber}
-          onReportDeviation={() => {
+          onReportDeviation={(reason = "AVERIA_NO_APTO") => {
             setSelectedOperation(activeOperation || null);
-            setDeviationReason("AVERIA_NO_APTO");
+            setDeviationReason(reason);
             setModalType("DEVIATION");
             setIsModalOpen(true);
           }}
@@ -610,11 +612,14 @@ export default function DriverPortalPage() {
                     <Select
                       value={deviationReason}
                       onChange={(event) =>
-                        setDeviationReason(event.target.value)
+                        setDeviationReason(
+                          event.target.value as "AVERIA_NO_APTO" | "PATIO_LLENO",
+                        )
                       }
                       disabled={processingState}
                     >
                       <option value="AVERIA_NO_APTO">Avería / No apto</option>
+                      <option value="PATIO_LLENO">Desvío de patio</option>
                     </Select>
                     <span>
                       Adjunta una o varias fotos o documentos PDF del comodato.

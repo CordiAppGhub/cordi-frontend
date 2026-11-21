@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Swal from "sweetalert2";
+import { showAlert } from "@/utils/alerts";
 import { driverPortalService } from "@/services/driverPortal.service";
 import type { ContainerRollbackReason } from "@/services/driverPortal.service";
 import type { DriverPortalData } from "@/types/driver-portal.types";
@@ -80,7 +80,7 @@ export function ContainerRollback({
   if (!enabled || !candidate) return null;
 
   const confirm = async () => {
-    const result = await Swal.fire<ContainerRollbackReason>({
+    const result = await showAlert<ContainerRollbackReason>({
       title: "¿Por qué necesitas corregir el contenedor?",
       input: "select",
       inputOptions: {

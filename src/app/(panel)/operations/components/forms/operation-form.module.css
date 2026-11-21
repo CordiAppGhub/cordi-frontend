@@ -6,8 +6,19 @@
   padding-top: 1rem;
 }
 
+.creationModes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 @media (max-width: 520px) {
   .formActions > button {
+    flex: 1 1 100%;
+  }
+
+  .creationModes > button {
     flex: 1 1 100%;
   }
 }

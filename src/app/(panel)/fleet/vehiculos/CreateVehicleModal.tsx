@@ -19,8 +19,13 @@ import type {
   UpdateTrailerInput,
   UpdateVehicleDto,
   Vehicle,
+  VehicleType,
 } from '@/types/vehicles';
-import { TRAILER_TYPE_OPTIONS } from '@/types/vehicles';
+import {
+  TRAILER_AXLE_OPTIONS,
+  TRAILER_TYPE_OPTIONS,
+  VEHICLE_TYPE_OPTIONS,
+} from '@/types/vehicles';
 import styles from './CreateVehicleModal.module.css';
 
 interface CreateVehicleModalProps {
@@ -48,6 +53,33 @@ interface CreateVehicleModalProps {
 type DocumentKind = 'insurance' | 'tecnomecanica';
 
 const DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+const VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG: Record<VehicleType, number> = {
+  PATINETA: 26500,
+  MULA: 35500,
+  C2: 9500,
+  C3: 16500,
+};
+const VEHICLE_MAX_LEGAL_PAYLOAD_CAPACITY_KG = VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG;
+const getVehicleTypeRequirements = (
+  type: VehicleType,
+): { axles: 2 | 3; requiresTrailer: boolean } => ({
+  axles: type === 'MULA' || type === 'C3' ? 3 : 2,
+  requiresTrailer: type === 'PATINETA' || type === 'MULA',
+});
+const TRAILER_STANDARD_PAYLOAD_CAPACITY_KG: Record<1 | 2 | 3, number> = {
+  1: 16500,
+  2: 33000,
+  3: 35500,
+};
+
+const getTrailerStandardPayloadCapacity = (
+  axles: number | undefined,
+): number | undefined => {
+  if (axles === 1 || axles === 2 || axles === 3) {
+    return TRAILER_STANDARD_PAYLOAD_CAPACITY_KG[axles];
+  }
+  return undefined;
+};
 
 export default function CreateVehicleModal({
   isOpen,
@@ -71,6 +103,7 @@ export default function CreateVehicleModal({
     insurance: 0,
     tecnomecanica: 0,
   });
+  const capacityCustomized = useRef(false);
   const {
     register,
     handleSubmit,
@@ -86,12 +119,16 @@ export default function CreateVehicleModal({
       type: assetType === 'trailer' ? 'TRAILER' : 'PATINETA',
       brand: '',
       trailerType: undefined,
-      axles: undefined,
+      axles: assetType === 'vehicle' ? 2 : undefined,
+      requiresTrailer: assetType === 'vehicle',
       currentLocationId: undefined,
       notes: '',
       modelYear: new Date().getFullYear(),
       affiliation: 'CORDIVEHICULOS',
-      cargoCapacity: 0,
+      cargoCapacity:
+        assetType === 'vehicle'
+          ? VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG.PATINETA
+          : 0,
       status: 'AVAILABLE',
       insuranceFileUrl: '',
       insuranceFile: undefined,
@@ -103,17 +140,45 @@ export default function CreateVehicleModal({
   });
   useEffect(() => {
     if (isOpen) {
+      const initialVehicleType = editingVehicle?.type ?? 'PATINETA';
+      const initialRequirements = getVehicleTypeRequirements(initialVehicleType);
+      const initialCapacity =
+        editingVehicle?.cargoCapacity ??
+        (editingVehicle
+          ? VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG[editingVehicle.type]
+          : undefined) ??
+        editingTrailer?.capacity ??
+        (editingTrailer
+          ? getTrailerStandardPayloadCapacity(editingTrailer.axles)
+          : undefined) ??
+        (assetType === 'vehicle'
+          ? VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG.PATINETA
+          : 0);
+      capacityCustomized.current =
+        (editingVehicle !== null &&
+          editingVehicle.cargoCapacity !== null &&
+          editingVehicle.cargoCapacity !==
+            VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG[editingVehicle.type]) ||
+        (editingTrailer !== null &&
+          editingTrailer.capacity !== null &&
+          editingTrailer.capacity !==
+            getTrailerStandardPayloadCapacity(editingTrailer.axles));
       reset({
         plate: editingVehicle?.plate ?? editingTrailer?.plate ?? '',
         type: editingTrailer ? 'TRAILER' : editingVehicle?.type ?? (assetType === 'trailer' ? 'TRAILER' : 'PATINETA'),
         brand: editingVehicle?.brand ?? editingTrailer?.brand ?? '',
         trailerType: editingTrailer?.trailerType,
-        axles: editingTrailer?.axles,
+        axles: editingVehicle
+          ? initialRequirements.axles
+          : editingTrailer?.axles,
+        requiresTrailer: editingVehicle
+          ? initialRequirements.requiresTrailer
+          : false,
         currentLocationId: editingTrailer?.currentLocationId,
         notes: editingTrailer?.notes ?? '',
         modelYear: editingVehicle?.modelYear ?? new Date().getFullYear(),
         affiliation: editingVehicle?.affiliation ?? 'CORDIVEHICULOS',
-        cargoCapacity: editingVehicle?.cargoCapacity ?? editingTrailer?.capacity ?? 0,
+        cargoCapacity: initialCapacity,
         status: editingVehicle?.status ?? 'AVAILABLE',
         insuranceFileUrl: '',
         insuranceFile: undefined,
@@ -204,9 +269,12 @@ export default function CreateVehicleModal({
         if (formValues.type === 'TRAILER') {
           throw new Error('El tipo seleccionado no es válido para un cabezote.');
         }
+        const typeRequirements = getVehicleTypeRequirements(formValues.type);
         const updated = await onUpdateVehicle(editingVehicle.id, {
           plate: formValues.plate.trim().toUpperCase(),
           type: formValues.type,
+          axles: typeRequirements.axles,
+          requiresTrailer: typeRequirements.requiresTrailer,
           brand: formValues.brand?.trim() ?? '',
           modelYear: formValues.modelYear,
           affiliation: formValues.affiliation,
@@ -227,7 +295,9 @@ export default function CreateVehicleModal({
           throw new Error('No está configurada la actualización del tráiler.');
         }
         if (
-          (formValues.axles !== 2 && formValues.axles !== 3) ||
+          (formValues.axles !== 1 &&
+            formValues.axles !== 2 &&
+            formValues.axles !== 3) ||
           !formValues.trailerType ||
           !formValues.currentLocationId
         ) {
@@ -256,9 +326,16 @@ export default function CreateVehicleModal({
       const payload: CreateVehicleFormValues = {
         plate: formValues.plate.trim().toUpperCase(),
         type: formValues.type,
+        axles:
+          formValues.type === 'TRAILER'
+            ? formValues.axles
+            : getVehicleTypeRequirements(formValues.type).axles,
+        requiresTrailer:
+          formValues.type === 'TRAILER'
+            ? false
+            : getVehicleTypeRequirements(formValues.type).requiresTrailer,
         brand: formValues.brand?.trim() ?? '',
         trailerType: formValues.trailerType,
-        axles: formValues.axles,
         currentLocationId: formValues.currentLocationId,
         notes: formValues.notes,
         modelYear: formValues.modelYear,
@@ -291,6 +368,32 @@ export default function CreateVehicleModal({
   const inputError = (field: keyof CreateVehicleFormValues) =>
     errors[field]?.message;
   const capacityKg = useWatch({ control, name: 'cargoCapacity' });
+  const selectedVehicleType = useWatch({ control, name: 'type' });
+  const selectedTrailerAxles = useWatch({ control, name: 'axles' });
+  const legalPayloadCapacityKg =
+    selectedVehicleType !== 'TRAILER'
+      ? VEHICLE_MAX_LEGAL_PAYLOAD_CAPACITY_KG[selectedVehicleType]
+      : undefined;
+  const vehicleCapacityHelp =
+    selectedVehicleType === 'PATINETA'
+      ? 'Estándar máximo con tráiler de 3 ejes (2S3). Se ajustará automáticamente según el tráiler acoplado.'
+      : selectedVehicleType === 'MULA'
+        ? 'Estándar máximo con tráiler de 3 ejes (3S3). Se ajustará automáticamente según el tráiler acoplado.'
+        : selectedVehicleType === 'C2'
+          ? 'Estándar legal C2 (PBV 17.000 kg). Editable según tarjeta de propiedad.'
+          : selectedVehicleType === 'C3'
+            ? 'Estándar legal C3 (PBV 28.000 kg). Editable según tarjeta de propiedad.'
+            : null;
+  const trailerCapacityHelp = getTrailerStandardPayloadCapacity(
+    selectedTrailerAxles,
+  );
+  const vehicleTypeRegistration = register('type');
+  const trailerAxlesRegistration = register('axles', {
+    setValueAs: (value: string) => (value === '' ? undefined : Number(value)),
+  });
+  const capacityRegistration = register('cargoCapacity', {
+    valueAsNumber: true,
+  });
   const isProcessingDocuments =
     documentLoading.insurance || documentLoading.tecnomecanica;
 
@@ -302,10 +405,10 @@ export default function CreateVehicleModal({
         isEditing
           ? assetType === 'trailer'
             ? `Editar tráiler ${editingTrailer?.plate ?? ''}`
-            : `Editar cabezote ${editingVehicle?.plate ?? ''}`
+            : `Editar vehículo ${editingVehicle?.plate ?? ''}`
           : assetType === 'trailer'
             ? 'Registrar nuevo tráiler'
-            : 'Registrar nuevo cabezote'
+            : 'Registrar nuevo vehículo'
       }
       width="700px"
       maxHeight="90vh"
@@ -334,13 +437,43 @@ export default function CreateVehicleModal({
               </>
             ) : (
               <>
-                <span>Tipo de cabezote</span>
+                <span>Tipo de vehículo</span>
                 <Select
-                  options={[
-                    { value: 'PATINETA', label: 'Patineta (2 ejes / C2)' },
-                    { value: 'MULA', label: 'Mula (3 ejes / C3)' },
-                  ]}
-                  {...register('type')}
+                  options={VEHICLE_TYPE_OPTIONS}
+                  {...vehicleTypeRegistration}
+                  onChange={(event) => {
+                    void vehicleTypeRegistration.onChange(event);
+                    const selectedType = event.currentTarget.value;
+                    if (
+                      selectedType === 'PATINETA' ||
+                      selectedType === 'MULA' ||
+                      selectedType === 'C2' ||
+                      selectedType === 'C3'
+                    ) {
+                      const requirements =
+                        getVehicleTypeRequirements(selectedType);
+                      setValue('axles', requirements.axles, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      setValue('requiresTrailer', requirements.requiresTrailer, {
+                        shouldDirty: true,
+                      });
+                    }
+                    if (
+                      !capacityCustomized.current &&
+                      (selectedType === 'PATINETA' ||
+                        selectedType === 'MULA' ||
+                        selectedType === 'C2' ||
+                        selectedType === 'C3')
+                    ) {
+                      setValue(
+                        'cargoCapacity',
+                        VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG[selectedType],
+                        { shouldDirty: true, shouldValidate: true },
+                      );
+                    }
+                  }}
                   error={inputError('type')}
                 />
               </>
@@ -351,14 +484,23 @@ export default function CreateVehicleModal({
             <label className={styles.field}>
               <span>Número de ejes</span>
               <Select
-                options={[
-                  { value: '2', label: '2 ejes' },
-                  { value: '3', label: '3 ejes' },
-                ]}
-                {...register('axles', {
-                  setValueAs: (value: string) =>
-                    value === '' ? undefined : Number(value),
-                })}
+                options={TRAILER_AXLE_OPTIONS.map((axles) => ({
+                  value: String(axles),
+                  label: `${axles} ejes`,
+                }))}
+                {...trailerAxlesRegistration}
+                onChange={(event) => {
+                  void trailerAxlesRegistration.onChange(event);
+                  const standardCapacity = getTrailerStandardPayloadCapacity(
+                    Number(event.currentTarget.value),
+                  );
+                  if (standardCapacity !== undefined) {
+                    setValue('cargoCapacity', standardCapacity, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }
+                }}
                 error={inputError('axles')}
                 required
               />
@@ -453,12 +595,29 @@ export default function CreateVehicleModal({
             <span>Capacidad de carga (kg)</span>
             <Input
               type="number"
-              {...register('cargoCapacity', { valueAsNumber: true })}
+              {...capacityRegistration}
+              onChange={(event) => {
+                capacityCustomized.current = true;
+                void capacityRegistration.onChange(event);
+              }}
               min="0.01"
               step="any"
-              placeholder={assetType === 'vehicle' ? 'Ej. 34000' : 'Ej. 32000'}
+              placeholder={
+                assetType === 'vehicle'
+                  ? `Ej. ${VEHICLE_STANDARD_PAYLOAD_CAPACITY_KG.PATINETA}`
+                  : 'Ej. 33000'
+              }
               error={inputError('cargoCapacity')}
             />
+            {assetType === 'vehicle' && vehicleCapacityHelp && (
+              <span className={styles.helper}>{vehicleCapacityHelp}</span>
+            )}
+            {assetType === 'trailer' && trailerCapacityHelp !== undefined && (
+              <span className={styles.helper}>
+                Estándar para tráiler de {selectedTrailerAxles} eje
+                {selectedTrailerAxles === 1 ? '' : 's'}: {trailerCapacityHelp.toLocaleString('es-CO')} kg. Editable según ficha técnica.
+              </span>
+            )}
             {typeof capacityKg === 'number' &&
               Number.isFinite(capacityKg) &&
               capacityKg > 0 && (
@@ -473,6 +632,17 @@ export default function CreateVehicleModal({
                 <span className={styles.warning} role="alert">
                   El valor es menor a 1.000 kg. Verifica que ingresaste kilogramos,
                   no toneladas (por ejemplo, 30.000 kg para 30 Ton).
+                </span>
+              )}
+            {assetType === 'vehicle' &&
+              legalPayloadCapacityKg !== undefined &&
+              typeof capacityKg === 'number' &&
+              Number.isFinite(capacityKg) &&
+              capacityKg > legalPayloadCapacityKg && (
+                <span className={styles.warning} role="alert">
+                  La capacidad supera el máximo legal de esta categoría (
+                  {legalPayloadCapacityKg.toLocaleString('es-CO')} kg).
+                  Verifica la tarjeta de propiedad y la tipología permitida.
                 </span>
               )}
           </label>
