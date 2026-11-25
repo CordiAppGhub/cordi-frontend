@@ -14,6 +14,9 @@ interface SuperTableProps<T, S extends object> {
   onOpenModal?: () => void;
   nameButton?: string;
   hideSearch?: boolean;
+  hideToolbar?: boolean;
+  hidePagination?: boolean;
+  collapse?: boolean;
   isCollapsible?: boolean;
   subColumns?: ColumnDef<S>[];
   getSubRows?: (row: T) => S[];
@@ -32,12 +35,16 @@ export default function PaginationTable<
   onOpenModal,
   nameButton,
   hideSearch = false,
+  hideToolbar = false,
+  hidePagination = false,
+  collapse,
   isCollapsible = false,
   subColumns,
   getSubRows,
   renderExpandedContent,
 }: SuperTableProps<T, S>) {
   const safeData = Array.isArray(data) ? data : [];
+  const collapsible = collapse ?? isCollapsible;
   const [expandedRows, setExpandedRows] = useState<Set<number | string>>(new Set());
 
   const toggleRow = (id: number | string) => {
@@ -55,6 +62,7 @@ export default function PaginationTable<
   return (
     <div className={styles.tableContainer}>
       {/* TOOLBAR */}
+      {!hideToolbar && (
       <div className={styles.toolbar}>
         {!hideSearch && (
           <div className={styles.searchContainer}>
@@ -75,13 +83,14 @@ export default function PaginationTable<
           )}
         </div>
       </div>
+      )}
 
       {/* TABLA PRINCIPAL */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
-              {isCollapsible && <th className={`${styles.th} ${styles.expandCell}`}></th>}
+              {collapsible && <th className={`${styles.th} ${styles.expandCell}`}></th>}
               {columns.map((column, index) => (
                 <th key={`${String(column.id)}-${index}`} className={styles.th}>
                   {column.header}
@@ -92,7 +101,7 @@ export default function PaginationTable<
           <tbody>
            {safeData.length === 0 ? (
               <tr>
-                <td colSpan={isCollapsible ? columns.length + 1 : columns.length} className={styles.emptyState}>
+                <td colSpan={collapsible ? columns.length + 1 : columns.length} className={styles.emptyState}>
                   No hay datos para mostrar
                 </td>
               </tr>
@@ -107,10 +116,10 @@ export default function PaginationTable<
                   <React.Fragment key={rowKey}>
                     {/* FILA PADRE */}
                     <tr 
-                      className={`${styles.row} ${isCollapsible ? styles.clickableRow : ''}`}
-                      onClick={() => isCollapsible && toggleRow(row.id)}
+                      className={`${styles.row} ${collapsible ? styles.clickableRow : ''}`}
+                      onClick={() => collapsible && toggleRow(row.id)}
                     >
-                      {isCollapsible && (
+                      {collapsible && (
                         <td className={`${styles.td} ${styles.expandCell}`}>
                           <svg
                             className={`${styles.expandIcon} ${isExpanded ? styles.expandIconExpanded : ''}`}
@@ -128,7 +137,7 @@ export default function PaginationTable<
                     </tr>
 
                     {/* 🚀 TABLA ANIDADA (AUTOMÁTICA) */}
-                    {isCollapsible &&
+                    {collapsible &&
                       isExpanded &&
                       (renderExpandedContent ||
                         (subColumns && subRows.length > 0)) && (
@@ -181,6 +190,7 @@ export default function PaginationTable<
       </div>
 
       {/* PAGINACIÓN */}
+      {!hidePagination && (
       <div className={styles.pagination}>
         <div className={styles.pageInfo}>Página {currentPage} de {totalPages}</div>
         <div className={styles.paginationControls}>
@@ -189,6 +199,7 @@ export default function PaginationTable<
           <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} className={styles.pageBtn}>Siguiente</button>
         </div>
       </div>
+      )}
     </div>
   );
 }

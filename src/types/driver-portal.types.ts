@@ -105,8 +105,12 @@ export interface Operation {
   createdAt: string;
   type?: string;
   isContainerized?: boolean;
+  cargoType?: string | null;
+  tipoCarga?: string | null;
   status?: OperationStatus;
   isActive: boolean;
+  isDriverActive?: boolean;
+  driverActivationReason?: string | null;
   isAnticipada?: boolean;
   isAdvanceRetrieval?: boolean;
   fleteAPagar?: number | null;

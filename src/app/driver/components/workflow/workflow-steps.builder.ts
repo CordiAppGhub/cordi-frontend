@@ -18,6 +18,8 @@ export interface WorkflowBuilderOperation {
   type?: string;
   isAnticipada?: boolean;
   isContainerized?: boolean;
+  cargoType?: string | null;
+  tipoCarga?: string | null;
   isAmparado?: boolean;
   containerStatus?: string | null;
   origen?: { isPort?: boolean } | null;
@@ -47,7 +49,13 @@ export function getWorkflowFamily(
   if (operation.type === "MOVIMIENTO_INTERNO") {
     return "INTERNAL_MOVEMENT";
   }
-  if (operation.isContainerized !== true) return "LOOSE_CARGO";
+  if (
+    operation.isContainerized !== true ||
+    operation.cargoType === "LOOSE_CARGO" ||
+    operation.tipoCarga === "SUELTA"
+  ) {
+    return "LOOSE_CARGO";
+  }
 
   switch (operation.type) {
     case "IMPORTACION":

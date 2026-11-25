@@ -12,6 +12,8 @@ export interface WorkflowGuardOperation {
   type?: string;
   isAnticipada?: boolean;
   isContainerized?: boolean;
+  cargoType?: string | null;
+  tipoCarga?: string | null;
   scheduledAt?: string | null;
   fechaCitaOrigen?: string | null;
   fechaCitaDestino?: string | null;
@@ -23,9 +25,52 @@ export interface WorkflowGuardOperation {
   }>;
 }
 
+export function isLooseCargoOperation(
+  operation: Pick<
+    WorkflowGuardOperation,
+    "isContainerized" | "cargoType" | "tipoCarga"
+  >,
+): boolean {
+  return (
+    operation.isContainerized !== true ||
+    operation.cargoType === "LOOSE_CARGO" ||
+    operation.tipoCarga === "SUELTA"
+  );
+}
+
+function getLooseCargoAppointment(
+  operation: WorkflowGuardOperation,
+  nextState?: string,
+): { value?: string | null; label: string } {
+  const startsAtOrigin =
+    nextState === "EN_RUTA_ORIGEN" ||
+    (nextState === "RUMBO_AL_PUERTO" &&
+      operation.type !== "EXPORTACION" &&
+      operation.type !== "EXPORTACION_ANTICIPADA") ||
+    (nextState === undefined && operation.type === "IMPORTACION");
+
+  return startsAtOrigin
+    ? {
+        value: operation.fechaCitaOrigen ?? operation.scheduledAt,
+        label: "cita de origen",
+      }
+    : { value: operation.fechaCitaDestino, label: "cita de destino" };
+}
+
 export function getMissingMandatoryAppointments(
   operation: WorkflowGuardOperation,
+  nextState?: string,
 ): string[] {
+  const isLooseForeignTradeOperation =
+    isLooseCargoOperation(operation) &&
+    ["IMPORTACION", "EXPORTACION", "EXPORTACION_ANTICIPADA"].includes(
+      operation.type ?? "",
+    );
+  if (isLooseForeignTradeOperation) {
+    const appointment = getLooseCargoAppointment(operation, nextState);
+    return appointment.value ? [] : [appointment.label];
+  }
+
   if (!operation.scheduledAt) return ["programación"];
 
   switch (operation.type) {
@@ -35,10 +80,15 @@ export function getMissingMandatoryAppointments(
       if (operation.isAnticipada) {
         return operation.fechaCitaDestino ? [] : ["cita de puerto"];
       }
-      if (!operation.fechaCitaOrigen && !operation.fechaCitaDestino) {
+      if (
+        !(operation.fechaCitaOrigen ?? operation.scheduledAt) &&
+        !operation.fechaCitaDestino
+      ) {
         return ["cita de patio", "cita de puerto"];
       }
-      if (!operation.fechaCitaOrigen) return ["cita de patio"];
+      if (!(operation.fechaCitaOrigen ?? operation.scheduledAt)) {
+        return ["cita de patio"];
+      }
       if (!operation.fechaCitaDestino) return ["cita de puerto"];
       return [];
     case "EXPORTACION_ANTICIPADA":

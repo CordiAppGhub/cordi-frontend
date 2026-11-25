@@ -2,7 +2,9 @@
 "use client";
 
 import React, { useRef } from "react";
+import { Lock } from "lucide-react";
 import styles from "../driver.module.css";
+import { OperationDetailsCard } from "./operation-details-card";
 import { OperationWorkflow } from "./workflow/operation-workflow";
 import type {
   DriverPortalData,
@@ -13,7 +15,6 @@ import type {
   Vehicle,
 } from "@/types/driver-portal.types";
 import { generateDriverOperationRoute } from "@/utils/driver-operation-route";
-import { formatOperationStateLabel } from "@/utils/format-labels";
 
 interface CurrentTripTabProps {
   driver: DriverPortalData;
@@ -85,6 +86,36 @@ export function CurrentTripTab({
   isUncouplingTrailer,
 }: CurrentTripTabProps) {
   const containerCardRef = useRef<HTMLElement | null>(null);
+  const assignedOperationsRef = useRef<HTMLElement | null>(null);
+  const isDriverActive = (operation: Operation) =>
+    operation.isDriverActive ?? operation.isActive;
+  const getAppointment = (operation: Operation) =>
+    operation.type === "IMPORTACION"
+      ? operation.fechaCitaOrigen ??
+        operation.fechaCitaDestino ??
+        operation.scheduledAt
+      : operation.fechaCitaDestino ??
+        operation.fechaCitaOrigen ??
+        operation.scheduledAt;
+  const formatAppointment = (value?: string | null) =>
+    value
+      ? new Date(value).toLocaleString("es-CO", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "America/Bogota",
+        })
+      : "Sin cita programada";
+  const getModality = (operation: Operation) => {
+    const typeLabel =
+      operation.type === "IMPORTACION"
+        ? "Importación"
+        : operation.type === "EXPORTACION"
+          ? operation.isAnticipada
+            ? "Exportación anticipada"
+            : "Exportación"
+          : operation.type || "Operación";
+    return operation.isAmparado ? `Amparado · ${typeLabel}` : typeLabel;
+  };
   const deviationOcr =
     activeOperation?.historialNovedades?.[0]?.metadata?.comodatoOcr;
   const isAmparoImportBlocked = (operation: Operation) =>
@@ -95,7 +126,7 @@ export function CurrentTripTab({
     ? assignedOperations.filter(
         (operation) =>
           operation.id !== activeOperation.id &&
-          operation.isActive &&
+          isDriverActive(operation) &&
           operation.status === "EN_CURSO" &&
           !isAmparoImportBlocked(operation),
       )
@@ -106,11 +137,14 @@ export function CurrentTripTab({
 
   return (
     <div className={styles.gridLayout}>
-      <section className={`${styles.infoCard} ${styles.operationsListCard}`}>
+      <section
+        ref={assignedOperationsRef}
+        className={`${styles.infoCard} ${styles.operationsListCard}`}
+      >
         <div className={styles.operationsListHeader}>
           <div>
-            <h2>Operaciones asignadas</h2>
-            <p>Selecciona el viaje que vas a gestionar.</p>
+            <h2>Mis Operaciones Asignadas</h2>
+            <p>Inicia la operación activa o consulta las que están en cola.</p>
           </div>
           <span className={styles.operationCount}>
             {assignedOperations.length}
@@ -118,53 +152,108 @@ export function CurrentTripTab({
         </div>
         {assignedOperations.length ? (
           <div className={styles.operationsList}>
-            {assignedOperations.map((operation) => (
-              <button
-                key={operation.id}
-                type="button"
-                aria-pressed={operation.id === activeOperation?.id}
-                onClick={() => onSelectOperation(operation.id)}
-                className={`${styles.operationListItem} ${
-                  operation.id === activeOperation?.id
-                    ? styles.operationListItemSelected
-                    : ""
-                }`}
-              >
-                <span className={styles.operationListMain}>
-                  <strong>
-                    Operación #{operation.id} · {operation.type || "Viaje"}
-                  </strong>
-                  <span>{operation.clientName || "Cliente por confirmar"}</span>
-                  <span>
-                    {operation.vehicle?.plate ||
-                      operation.vehiclePlate ||
-                      "Vehículo sin placa"}
-                    {" · "}
-                    {formatOperationStateLabel(operation.estadoViaje) ||
-                      operation.status ||
-                      "ASIGNADO"}
-                  </span>
-                  <span>
-                    {operation.isContainerized !== true
-                      ? "Carga suelta"
-                      : `Contenedor: ${formatOperationStateLabel(operation.containerStatus || "PENDIENTE")}`}
-                  </span>
-                </span>
-                <span
-                  className={`${styles.operationAccessBadge} ${
-                    operation.isActive && !isAmparoImportBlocked(operation)
-                      ? styles.operationAccessEnabled
-                      : styles.operationAccessDisabled
+            {assignedOperations.map((operation) => {
+              const isActive = isDriverActive(operation);
+              const hasStarted =
+                operation.status === "EN_CURSO" ||
+                operation.status === "PAUSADA" ||
+                operation.status === "DESVIO_REPORTADO" ||
+                Boolean(
+                  operation.estadoViaje &&
+                    operation.estadoViaje !== "VERIFICADO_EN_SITIO",
+                );
+              const appointmentAt = getAppointment(operation);
+              const modality = getModality(operation);
+              const cargoDescription =
+                operation.isContainerized === false
+                  ? "Carga Suelta"
+                  : `Contenedor #${operation.containerNumber || "Pendiente"}`;
+              return (
+                <article
+                  key={operation.id}
+                  className={`${styles.operationAssignedCard} ${
+                    isActive ? "" : styles.operationAssignedCardDisabled
+                  } ${
+                    operation.id === activeOperation?.id
+                      ? styles.operationListItemSelected
+                      : ""
                   }`}
+                  aria-current={
+                    operation.id === activeOperation?.id ? "true" : undefined
+                  }
                 >
-                  {isAmparoImportBlocked(operation)
-                    ? "Esperando exportación"
-                    : operation.isActive
-                      ? "Habilitada"
-                      : "Deshabilitada"}
-                </span>
-              </button>
-            ))}
+                  <div className={styles.operationAssignedHeader}>
+                    <div>
+                      <strong>Operación #{operation.id}</strong>
+                      <span>{modality}</span>
+                      <span>{cargoDescription}</span>
+                    </div>
+                    <span
+                      className={`${styles.operationAccessBadge} ${
+                        isActive
+                          ? styles.operationAccessEnabled
+                          : styles.operationAccessDisabled
+                      }`}
+                    >
+                      {!isActive && <Lock size={13} aria-hidden="true" />}
+                      {isActive
+                        ? hasStarted
+                          ? "Activa · En curso"
+                          : "Activa · Lista para iniciar"
+                        : operation.driverActivationReason?.includes(
+                              "manualmente",
+                            )
+                          ? "Desactivada · Por analista"
+                          : "Desactivada · En cola"}
+                    </span>
+                  </div>
+                  <dl className={styles.operationAssignedDetails}>
+                    <dt>Ruta</dt>
+                    <dd>{generateDriverOperationRoute(operation)}</dd>
+                    <dt>Cita</dt>
+                    <dd>{formatAppointment(appointmentAt)}</dd>
+                    <dt>Placas</dt>
+                    <dd>
+                      {operation.vehicle?.plate ||
+                        operation.vehiclePlate ||
+                        "Vehículo sin placa"}
+                      {operation.trailer?.plate
+                        ? ` · ${operation.trailer.plate}`
+                        : ""}
+                    </dd>
+                  </dl>
+                  <div className={styles.operationAssignedActions}>
+                    <button
+                      type="button"
+                      disabled={!isActive}
+                      onClick={() => onSelectOperation(operation.id)}
+                    >
+                      {hasStarted
+                        ? "Continuar operación"
+                        : "Iniciar operación"}
+                    </button>
+                    {!isActive && (
+                      <button
+                        type="button"
+                        className={styles.operationConsultButton}
+                        onClick={() => onSelectOperation(operation.id)}
+                      >
+                        Consultar
+                      </button>
+                    )}
+                  </div>
+                  {!isActive && (
+                    <p className={styles.operationQueueMessage}>
+                      {operation.driverActivationReason?.includes(
+                        "manualmente",
+                      )
+                        ? "Desactivada por el analista. Contacta al analista para que la active."
+                        : "Desactivada: finaliza tu operación activa actual para poder iniciar esta."}
+                    </p>
+                  )}
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className={styles.emptyState}>
@@ -183,7 +272,7 @@ export function CurrentTripTab({
           {activeOperation && (
             <span
               className={
-                activeOperation.isActive &&
+                isDriverActive(activeOperation) &&
                 !isAmparoImportBlocked(activeOperation)
                   ? styles.statusBadgeGreen
                   : styles.statusBadgeRed
@@ -191,9 +280,9 @@ export function CurrentTripTab({
             >
               {isAmparoImportBlocked(activeOperation)
                 ? "Esperando exportación"
-                : activeOperation.isActive
-                  ? "Habilitada"
-                  : "Deshabilitada"}
+                : isDriverActive(activeOperation)
+                  ? "Activa"
+                  : "Desactivada"}
             </span>
           )}
         </div>
@@ -313,6 +402,18 @@ export function CurrentTripTab({
 
         {activeOperation && (
           <>
+            <button
+              type="button"
+              className={styles.returnToAssignedButton}
+              onClick={() =>
+                assignedOperationsRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+              }
+            >
+              Volver a mis asignadas
+            </button>
             <a
               href="#"
               className={styles.linkDetails}
@@ -323,7 +424,7 @@ export function CurrentTripTab({
             >
               Ver detalles &gt;
             </a>
-            {activeOperation.isActive &&
+            {isDriverActive(activeOperation) &&
               !isAmparoImportBlocked(activeOperation) &&
               activeOperation.trailer &&
               activeOperation.vehicle?.currentTrailerId ===
@@ -370,7 +471,42 @@ export function CurrentTripTab({
       </div>
 
       <div className={styles.sequenceCard}>
-        {activeOperation && isAmparoImportBlocked(activeOperation) ? (
+        {activeOperation && !isDriverActive(activeOperation) ? (
+          <div className={styles.readOnlyOperation}>
+            <div className={styles.driverInactiveBanner} role="alert">
+              <Lock size={19} aria-hidden="true" />
+              <div>
+                <strong>
+                  {activeOperation.driverActivationReason?.includes(
+                    "manualmente",
+                  )
+                    ? "Operación desactivada por el analista"
+                    : "Operación desactivada · En cola"}
+                </strong>
+                <p>
+                  {activeOperation.driverActivationReason?.includes(
+                    "manualmente",
+                  )
+                    ? "Contacta al analista para que habilite esta operación."
+                    : "Desactivada: finaliza tu operación activa actual para poder iniciar esta."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={styles.returnToAssignedButton}
+              onClick={() =>
+                assignedOperationsRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+              }
+            >
+              Volver a mis asignadas
+            </button>
+            <OperationDetailsCard operation={activeOperation} />
+          </div>
+        ) : activeOperation && isAmparoImportBlocked(activeOperation) ? (
           <div className={styles.emptyWorkflow} role="status">
             <p>
               La importación está bloqueada hasta finalizar el descargue de la
@@ -387,7 +523,7 @@ export function CurrentTripTab({
               exportación. Contacta al analista para revisar su estado.
             </p>
           </div>
-        ) : activeOperation?.isActive ? (
+        ) : activeOperation && isDriverActive(activeOperation) ? (
           <OperationWorkflow
             key={activeOperation.id}
             operation={activeOperation}
@@ -407,13 +543,6 @@ export function CurrentTripTab({
             onOpenExportSealModal={onOpenExportSealModal}
             onOpenClosingModal={onOpenClosingModal}
           />
-        ) : activeOperation ? (
-          <div className={styles.emptyWorkflow}>
-            <span style={{ fontSize: "2rem" }}>⏸️</span>
-            <p style={{ color: "#64748b", marginTop: "12px" }}>
-              Esta operación está deshabilitada por el analista.
-            </p>
-          </div>
         ) : (
           <div className={styles.emptyWorkflow}>
             <span style={{ fontSize: "2rem" }}>☕</span>

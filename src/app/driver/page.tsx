@@ -215,14 +215,8 @@ export default function DriverPortalPage() {
   };
   const firstSuggestedOperation =
     assignedOperations.find(
-      (operation) =>
-        operation.isAmparado &&
-        operation.type === "EXPORTACION" &&
-        operation.status !== "FINALIZADO",
-    ) ||
-    assignedOperations.find((operation) => operation.status === "EN_CURSO") ||
-    assignedOperations.find((operation) => operation.isActive) ||
-    assignedOperations[0];
+      (operation) => operation.isDriverActive ?? operation.isActive,
+    ) || assignedOperations[0];
 
   const handleCedulaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

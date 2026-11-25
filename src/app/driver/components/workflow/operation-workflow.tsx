@@ -12,7 +12,10 @@ import {
   formatEvidenceTypeLabel,
   formatOperationStateLabel,
 } from "@/utils/format-labels";
-import { getMissingMandatoryAppointments } from "./workflow-guards";
+import {
+  getMissingMandatoryAppointments,
+  isLooseCargoOperation,
+} from "./workflow-guards";
 import {
   buildWorkflowSteps,
   getWorkflowFamily,
@@ -44,6 +47,8 @@ interface OperationData {
   type?: string;
   isAnticipada?: boolean;
   isContainerized?: boolean;
+  cargoType?: string | null;
+  tipoCarga?: string | null;
   cargoDescription?: string | null;
   weight?: number | null;
   dimensions?: string | null;
@@ -268,7 +273,7 @@ function getTravelStartDate(
     operation.type !== "NACIONAL" ? operation.fechaCitaOrigen : null;
   const destinationAppointment =
     operation.type !== "NACIONAL" ? operation.fechaCitaDestino : null;
-  if (operation.isContainerized !== true) {
+  if (isLooseCargoOperation(operation)) {
     if (nextState === "RUMBO_AL_PUERTO" && operation.type === "EXPORTACION") {
       return destinationAppointment ?? operation.scheduledAt ?? null;
     }
@@ -1425,6 +1430,7 @@ const getLooseCargoTradeSteps = (operation: OperationData): WorkflowStep[] => {
       id: "loose-port-exit",
       travelState: state,
       label: `SUBIR ARIN DE SALIDA${suffix}`,
+      ...(isExport ? { nextState: "FINALIZADO" } : {}),
       action: "evidence",
       evidenceTypes: [PORT_EXIT_EVIDENCE],
       requiresEvidence: [PORT_ENTRY_EVIDENCE],
@@ -1455,18 +1461,6 @@ const getLooseCargoTradeSteps = (operation: OperationData): WorkflowStep[] => {
   return [
     ...LOOSE_CARGO_STEPS.slice(0, arrivalIndex + 1),
     ...arinSteps,
-    ...LOOSE_CARGO_STEPS.slice(arrivalIndex + 1).map((step) =>
-      step.id === "loose-cargo-close"
-        ? {
-            ...step,
-      requiresEvidence: [
-        ...(step.requiresEvidence ?? []),
-        PORT_ENTRY_EVIDENCE,
-        PORT_EXIT_EVIDENCE,
-      ],
-          }
-        : step,
-    ),
   ];
 };
 
@@ -1673,7 +1667,7 @@ export function OperationWorkflow({
   const missingMandatoryAppointments =
     activeStep?.nextState &&
     TRAVEL_START_STATES.has(activeStep.nextState)
-      ? getMissingMandatoryAppointments(operation)
+      ? getMissingMandatoryAppointments(operation, activeStep.nextState)
       : [];
   const isTravelStartBlocked =
     Boolean(activeStep?.nextState) &&
@@ -1756,71 +1750,127 @@ export function OperationWorkflow({
               <ol>
                 {[...operation.stops]
                   .sort((left, right) => left.stopOrder - right.stopOrder)
-                  .map((stop) => (
-                    <li key={stop.id} style={{ marginBottom: 12 }}>
-                      <strong>
-                        {stop.stopType === "CARGUE" ? "Cargue" : "Descargue"} ·{" "}
-                        {stop.location?.name ||
-                          stop.address ||
-                          "Dirección pendiente"}
-                      </strong>
-                      <div>{stop.client.razonSocial}</div>
-                      {(stop.address || stop.location?.address) && (
-                        <div>{stop.address || stop.location?.address}</div>
-                      )}
-                      {stop.contactName && (
-                        <div>Contacto: {stop.contactName}</div>
-                      )}
-                      {stop.contactPhone && (
-                        <div>Teléfono: {stop.contactPhone}</div>
-                      )}
-                      {stop.observations && (
-                        <div>Observaciones: {stop.observations}</div>
-                      )}
-                      {stop.cargoDescription && (
-                        <div>{stop.cargoDescription}</div>
-                      )}
-                      {stop.weightKg != null && <div>{stop.weightKg} kg</div>}
-                          <div>Estado: {formatOperationStateLabel(stop.status)}</div>
-                      {stop.status !== "COMPLETADA" &&
-                        ((stop.stopType === "CARGUE" &&
-                          currentState === "LLEGADA_ORIGEN") ||
-                          (stop.stopType === "DESCARGUE" &&
-                            currentState === "LLEGADA_DESTINO")) && (
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            {stop.stopType === "DESCARGUE" && (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() =>
-                                  onOpenEvidenceModal(operation.id, [
-                                    "ANOMALY_PHOTO",
-                                  ])
-                                }
-                              >
-                                Subir fotos de anomalías
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              variant="primary"
-                              disabled={isLoading}
-                              onClick={() =>
-                                void onCompleteStop(operation.id, stop.id)
-                              }
-                            >
-                              Completar parada
-                            </Button>
-                          </div>
+                  .map((stop) => {
+                    const missingStopSupports: string[] = [];
+                    if (stop.stopType === "CARGUE") {
+                      if (!hasValidEvidence(operation, LOOSE_CARGO_EVIDENCE)) {
+                        missingStopSupports.push("evidencia de carga suelta");
+                      }
+                    } else if (isExportWorkflow) {
+                      if (!hasValidEvidence(operation, PORT_ENTRY_EVIDENCE)) {
+                        missingStopSupports.push("ARIN de ingreso");
+                      }
+                      if (!hasValidEvidence(operation, PORT_EXIT_EVIDENCE)) {
+                        missingStopSupports.push("ARIN de salida");
+                      }
+                    } else {
+                      if (
+                        !hasValidEvidence(
+                          operation,
+                          LOOSE_CARGO_ARRIVAL_EVIDENCE,
+                        )
+                      ) {
+                        missingStopSupports.push("fotos de llegada");
+                      }
+                      if (
+                        !hasValidEvidence(
+                          operation,
+                          LOOSE_CARGO_UNLOADING_EVIDENCE,
+                        )
+                      ) {
+                        missingStopSupports.push("fotos del descargue");
+                      }
+                    }
+
+                    return (
+                      <li key={stop.id} style={{ marginBottom: 12 }}>
+                        <strong>
+                          {stop.stopType === "CARGUE" ? "Cargue" : "Descargue"}{" "}
+                          ·{" "}
+                          {stop.location?.name ||
+                            stop.address ||
+                            "Dirección pendiente"}
+                        </strong>
+                        <div>{stop.client.razonSocial}</div>
+                        {(stop.address || stop.location?.address) && (
+                          <div>{stop.address || stop.location?.address}</div>
                         )}
-                    </li>
-                  ))}
+                        {stop.contactName && (
+                          <div>Contacto: {stop.contactName}</div>
+                        )}
+                        {stop.contactPhone && (
+                          <div>Teléfono: {stop.contactPhone}</div>
+                        )}
+                        {stop.observations && (
+                          <div>Observaciones: {stop.observations}</div>
+                        )}
+                        {stop.cargoDescription && (
+                          <div>{stop.cargoDescription}</div>
+                        )}
+                        {stop.weightKg != null && <div>{stop.weightKg} kg</div>}
+                        <div>
+                          Estado: {formatOperationStateLabel(stop.status)}
+                        </div>
+                        {stop.status !== "COMPLETADA" &&
+                          ((stop.stopType === "CARGUE" &&
+                            currentState === "LLEGADA_ORIGEN") ||
+                            (stop.stopType === "DESCARGUE" &&
+                              currentState === "LLEGADA_DESTINO")) && (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8,
+                              }}
+                            >
+                              {missingStopSupports.length > 0 && (
+                                <p
+                                  className={styles.containerHint}
+                                  role="status"
+                                >
+                                  Para completar esta parada sube primero:{" "}
+                                  {missingStopSupports.join(" y ")}.
+                                </p>
+                              )}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 8,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                {stop.stopType === "DESCARGUE" &&
+                                  !isExportWorkflow && (
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        onOpenEvidenceModal(operation.id, [
+                                          "ANOMALY_PHOTO",
+                                        ])
+                                      }
+                                    >
+                                      Subir fotos de anomalías
+                                    </Button>
+                                  )}
+                                <Button
+                                  type="button"
+                                  variant="primary"
+                                  disabled={
+                                    isLoading || missingStopSupports.length > 0
+                                  }
+                                  onClick={() =>
+                                    void onCompleteStop(operation.id, stop.id)
+                                  }
+                                >
+                                  Completar parada
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                      </li>
+                    );
+                  })}
               </ol>
             </section>
           )}
