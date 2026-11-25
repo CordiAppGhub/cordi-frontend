@@ -17,6 +17,14 @@ interface DriverOtpRequestResponse {
   developmentOtp?: string;
 }
 
+export interface DriverExtraConcept {
+  id: string;
+  code: string;
+  name: string;
+  appliesTo: string | null;
+  description: string | null;
+}
+
 export type ContainerRollbackReason =
   | "FOTO_BORROSA"
   | "CONTENEDOR_INCORRECTO"
@@ -35,26 +43,44 @@ export interface ContainerStateRollbackCandidate {
 }
 
 export const driverPortalService = {
-  getContainerStateRollback: async (operationId: number): Promise<ContainerStateRollbackCandidate | null> => {
+  getContainerStateRollback: async (
+    operationId: number,
+  ): Promise<ContainerStateRollbackCandidate | null> => {
     const { data } = await api.get<ContainerStateRollbackCandidate | null>(
       `/portal/operations/${operationId}/container-state-rollback`,
     );
     return data;
   },
 
-  rollbackContainerState: async (operationId: number, historyId: number, reason: ContainerRollbackReason): Promise<void> => {
-    await api.post(`/portal/operations/${operationId}/container-state-rollback`, { historyId, reason });
+  rollbackContainerState: async (
+    operationId: number,
+    historyId: number,
+    reason: ContainerRollbackReason,
+  ): Promise<void> => {
+    await api.post(
+      `/portal/operations/${operationId}/container-state-rollback`,
+      { historyId, reason },
+    );
   },
 
-  getContainerRollbackCandidate: async (operationId: number): Promise<ContainerRollbackCandidate | null> => {
+  getContainerRollbackCandidate: async (
+    operationId: number,
+  ): Promise<ContainerRollbackCandidate | null> => {
     const { data } = await api.get<ContainerRollbackCandidate | null>(
       `/portal/operations/${operationId}/container-rollback`,
     );
     return data;
   },
 
-  rollbackContainer: async (operationId: number, historyId: number, reason: ContainerRollbackReason): Promise<void> => {
-    await api.post(`/portal/operations/${operationId}/container-rollback`, { historyId, reason });
+  rollbackContainer: async (
+    operationId: number,
+    historyId: number,
+    reason: ContainerRollbackReason,
+  ): Promise<void> => {
+    await api.post(`/portal/operations/${operationId}/container-rollback`, {
+      historyId,
+      reason,
+    });
   },
 
   reportTrailerLocation: async (
@@ -99,6 +125,7 @@ export const driverPortalService = {
     evidenceType?: string,
     etapa?: string,
     formato?: string,
+    beforeState?: string,
   ): Promise<void> => {
     const formData = new FormData();
     const files = Array.isArray(file) ? file : [file];
@@ -108,6 +135,7 @@ export const driverPortalService = {
     if (evidenceType) formData.append("type", evidenceType);
     if (etapa) formData.append("etapa", etapa);
     if (formato) formData.append("formato", formato);
+    if (beforeState) formData.append("beforeState", beforeState);
 
     await api.post(`/portal/operations/${operationId}/evidences`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -163,10 +191,9 @@ export const driverPortalService = {
   },
 
   completeStop: async (operationId: number, stopId: number): Promise<void> => {
-    await api.patch(
-      `/portal/operations/${operationId}/stops/${stopId}`,
-      { status: "COMPLETADA" },
-    );
+    await api.patch(`/portal/operations/${operationId}/stops/${stopId}`, {
+      status: "COMPLETADA",
+    });
   },
 
   updateSealNumber: async (
@@ -187,7 +214,7 @@ export const driverPortalService = {
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 45000,
+        timeout: 120_000,
       },
     );
     return data;
@@ -196,9 +223,13 @@ export const driverPortalService = {
   scanContainer: async (
     operationId: number,
     file: File,
+    containerNumber?: string,
   ): Promise<OcrResult> => {
     const formData = new FormData();
     formData.append("file", file);
+    if (containerNumber?.trim()) {
+      formData.append("containerNumber", containerNumber.trim());
+    }
 
     const { data } = await api.post(
       `/portal/operations/${operationId}/ocr-container`,
@@ -215,7 +246,9 @@ export const driverPortalService = {
     return response.data;
   },
   async getMyNovedades(): Promise<MyNovedadesResponse> {
-    const { data } = await api.get<MyNovedadesResponse>("/portal/novedades/mine");
+    const { data } = await api.get<MyNovedadesResponse>(
+      "/portal/novedades/mine",
+    );
     return data;
   },
   async reportNovedad(payload: {
@@ -230,22 +263,24 @@ export const driverPortalService = {
     const { data } = await api.post("/portal/novedades", payload);
     return data;
   },
+  async getExtraConcepts(): Promise<DriverExtraConcept[]> {
+    const { data } = await api.get<DriverExtraConcept[]>(
+      "/portal/operations/extra-concepts",
+    );
+    return data;
+  },
   async reportExtraReport(
     operationId: number,
     payload: {
-      type: "STAND_BY" | "DESVIO" | "MANIOBRA_EXTRA" | "EN_PISO";
-      durationHours?: number;
+      conceptId: string;
       description: string;
-      file: File;
+      file?: File;
     },
   ) {
     const formData = new FormData();
-    formData.append("type", payload.type);
-    if (payload.durationHours !== undefined) {
-      formData.append("durationHours", String(payload.durationHours));
-    }
+    formData.append("conceptId", payload.conceptId);
     formData.append("description", payload.description);
-    formData.append("file", payload.file);
+    if (payload.file) formData.append("file", payload.file);
     const { data } = await api.post(
       `/portal/operations/${operationId}/extra-reports`,
       formData,

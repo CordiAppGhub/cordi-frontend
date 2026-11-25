@@ -15,6 +15,7 @@ const evidenceTypeLabels: Record<string, string> = {
   VERIFICACION_PLACA_TRAILER: 'Verificación de placa del tráiler',
   ANOMALY_PHOTO: 'Fotos de anomalías en la mercancía',
   'NÚMERO DE CONTENEDOR': 'Número de contenedor',
+  EVIDENCIA_DESCARGUE_CONTENEDOR: 'Evidencia del descargue del contenedor',
   'SOPORTE DE CIERRE': 'Soporte de cierre',
 };
 
@@ -22,10 +23,16 @@ const operationStateLabels: Record<string, string> = {
   EN_PISO: 'Bajado a piso',
   PENDIENTE: 'Pendiente',
   PENDIENTE_CARGUE: 'Pendiente de cargue',
+  VACIO: 'Vacío',
+  CARGANDO_AL_TRAILER: 'Cargando al tráiler',
+  CARGADO_AL_TRAILER: 'Cargado al tráiler',
   EN_CARGUE: 'En cargue',
   CARGADO: 'Cargado',
   EN_DESCARGUE: 'En descargue',
   DESCARGADO: 'Descargado',
+  DESMONTANDO_DEL_TRAILER: 'Desmontando del tráiler',
+  DESMONTADO_DEL_TRAILER: 'Desmontado del tráiler',
+  ENTREGADO: 'Entregado',
   EN_PUERTO: 'En puerto',
   LLEGADA_ORIGEN: 'Llegada al origen',
   LLEGADA_DESTINO: 'Llegada al destino',
@@ -36,24 +43,6 @@ const operationStateLabels: Record<string, string> = {
   DESENGANCHADO: 'Tráiler desenganchado',
   DESVIO_PATIO_PENDIENTE: 'Desvío de patio pendiente',
   PENDIENTE_LLENO: 'Pendiente de llenado en cliente',
-};
-
-const extraChargeTypeLabels: Record<string, string> = {
-  EN_PISO: 'Contenedor bajado a piso',
-  STAND_BY: 'Tiempo de espera',
-  STAND_BY_CARGUE: 'Tiempo de espera durante el cargue',
-  STAND_BY_DESCARGUE: 'Tiempo de espera durante el descargue',
-  DESVIO: 'Desvío operativo',
-  MANIOBRA_EXTRA: 'Maniobra extra',
-  DEMORA_PUERTO: 'Demora en puerto',
-  DEMORA_PORTUARIA: 'Demora en puerto',
-  SOBREPESO: 'Sobrepeso',
-  PATIO: 'Cargo de patio',
-  CARGUE: 'Cargue',
-  DESCARGUE: 'Descargue',
-  CONTENEDOR_EN_PISO: 'Contenedor bajado a piso',
-  STAND_BY_ESPERA: 'Tiempo de espera',
-  STAND_BY_CARGUE_DESCARGUE: 'Tiempo de espera durante cargue o descargue',
 };
 
 const evidenceStageLabels: Record<string, string> = {
@@ -89,10 +78,6 @@ export function formatEvidenceTypeLabel(type: string): string {
 
 export function formatOperationStateLabel(state?: string | null): string {
   return state ? lookupLabel(state, operationStateLabels) : '';
-}
-
-export function formatExtraChargeTypeLabel(type: string): string {
-  return lookupLabel(type, extraChargeTypeLabels);
 }
 
 export function formatEvidenceStageLabel(stage?: string | null): string {

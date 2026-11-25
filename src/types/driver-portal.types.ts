@@ -2,6 +2,8 @@ import type { TrailerType } from "./vehicles";
 
 export type OperationStatus =
   | "CREADO"
+  | "PENDIENTE_PROGRAMACION"
+  | "PROGRAMADA"
   | "PROGRAMADO"
   | "PENDIENTE_CARGUE"
   | "LISTA_PARA_CARGUE"
@@ -34,14 +36,20 @@ export type OperationContainerStatus =
   | "PENDIENTE"
   | "PENDIENTE_CARGUE"
   | "RESERVADO_ANTICIPADO"
+  | "VACIO"
   | "EN_PISO"
   | "PENDIENTE_DEVOLUCION"
   | "EN_INSPECCION"
   | "FALLA_REPORTADA"
+  | "CARGANDO_AL_TRAILER"
+  | "CARGADO_AL_TRAILER"
   | "EN_CARGUE"
   | "CARGADO"
   | "EN_DESCARGUE"
   | "DESCARGADO"
+  | "DESMONTANDO_DEL_TRAILER"
+  | "DESMONTADO_DEL_TRAILER"
+  | "ENTREGADO"
   | "DEVUELTO_VACIO";
 
 export type CargoStatus =
@@ -177,6 +185,7 @@ export interface Operation {
     appointmentAt?: string | null;
     actualArrivalAt?: string | null;
     actualDepartureAt?: string | null;
+    completedAt?: string | null;
     status: "PENDIENTE" | "EN_CURSO" | "COMPLETADA" | "OMITIDA";
     client: { razonSocial: string };
     location: { name: string; address?: string | null } | null;
@@ -248,4 +257,5 @@ export interface DriverPortalData {
 export interface OcrResult {
   codigo: string | null;
   legible: boolean;
+  ocrFallback?: boolean;
 }

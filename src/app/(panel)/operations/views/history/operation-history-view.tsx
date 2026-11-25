@@ -30,6 +30,20 @@ const INITIAL_DRAFT_FILTERS: DraftFilters = {
   isContainerized: undefined,
 };
 
+function buildCleanFilters(draft: DraftFilters): DraftFilters {
+  return {
+    search: draft.search?.trim() || undefined,
+    isContainerized: draft.isContainerized,
+    startDate: draft.startDate || undefined,
+    endDate: draft.endDate || undefined,
+    manifiesto: draft.manifiesto?.trim() || undefined,
+    containerNumber: draft.containerNumber?.trim() || undefined,
+    clientId: draft.clientId,
+    analystId: draft.analystId,
+    driverId: draft.driverId,
+  };
+}
+
 function displayName(name?: string | null): string {
   return name?.trim() || "—";
 }
@@ -152,24 +166,33 @@ export function OperationHistoryView({
     onCountChange(meta.totalItems);
   }, [meta.totalItems, onCountChange]);
 
+  const applyDraftImmediately = (nextDraft: DraftFilters) => {
+    setDraftFilters(nextDraft);
+    setPage(1);
+    applyFilters(buildCleanFilters(nextDraft));
+  };
+
   const updateDraft = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setDraftFilters((current) => ({ ...current, [name]: value }));
+    const nextDraft: DraftFilters = { ...draftFilters, [name]: value };
+    setDraftFilters(nextDraft);
+
+    if (name === "search" && value === "") {
+      setPage(1);
+      applyFilters(buildCleanFilters(nextDraft));
+    }
   };
 
   const submitFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const nonEmptyFilters = Object.fromEntries(
-      Object.entries(draftFilters).filter(
-        ([, value]) => value !== "" && value !== undefined,
-      ),
-    ) as DraftFilters;
-    applyFilters(nonEmptyFilters);
+    setPage(1);
+    applyFilters(buildCleanFilters(draftFilters));
   };
 
   const resetFilters = () => {
     setDraftFilters(INITIAL_DRAFT_FILTERS);
     setSelectResetVersion((version) => version + 1);
+    setPage(1);
     clearFilters();
   };
 
@@ -195,15 +218,14 @@ export function OperationHistoryView({
                   ? ""
                   : String(draftFilters.isContainerized)
               }
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
+              onChange={(event) => {
+                const rawValue = event.target.value;
+                applyDraftImmediately({
+                  ...draftFilters,
                   isContainerized:
-                    event.target.value === ""
-                      ? undefined
-                      : event.target.value === "true",
-                }))
-              }
+                    rawValue === "" ? undefined : rawValue === "true",
+                });
+              }}
             >
               <option value="">Todas</option>
               <option value="true">Contenerizada</option>
@@ -229,7 +251,11 @@ export function OperationHistoryView({
             />
           </label>
           <div className={styles.filterActions}>
-            <Button type="submit" className={styles.searchButton} disabled={isLoading}>
+            <Button
+              type="submit"
+              className={styles.searchButton}
+              disabled={isLoading}
+            >
               <Search size={15} />
               Buscar
             </Button>
@@ -258,83 +284,86 @@ export function OperationHistoryView({
         </div>
         {isAdvancedOpen && (
           <div className={styles.advancedFilters}>
-        <div className={styles.filterField}>
-          <span>Manifiesto / pedido</span>
-          <HistorySearchSelect
-            key={`manifest-${selectResetVersion}`}
-            kind="manifest"
-            value={draftFilters.manifiesto || ""}
-            label="Manifiesto o pedido"
-            placeholder="Buscar número de pedido, DO o manifiesto"
-            onSelect={(value) => {
-              setDraftFilters((current) => ({ ...current, manifiesto: value }));
-            }}
-          />
-        </div>
-        <div className={styles.filterField}>
-          <span>N.º de contenedor</span>
-          <HistorySearchSelect
-            key={`container-${selectResetVersion}`}
-            kind="container"
-            value={draftFilters.containerNumber || ""}
-            label="Número de contenedor"
-            placeholder="Buscar contenedor"
-            onSelect={(value) => {
-              setDraftFilters((current) => ({
-                ...current,
-                containerNumber: value,
-              }));
-            }}
-          />
-        </div>
-        <div className={styles.filterField}>
-          <span>Analista</span>
-          <HistorySearchSelect
-            key={`analyst-${selectResetVersion}`}
-            kind="analyst"
-            value={String(draftFilters.analystId || "")}
-            label="Analista"
-            placeholder="Buscar analista"
-            onSelect={(value) => {
-              setDraftFilters((current) => ({
-                ...current,
-                analystId: value ? Number(value) : undefined,
-              }));
-            }}
-          />
-        </div>
-        <div className={styles.filterField}>
-          <span>Conductor</span>
-          <HistorySearchSelect
-            key={`driver-${selectResetVersion}`}
-            kind="driver"
-            value={String(draftFilters.driverId || "")}
-            label="Conductor"
-            placeholder="Buscar conductor"
-            onSelect={(value) => {
-              setDraftFilters((current) => ({
-                ...current,
-                driverId: value ? Number(value) : undefined,
-              }));
-            }}
-          />
-        </div>
-        <div className={styles.filterField}>
-          <span>Cliente</span>
-          <HistorySearchSelect
-            key={`client-${selectResetVersion}`}
-            kind="client"
-            value={String(draftFilters.clientId || "")}
-            label="Cliente"
-            placeholder="Buscar cliente"
-            onSelect={(value) => {
-              setDraftFilters((current) => ({
-                ...current,
-                clientId: value ? Number(value) : undefined,
-              }));
-            }}
-          />
-        </div>
+            <div className={styles.filterField}>
+              <span>Manifiesto / pedido</span>
+              <HistorySearchSelect
+                key={`manifest-${selectResetVersion}`}
+                kind="manifest"
+                value={draftFilters.manifiesto || ""}
+                label="Manifiesto o pedido"
+                placeholder="Buscar número de pedido, DO o manifiesto"
+                onSelect={(value) => {
+                  applyDraftImmediately({
+                    ...draftFilters,
+                    manifiesto: value,
+                  });
+                }}
+              />
+            </div>
+            <div className={styles.filterField}>
+              <span>N.º de contenedor</span>
+              <HistorySearchSelect
+                key={`container-${selectResetVersion}`}
+                kind="container"
+                value={draftFilters.containerNumber || ""}
+                label="Número de contenedor"
+                placeholder="Buscar contenedor"
+                onSelect={(value) => {
+                  applyDraftImmediately({
+                    ...draftFilters,
+                    containerNumber: value,
+                  });
+                }}
+              />
+            </div>
+            <div className={styles.filterField}>
+              <span>Analista</span>
+              <HistorySearchSelect
+                key={`analyst-${selectResetVersion}`}
+                kind="analyst"
+                value={String(draftFilters.analystId || "")}
+                label="Analista"
+                placeholder="Buscar analista"
+                onSelect={(value) => {
+                  applyDraftImmediately({
+                    ...draftFilters,
+                    analystId: value ? Number(value) : undefined,
+                  });
+                }}
+              />
+            </div>
+            <div className={styles.filterField}>
+              <span>Conductor</span>
+              <HistorySearchSelect
+                key={`driver-${selectResetVersion}`}
+                kind="driver"
+                value={String(draftFilters.driverId || "")}
+                label="Conductor"
+                placeholder="Buscar conductor"
+                onSelect={(value) => {
+                  applyDraftImmediately({
+                    ...draftFilters,
+                    driverId: value ? Number(value) : undefined,
+                  });
+                }}
+              />
+            </div>
+            <div className={styles.filterField}>
+              <span>Cliente</span>
+              <HistorySearchSelect
+                key={`client-${selectResetVersion}`}
+                kind="client"
+                value={String(draftFilters.clientId || "")}
+                label="Cliente"
+                placeholder="Buscar cliente"
+                onSelect={(value) => {
+                  applyDraftImmediately({
+                    ...draftFilters,
+                    clientId: value ? Number(value) : undefined,
+                  });
+                }}
+              />
+            </div>
           </div>
         )}
       </form>

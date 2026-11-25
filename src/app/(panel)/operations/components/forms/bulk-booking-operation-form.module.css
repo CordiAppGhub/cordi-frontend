@@ -5,6 +5,15 @@
   padding: 4px 2px 12px;
 }
 
+.sharedSection {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+}
+
 .modeHeading {
   display: flex;
   justify-content: space-between;
@@ -84,6 +93,21 @@
   padding: 14px;
 }
 
+.summary {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #eff6ff;
+  padding: 12px 14px;
+  color: #1e3a8a;
+  font-size: 0.85rem;
+}
+
+.summary strong {
+  font-size: 0.9rem;
+}
+
 .sectionHeader {
   display: flex;
   justify-content: space-between;
@@ -100,7 +124,12 @@
 
 .addButton,
 .removeButton,
+.applyButton,
 .actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 36px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
@@ -119,18 +148,45 @@
   color: #1d4ed8;
 }
 
+.applyButton {
+  flex: 0 0 auto;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .containerRows {
   display: grid;
   gap: 10px;
 }
 
+.containerCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 12px;
+  background: #fff;
+}
+
+.containerCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.containerCardHeader h4 {
+  flex: 1;
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
 .containerRow {
   display: grid;
-  grid-template-columns: 28px minmax(180px, 1.25fr) minmax(150px, 1fr) minmax(110px, 0.7fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   align-items: end;
   gap: 10px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 10px;
 }
 
 .rowNumber {
@@ -144,6 +200,17 @@
   color: #475569;
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.checkboxField {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  min-height: 40px;
+}
+
+.checkboxField input {
+  width: 16px;
+  height: 16px;
 }
 
 .removeButton {
@@ -162,6 +229,16 @@
   padding: 10px 12px;
   color: #b91c1c;
   font-size: 0.85rem;
+}
+
+.validationWarning {
+  margin: 0;
+  border: 1px solid #fcd34d;
+  border-radius: 7px;
+  background: #fffbeb;
+  padding: 9px 11px;
+  color: #92400e;
+  font-size: 0.82rem;
 }
 
 .actions {
@@ -188,21 +265,7 @@
     grid-template-columns: 1fr;
   }
 
-  .containerRow {
-    grid-template-columns: 28px 1fr;
-  }
-
-  .rowNumber {
-    grid-row: span 3;
-    align-self: start;
-  }
-
-  .containerRow label {
-    grid-column: 2;
-  }
-
   .removeButton {
-    grid-column: 2;
     justify-self: start;
   }
 
@@ -211,3 +274,4 @@
     flex-direction: column;
   }
 }
+

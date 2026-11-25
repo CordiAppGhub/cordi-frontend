@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { isAxiosError } from 'axios';
+import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { isAxiosError } from "axios";
 import {
   AlertTriangle,
   CalendarClock,
@@ -12,49 +12,61 @@ import {
   Search,
   Truck,
   UserRound,
-} from 'lucide-react';
-import { useForm, useWatch } from 'react-hook-form';
-import type { ReactNode } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Swal from 'sweetalert2';
-import { Button } from '@/components/atoms/button/button';
-import { Drawer } from '@/components/Drawer';
-import { useFleetLive } from '@/hooks/use-fleet-live';
-import { driversService } from '@/services/driver.service';
+} from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
+import type { ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
+import { Button } from "@/components/atoms/button/button";
+import { Drawer } from "@/components/Drawer";
+import { useFleetLive } from "@/hooks/use-fleet-live";
+import { driversService } from "@/services/driver.service";
 import {
   type FleetLiveStatus,
   type FleetLiveTrailer,
   type FleetLiveVehicle,
-} from '@/services/fleet-live.service';
+} from "@/services/fleet-live.service";
 import {
   type AssignExternalResourcesPayload,
   operationService,
-} from '@/services/operation.service';
+} from "@/services/operation.service";
 import {
   createExternalFleetDispatchSchema,
   type ExternalFleetDispatchInput,
   type ExternalFleetDispatchValues,
-} from '@/schemas/operation-dispatch.schema';
-import type { Driver } from '@/types/drivers';
-import type { Operation } from '@/types/operation-types';
+} from "@/schemas/operation-dispatch.schema";
+import type { Driver } from "@/types/drivers";
+import type { Operation } from "@/types/operation-types";
 import {
   getFleetConfigurationCode,
   TRAILER_TYPE_LABELS,
-} from '@/types/vehicles';
-import { getUserFriendlyErrorMessage } from '@/utils/api-error';
-import { showToast } from '@/utils/alerts';
-import { getOperationRouteNames } from '@/utils/operation-route';
-import styles from './operation-dispatch-drawer.module.css';
+} from "@/types/vehicles";
+import { getUserFriendlyErrorMessage } from "@/utils/api-error";
+import { showToast } from "@/utils/alerts";
+import { getOperationRouteNames } from "@/utils/operation-route";
+import styles from "./operation-dispatch-drawer.module.css";
 
 interface OperationDispatchDrawerProps {
   operation: Operation | null;
   isAnalyst: boolean;
+  allowAnalystFleetReassignment?: boolean;
+  selectionOnly?: boolean;
+  preassignedFleet?: {
+    driverIds: number[];
+    vehicleIds: number[];
+  };
   onClose: () => void;
   onAssigned?: (operation: Operation) => void;
+  onFleetSelected?: (selection: {
+    driverId: number;
+    vehicleId: number;
+    driverName: string;
+    vehiclePlate: string;
+  }) => void;
 }
 
-type DispatchTab = 'PROPIO' | 'TERCERO';
-type DeadlineState = 'closed' | 'overdue' | 'soon' | 'on-time' | 'missing';
+type DispatchTab = "PROPIO" | "TERCERO";
+type DeadlineState = "closed" | "overdue" | "soon" | "on-time" | "missing";
 
 interface BackendError {
   code?: string;
@@ -62,26 +74,26 @@ interface BackendError {
 }
 
 const statusLabels: Record<FleetLiveStatus, string> = {
-  AVAILABLE: 'Disponible',
-  ENDING_SOON: 'Por finalizar',
-  BUSY: 'Ocupado',
-  UNAVAILABLE: 'No disponible',
+  AVAILABLE: "Disponible",
+  ENDING_SOON: "Por finalizar",
+  BUSY: "Ocupado",
+  UNAVAILABLE: "No disponible",
 };
 
 const typeLabels: Record<string, string> = {
-  EXPO: 'EXPORTACION',
-  EXPORTACION: 'EXPORTACION',
-  IMPO: 'IMPORTACION',
-  IMPORTACION: 'IMPORTACION',
-  RETIRO_VACIO: 'RETIRO_VACIO',
-  DEVOLUCION: 'DEVOLUCION_VACIO',
-  DEVOLUCION_VACIO: 'DEVOLUCION_VACIO',
+  EXPO: "EXPORTACION",
+  EXPORTACION: "EXPORTACION",
+  IMPO: "IMPORTACION",
+  IMPORTACION: "IMPORTACION",
+  RETIRO_VACIO: "RETIRO_VACIO",
+  DEVOLUCION: "DEVOLUCION_VACIO",
+  DEVOLUCION_VACIO: "DEVOLUCION_VACIO",
 };
 
 const formatCapacity = (capacityKg: number | null): string =>
   capacityKg === null
-    ? 'No registrada'
-    : `${capacityKg.toLocaleString('es-CO')} kg · ${(capacityKg / 1000).toFixed(1)} Ton`;
+    ? "No registrada"
+    : `${capacityKg.toLocaleString("es-CO")} kg · ${(capacityKg / 1000).toFixed(1)} Ton`;
 
 const normalizeTractorAxles = (axles?: number | null): 2 | 3 | undefined =>
   axles === 2 || axles === 3 ? axles : undefined;
@@ -89,25 +101,25 @@ const normalizeTrailerAxles = (axles?: number | null): 1 | 2 | 3 | undefined =>
   axles === 1 || axles === 2 || axles === 3 ? axles : undefined;
 
 const formatDateTime = (value?: string | Date | null) => {
-  if (!value) return 'Sin fecha';
+  if (!value) return "Sin fecha";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
-    ? 'Fecha no disponible'
-    : date.toLocaleString('es-CO', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
+    ? "Fecha no disponible"
+    : date.toLocaleString("es-CO", {
+        dateStyle: "medium",
+        timeStyle: "short",
       });
 };
 
 const formatDate = (value?: string | Date | null) => {
-  if (!value) return 'Sin fecha límite';
+  if (!value) return "Sin fecha límite";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
-    ? 'Fecha no disponible'
-    : date.toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+    ? "Fecha no disponible"
+    : date.toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
 };
 
@@ -117,44 +129,63 @@ const deadlineState = (
   now = 0,
 ): DeadlineState => {
   if (closedAt) {
-    if (!deadline) return 'closed';
+    if (!deadline) return "closed";
     const deadlineTime = new Date(deadline).getTime();
     const closedTime = new Date(closedAt).getTime();
-    return Number.isNaN(deadlineTime) || Number.isNaN(closedTime) ||
+    return Number.isNaN(deadlineTime) ||
+      Number.isNaN(closedTime) ||
       closedTime <= deadlineTime
-      ? 'closed'
-      : 'overdue';
+      ? "closed"
+      : "overdue";
   }
-  if (!deadline) return 'missing';
+  if (!deadline) return "missing";
   const time = new Date(deadline).getTime();
-  if (Number.isNaN(time)) return 'missing';
+  if (Number.isNaN(time)) return "missing";
   const remaining = time - now;
-  if (remaining < 0) return 'overdue';
-  if (remaining <= 24 * 60 * 60 * 1000) return 'soon';
-  return 'on-time';
+  if (remaining < 0) return "overdue";
+  if (remaining <= 24 * 60 * 60 * 1000) return "soon";
+  return "on-time";
 };
 
 const deadlineLabels: Record<DeadlineState, string> = {
-  closed: 'Cumplido',
-  overdue: 'Vencido / fuera de plazo',
-  soon: 'Próximo a vencer',
-  'on-time': 'Al día',
-  missing: 'Sin fecha configurada',
+  closed: "Cumplido",
+  overdue: "Vencido / fuera de plazo",
+  soon: "Próximo a vencer",
+  "on-time": "Al día",
+  missing: "Sin fecha configurada",
 };
+
+const isLooseCargoOperation = (operation: Operation): boolean =>
+  operation.isContainerized === false || operation.tipoCarga === "SUELTA";
 
 const requestedAppointments = (operation: Operation): number[] =>
   [
     operation.scheduledAt,
-    ...(operation.type !== 'NACIONAL'
+    ...(operation.type !== "NACIONAL"
       ? [operation.fechaCitaOrigen, operation.fechaCitaDestino]
       : []),
-    ...(operation.isContainerized === true
+    ...(operation.isContainerized === true && !isLooseCargoOperation(operation)
       ? [operation.fechaCitaDesvio, operation.fechaRetiro]
       : []),
   ]
     .filter((value): value is string => Boolean(value))
     .map((value) => new Date(value).getTime())
     .filter((value) => Number.isFinite(value));
+
+const hasLooseCargoProgramming = (operation: Operation): boolean => {
+  const isLooseForeignTradeOperation =
+    isLooseCargoOperation(operation) &&
+    ["IMPORTACION", "EXPORTACION", "EXPORTACION_ANTICIPADA"].includes(
+      operation.type,
+    );
+  if (!isLooseForeignTradeOperation) return true;
+
+  const portAppointment =
+    operation.type === "IMPORTACION"
+      ? operation.fechaCitaOrigen
+      : operation.fechaCitaDestino;
+  return Boolean(operation.scheduledAt && portAppointment);
+};
 
 const hasPotentialOverlap = (
   operation: Operation,
@@ -164,7 +195,8 @@ const hasPotentialOverlap = (
   const appointmentTime = new Date(vehicle.appointmentAt).getTime();
   if (!Number.isFinite(appointmentTime)) return false;
   return requestedAppointments(operation).some(
-    (requestedTime) => Math.abs(requestedTime - appointmentTime) <= 60 * 60 * 1000,
+    (requestedTime) =>
+      Math.abs(requestedTime - appointmentTime) <= 60 * 60 * 1000,
   );
 };
 
@@ -176,34 +208,34 @@ const getVehicleAxleCompatibility = (
   const configuration = operation.cargoVehicleType;
   const reasons: string[] = [];
   if (vehicle.axles !== 2 && vehicle.axles !== 3) {
-    reasons.push('Ejes del cabezote sin registrar (se requieren 2 o 3)');
+    reasons.push("Ejes del cabezote sin registrar (se requieren 2 o 3)");
   }
   if (!configuration) {
-    reasons.push('Configuración vehicular requerida no disponible');
+    reasons.push("Configuración vehicular requerida no disponible");
   }
   if (configuration) {
     const emptyCargoOperation =
-      operation.type === 'RETIRO_VACIO' ||
-      operation.type === 'DEVOLUCION_VACIO';
+      operation.type === "RETIRO_VACIO" ||
+      operation.type === "DEVOLUCION_VACIO";
     if (
       !emptyCargoOperation &&
       (operation.weight == null || operation.weight <= 0)
     ) {
-      reasons.push('Peso de carga sin registrar');
+      reasons.push("Peso de carga sin registrar");
     }
     if (
       configuration.tractorAxles !== null &&
       (vehicle.axles ?? 0) < configuration.tractorAxles
     ) {
       reasons.push(
-        `Cabezote de ${vehicle.axles ?? 'ejes no registrados'}; se requieren al menos ${configuration.tractorAxles}`,
+        `Cabezote de ${vehicle.axles ?? "ejes no registrados"}; se requieren al menos ${configuration.tractorAxles}`,
       );
     }
 
     if (configuration.requiresTrailer && !trailer) {
-      reasons.push('La configuración requiere un tráiler');
+      reasons.push("La configuración requiere un tráiler");
     } else if (!configuration.requiresTrailer && trailer) {
-      reasons.push('La configuración requiere un vehículo rígido sin tráiler');
+      reasons.push("La configuración requiere un vehículo rígido sin tráiler");
     }
 
     if (
@@ -213,7 +245,7 @@ const getVehicleAxleCompatibility = (
       (trailer.axles ?? 0) < configuration.trailerAxles
     ) {
       reasons.push(
-        `Tráiler de ${trailer.axles ?? 'ejes no registrados'}; se requieren al menos ${configuration.trailerAxles}`,
+        `Tráiler de ${trailer.axles ?? "ejes no registrados"}; se requieren al menos ${configuration.trailerAxles}`,
       );
     }
 
@@ -223,23 +255,23 @@ const getVehicleAxleCompatibility = (
       vehicle.type,
     );
     if (!actualConfigurationCode) {
-      reasons.push('No se pudo determinar una tipología oficial del equipo');
+      reasons.push("No se pudo determinar una tipología oficial del equipo");
     }
     if (
       !configuration.requiresTrailer &&
-      vehicle.type !== 'C2' &&
-      vehicle.type !== 'C3'
+      vehicle.type !== "C2" &&
+      vehicle.type !== "C3"
     ) {
-      reasons.push('Se requiere registrar un camión rígido C2 o C3');
+      reasons.push("Se requiere registrar un camión rígido C2 o C3");
     }
 
     if (operation.weight != null && operation.weight > 0) {
       const effectiveCapacity = vehicle.effectiveCapacityKg;
       if (effectiveCapacity === null) {
-        reasons.push('Capacidad efectiva del equipo sin registrar');
+        reasons.push("Capacidad efectiva del equipo sin registrar");
       } else if (operation.weight > effectiveCapacity) {
         reasons.push(
-          `La carga de ${operation.weight.toLocaleString('es-CO')} kg supera la capacidad efectiva de ${effectiveCapacity.toLocaleString('es-CO')} kg`,
+          `La carga de ${operation.weight.toLocaleString("es-CO")} kg supera la capacidad efectiva de ${effectiveCapacity.toLocaleString("es-CO")} kg`,
         );
       }
     }
@@ -252,7 +284,7 @@ const getVehicleAxleCompatibility = (
       );
     } else if (trailer.trailerType !== operation.requiredTrailerType) {
       reasons.push(
-        `Tráiler ${trailer.trailerType ? TRAILER_TYPE_LABELS[trailer.trailerType] : 'sin tipo'}; se requiere ${TRAILER_TYPE_LABELS[operation.requiredTrailerType]}`,
+        `Tráiler ${trailer.trailerType ? TRAILER_TYPE_LABELS[trailer.trailerType] : "sin tipo"}; se requiere ${TRAILER_TYPE_LABELS[operation.requiredTrailerType]}`,
       );
     }
   }
@@ -264,49 +296,64 @@ const getVehicleAxleCompatibility = (
 };
 
 const driverStatusLabel = (driver?: Driver): string => {
-  if (!driver) return 'Conductor no disponible en el registro';
-  if (driver.conductorStatus === 'BUSY') return 'Conductor con viaje activo';
-  if (driver.conductorStatus === 'BLOCKED_BY_ABSENCE') return 'Conductor con ausencia';
-  if (driver.conductorStatus === 'BLOCKED_BY_NOVEDAD') return 'Conductor bloqueado por novedad';
-  return 'Conductor disponible';
+  if (!driver) return "Conductor no disponible en el registro";
+  if (driver.conductorStatus === "BUSY")
+    return "Conductor con otra operación asignada";
+  if (driver.conductorStatus === "BLOCKED_BY_ABSENCE")
+    return "Conductor con ausencia";
+  if (driver.conductorStatus === "BLOCKED_BY_NOVEDAD")
+    return "Conductor bloqueado por novedad";
+  return "Conductor disponible";
 };
 
 export function OperationDispatchDrawer({
   operation: initialOperation,
   isAnalyst,
+  allowAnalystFleetReassignment = false,
+  selectionOnly = false,
+  preassignedFleet,
   onClose,
   onAssigned,
+  onFleetSelected,
 }: OperationDispatchDrawerProps) {
   const queryClient = useQueryClient();
   const operationQuery = useQuery({
-    queryKey: ['operation', initialOperation?.id],
+    queryKey: ["operation", initialOperation?.id],
     queryFn: () => {
       if (!initialOperation) {
-        throw new Error('No hay una operación seleccionada para despachar.');
+        throw new Error("No hay una operación seleccionada para despachar.");
       }
       return operationService.getOperationById(initialOperation.id);
     },
     enabled: Boolean(initialOperation?.id),
     initialData: initialOperation ?? undefined,
     staleTime: 0,
-    refetchOnMount: 'always',
+    refetchOnMount: "always",
   });
   const operation = operationQuery.data ?? initialOperation;
   const operationDetailsReady =
     operationQuery.isFetchedAfterMount &&
     !operationQuery.isFetching &&
     !operationQuery.isError;
-  const [selectedTab, setSelectedTab] = useState<DispatchTab>('PROPIO');
-  const activeTab: DispatchTab = isAnalyst ? 'TERCERO' : selectedTab;
-  const [search, setSearch] = useState('');
-  const [onlyAvailable, setOnlyAvailable] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<DispatchTab>("PROPIO");
+  const canUseOwnFleet =
+    selectionOnly || !isAnalyst || allowAnalystFleetReassignment;
+  const activeTab: DispatchTab = selectionOnly
+    ? "PROPIO"
+    : canUseOwnFleet
+      ? selectedTab
+      : "TERCERO";
+  const [search, setSearch] = useState("");
+  const [onlyAvailable, setOnlyAvailable] = useState(!selectionOnly);
   const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (selectionOnly) setOnlyAvailable(false);
+  }, [selectionOnly, initialOperation?.id]);
   const externalDispatchSchema = useMemo(
     () =>
       createExternalFleetDispatchSchema({
         tractorAxles: operation?.cargoVehicleType?.tractorAxles ?? null,
-        requiresTrailer:
-          operation?.cargoVehicleType?.requiresTrailer ?? false,
+        requiresTrailer: operation?.cargoVehicleType?.requiresTrailer ?? false,
         trailerAxles: operation?.cargoVehicleType?.trailerAxles ?? null,
         requiredTrailerType: operation?.requiredTrailerType ?? null,
       }),
@@ -320,12 +367,12 @@ export function OperationDispatchDrawer({
   );
 
   const liveQuery = useFleetLive(
-    Boolean(operation) && !isAnalyst && activeTab === 'PROPIO',
+    Boolean(operation) && canUseOwnFleet && activeTab === "PROPIO",
   );
   const driversQuery = useQuery({
-    queryKey: ['drivers', 'dispatch'],
+    queryKey: ["drivers", "dispatch"],
     queryFn: driversService.getAll,
-    enabled: Boolean(operation) && !isAnalyst && activeTab === 'PROPIO',
+    enabled: Boolean(operation) && canUseOwnFleet && activeTab === "PROPIO",
     refetchInterval: 15000,
     refetchOnWindowFocus: true,
     staleTime: 5 * 60 * 1000,
@@ -337,39 +384,37 @@ export function OperationDispatchDrawer({
     ExternalFleetDispatchValues
   >({
     resolver: zodResolver(externalDispatchSchema),
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
-      plate: '',
-      trailerPlate: '',
+      plate: "",
+      trailerPlate: "",
       tractorAxles: undefined,
       trailerType: undefined,
       trailerAxles: undefined,
       cargoCapacityKg: undefined,
-      driverName: '',
-      driverCedula: '',
-      driverPhone: '',
-      agreedFreight: '',
+      driverName: "",
+      driverCedula: "",
+      driverPhone: "",
+      agreedFreight: "",
     },
   });
   const thirdPartyCapacityKg = useWatch({
     control: externalForm.control,
-    name: 'cargoCapacityKg',
+    name: "cargoCapacityKg",
   });
   const externalDefaults = useMemo(
     () => ({
-      plate: operation?.vehicle?.plate ?? '',
-      trailerPlate: operation?.trailer?.plate ?? '',
+      plate: operation?.vehicle?.plate ?? "",
+      trailerPlate: operation?.trailer?.plate ?? "",
       tractorAxles: normalizeTractorAxles(operation?.vehicle?.axles),
       trailerType: operation?.trailer?.trailerType ?? undefined,
       trailerAxles: normalizeTrailerAxles(operation?.trailer?.axles),
       cargoCapacityKg: operation?.vehicle?.cargoCapacity ?? undefined,
-      driverName: operation?.driver?.name ?? '',
-      driverCedula: operation?.driver?.cedula ?? '',
-      driverPhone: operation?.driver?.telefono ?? '',
+      driverName: operation?.driver?.name ?? "",
+      driverCedula: operation?.driver?.cedula ?? "",
+      driverPhone: operation?.driver?.telefono ?? "",
       agreedFreight:
-        operation?.agreedFreight == null
-          ? ''
-          : String(operation.agreedFreight),
+        operation?.agreedFreight == null ? "" : String(operation.agreedFreight),
     }),
     [operation],
   );
@@ -390,21 +435,33 @@ export function OperationDispatchDrawer({
   }, []);
 
   const invalidateDispatchData = async (updatedOperation: Operation) => {
-    queryClient.setQueryData(['trafico-detail', updatedOperation.id], updatedOperation);
-    queryClient.setQueryData(['operation', updatedOperation.id], updatedOperation);
+    queryClient.setQueryData(
+      ["trafico-detail", updatedOperation.id],
+      updatedOperation,
+    );
+    queryClient.setQueryData(
+      ["operation", updatedOperation.id],
+      updatedOperation,
+    );
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['operation', updatedOperation.id] }),
-      queryClient.invalidateQueries({ queryKey: ['trafico'] }),
-      queryClient.invalidateQueries({ queryKey: ['trafico-client-operations'] }),
-      queryClient.invalidateQueries({ queryKey: ['operations'] }),
-      queryClient.invalidateQueries({ queryKey: ['programacion'] }),
-      queryClient.invalidateQueries({ queryKey: ['fleet-requests'] }),
-      queryClient.invalidateQueries({ queryKey: ['operations', 'by-date'] }),
-      queryClient.invalidateQueries({ queryKey: ['operations', 'pending-count'] }),
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-      queryClient.invalidateQueries({ queryKey: ['fleet-live-status'] }),
-      queryClient.invalidateQueries({ queryKey: ['drivers'] }),
+      queryClient.invalidateQueries({
+        queryKey: ["operation", updatedOperation.id],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["trafico"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["trafico-client-operations"],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["operations"] }),
+      queryClient.invalidateQueries({ queryKey: ["programacion"] }),
+      queryClient.invalidateQueries({ queryKey: ["fleet-requests"] }),
+      queryClient.invalidateQueries({ queryKey: ["operations", "by-date"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["operations", "pending-count"],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["fleet-live-status"] }),
+      queryClient.invalidateQueries({ queryKey: ["drivers"] }),
     ]);
     onAssigned?.(updatedOperation);
   };
@@ -445,7 +502,8 @@ export function OperationDispatchDrawer({
   });
 
   const driverById = useMemo(
-    () => new Map((driversQuery.data ?? []).map((driver) => [driver.id, driver])),
+    () =>
+      new Map((driversQuery.data ?? []).map((driver) => [driver.id, driver])),
     [driversQuery.data],
   );
   const operationDriverId = operation?.driverId;
@@ -457,7 +515,7 @@ export function OperationDispatchDrawer({
   const vehicles = useMemo(() => {
     if (!liveQuery.data) return [];
     const ownVehicles = liveQuery.data.vehicles.filter(
-      (vehicle) => vehicle.ownershipType === 'PROPIO',
+      (vehicle) => vehicle.ownershipType === "PROPIO",
     );
     const filtered = ownVehicles.filter((vehicle) => {
       const driver = vehicle.driverId
@@ -470,19 +528,24 @@ export function OperationDispatchDrawer({
       const matchesSearch =
         !query ||
         vehicle.plate.toLocaleLowerCase().includes(query) ||
-        (driver?.name ?? '').toLocaleLowerCase().includes(query) ||
-        (trailer?.plate ?? '').toLocaleLowerCase().includes(query);
+        (driver?.name ?? "").toLocaleLowerCase().includes(query) ||
+        (trailer?.plate ?? "").toLocaleLowerCase().includes(query);
       const availableNow =
-        (vehicle.status === 'AVAILABLE' || vehicle.status === 'ENDING_SOON') &&
-        (driver?.isAvailable === true || driver?.id === operationDriverId) &&
+        (vehicle.status === "AVAILABLE" ||
+          vehicle.status === "ENDING_SOON" ||
+          vehicle.status === "BUSY") &&
+        (driver?.isAvailable === true ||
+          driver?.conductorStatus === "BUSY" ||
+          driver?.id === operationDriverId) &&
         (operationAllowsRigidVehicle || Boolean(vehicle.trailerId));
+      const isPreassigned =
+        preassignedFleet?.vehicleIds.includes(vehicle.id) === true;
       const matchesRequiredTrailerType =
-        !requiredTrailerType ||
-        trailer?.trailerType === requiredTrailerType;
+        !requiredTrailerType || trailer?.trailerType === requiredTrailerType;
       return (
         matchesSearch &&
         matchesRequiredTrailerType &&
-        (!onlyAvailable || availableNow)
+        (!onlyAvailable || availableNow || isPreassigned)
       );
     });
     return filtered;
@@ -492,19 +555,33 @@ export function OperationDispatchDrawer({
     onlyAvailable,
     operationAllowsRigidVehicle,
     operationDriverId,
+    preassignedFleet?.vehicleIds,
     requiredTrailerType,
     search,
   ]);
 
   const getVehicleEligibility = (vehicle: FleetLiveVehicle) => {
-    const driver = vehicle.driverId ? driverById.get(vehicle.driverId) : undefined;
+    const driver = vehicle.driverId
+      ? driverById.get(vehicle.driverId)
+      : undefined;
     const trailer = liveQuery.data?.trailers.find(
       (item) => item.id === vehicle.trailerId,
     );
+    const isPreassignedVehicle =
+      preassignedFleet?.vehicleIds.includes(vehicle.id) === true;
     const statusAvailable =
-      vehicle.status === 'AVAILABLE' || vehicle.status === 'ENDING_SOON';
+      vehicle.status === "AVAILABLE" ||
+      vehicle.status === "ENDING_SOON" ||
+      vehicle.status === "BUSY" ||
+      isPreassignedVehicle;
+    const isPreassignedDriver =
+      driver !== undefined &&
+      (preassignedFleet?.driverIds.includes(driver.id) ?? false);
     const driverAvailable =
-      driver?.isAvailable === true || driver?.id === operation?.driverId;
+      driver?.isAvailable === true ||
+      driver?.conductorStatus === "BUSY" ||
+      driver?.id === operation?.driverId ||
+      isPreassignedDriver;
     const hasTrailer = Boolean(vehicle.trailerId && trailer);
     const requiresTrailer =
       Boolean(operation?.cargoVehicleType?.requiresTrailer) ||
@@ -522,12 +599,15 @@ export function OperationDispatchDrawer({
       hasRequiredTrailer,
       compatibility,
       canAssign:
+        Boolean(operation && hasLooseCargoProgramming(operation)) &&
         statusAvailable &&
         driverAvailable &&
         hasRequiredTrailer &&
         compatibility.compatible,
       overlap:
-        operation && operation.vehicleId !== vehicle.id
+        !isPreassignedVehicle &&
+        operation &&
+        operation.vehicleId !== vehicle.id
           ? hasPotentialOverlap(operation, vehicle)
           : false,
     };
@@ -535,10 +615,23 @@ export function OperationDispatchDrawer({
 
   const assignOwnVehicle = async (vehicle: FleetLiveVehicle) => {
     if (!operation || !operationDetailsReady) return;
+    const eligibility = getVehicleEligibility(vehicle);
+    if (!eligibility.driver || !eligibility.hasRequiredTrailer) return;
+    if (selectionOnly) {
+      onFleetSelected?.({
+        driverId: eligibility.driver.id,
+        vehicleId: vehicle.id,
+        driverName:
+          eligibility.driver.name ||
+          eligibility.driver.cedula ||
+          "Conductor sin nombre",
+        vehiclePlate: vehicle.plate,
+      });
+      return;
+    }
+
     try {
-      if (operation.vehicleId || operation.status === 'ASIGNADO') {
-        const eligibility = getVehicleEligibility(vehicle);
-        if (!eligibility.driver || !eligibility.hasRequiredTrailer) return;
+      if (operation.vehicleId || operation.status === "ASIGNADO") {
         await ownReassignmentMutation.mutateAsync({
           operationId: operation.id,
           data: {
@@ -553,22 +646,22 @@ export function OperationDispatchDrawer({
           vehicleId: vehicle.id,
         });
       }
-      showToast.success('Flota propia asignada a la operación.');
+      showToast.success("Flota propia asignada a la operación.");
     } catch (error) {
       const overlap =
         isAxiosError<BackendError>(error) &&
         error.response?.status === 409 &&
-        error.response.data?.code === 'OVERLAPPING_APPOINTMENTS';
+        error.response.data?.code === "OVERLAPPING_APPOINTMENTS";
       if (overlap) {
         const confirmation = await Swal.fire({
-          title: 'Cruce de citas',
+          title: "Cruce de citas",
           text:
             error.response?.data?.message ??
-            'El vehículo tiene otra cita dentro de la ventana de ±60 minutos. ¿Deseas forzar la asignación?',
-          icon: 'warning',
+            "El vehículo tiene otra cita dentro de la ventana de ±60 minutos. ¿Deseas forzar la asignación?",
+          icon: "warning",
           showCancelButton: true,
-          confirmButtonText: 'Sí, forzar asignación',
-          cancelButtonText: 'Volver',
+          confirmButtonText: "Sí, forzar asignación",
+          cancelButtonText: "Volver",
         });
         if (!confirmation.isConfirmed) return;
         try {
@@ -577,13 +670,13 @@ export function OperationDispatchDrawer({
             vehicleId: vehicle.id,
             force: true,
           });
-          showToast.success('Flota propia asignada a la operación.');
+          showToast.success("Flota propia asignada a la operación.");
         } catch (forceError) {
           showToast.error(
             forceError,
             getUserFriendlyErrorMessage(
               forceError,
-              'No se pudo asignar la flota seleccionada.',
+              "No se pudo asignar la flota seleccionada.",
             ),
           );
         }
@@ -593,7 +686,7 @@ export function OperationDispatchDrawer({
         error,
         getUserFriendlyErrorMessage(
           error,
-          'No se pudo asignar la flota seleccionada.',
+          "No se pudo asignar la flota seleccionada.",
         ),
       );
     }
@@ -618,7 +711,7 @@ export function OperationDispatchDrawer({
         : {}),
       driverName: values.driverName.trim(),
       driverCedula: values.driverCedula.trim(),
-      driverPhone: values.driverPhone.replace(/\D/g, ''),
+      driverPhone: values.driverPhone.replace(/\D/g, ""),
       agreedFreight: Number(values.agreedFreight),
     };
     try {
@@ -626,13 +719,13 @@ export function OperationDispatchDrawer({
         operationId: operation.id,
         payload,
       });
-      showToast.success('Flota de tercero asignada a la operación.');
+      showToast.success("Flota de tercero asignada a la operación.");
     } catch (error) {
       showToast.error(
         error,
         getUserFriendlyErrorMessage(
           error,
-          'No se pudo asignar la flota de tercero.',
+          "No se pudo asignar la flota de tercero.",
         ),
       );
     }
@@ -645,46 +738,44 @@ export function OperationDispatchDrawer({
   );
   const returnClosedAt =
     operation?.isContainerized === true &&
-    operation.containerStatus === 'DEVUELTO_VACIO'
+    operation.containerStatus === "DEVUELTO_VACIO"
       ? operation.fechaCierreFisico
       : null;
   const physicalDeadline =
     operation?.fechaLimiteDevolucion ?? operation?.fechaLimiteFisico;
   const physicalClosure =
-    operation?.isContainerized === true &&
-    operation.type === 'IMPORTACION'
+    operation?.isContainerized === true && operation.type === "IMPORTACION"
       ? returnClosedAt
       : operation?.fechaCierreFisico;
-  const physicalState = deadlineState(
-    physicalDeadline,
-    physicalClosure,
-    now,
-  );
+  const physicalState = deadlineState(physicalDeadline, physicalClosure, now);
   const physicalDeadlineContext =
-    operation?.type === 'EXPORTACION'
-      ? 'Ingreso a puerto'
-      : operation?.type === 'IMPORTACION' &&
-          operation.isContainerized === true
-        ? 'Devolución de vacío (patio vacío, propio o cliente)'
-        : 'Entrega física en destino';
+    operation?.type === "EXPORTACION"
+      ? "Ingreso a puerto"
+      : operation?.type === "IMPORTACION" && operation.isContainerized === true
+        ? "Devolución de vacío (patio vacío, propio o cliente)"
+        : "Entrega física en destino";
 
   const isSubmitting =
     ownFleetMutation.isPending ||
     ownReassignmentMutation.isPending ||
     externalFleetMutation.isPending;
   const { originName, destinationName } = getOperationRouteNames(operation);
+  const isReassigningFleet = Boolean(
+    operation?.vehicleId ||
+    operation?.driverId ||
+    operation?.trailerId ||
+    operation?.status === "ASIGNADO",
+  );
   const appointment =
-    operation?.type !== 'NACIONAL'
+    operation?.type !== "NACIONAL"
       ? operation?.fechaCitaOrigen ||
         operation?.fechaCitaDestino ||
         operation?.scheduledAt ||
-        (operation?.isContainerized === true
-          ? operation.fechaRetiro
-          : null)
+        (operation?.isContainerized === true ? operation.fechaRetiro : null)
       : operation?.scheduledAt;
   const dispatcherTitle = operation
-    ? `${isAnalyst ? 'Asignar tercero' : 'Asignar flota'} · Operación #${operation.id}`
-    : 'Despacho de flota';
+    ? `${selectionOnly ? "Seleccionar flota para amparo" : isAnalyst && !allowAnalystFleetReassignment ? "Asignar tercero" : isReassigningFleet ? "Reasignar flota" : "Asignar flota"} · Operación #${operation.id}`
+    : "Despacho de flota";
 
   return (
     <Drawer
@@ -695,7 +786,10 @@ export function OperationDispatchDrawer({
     >
       {operation && (
         <div className={styles.dispatchLayout}>
-          <aside className={styles.contextPanel} aria-label="Contexto de la operación">
+          <aside
+            className={styles.contextPanel}
+            aria-label="Contexto de la operación"
+          >
             {!operationDetailsReady && (
               <div
                 className={
@@ -703,11 +797,11 @@ export function OperationDispatchDrawer({
                     ? styles.errorMessage
                     : styles.stateMessage
                 }
-                role={operationQuery.isError ? 'alert' : 'status'}
+                role={operationQuery.isError ? "alert" : "status"}
               >
                 {operationQuery.isError
-                  ? 'No se pudo cargar el detalle completo de la operación. La asignación está deshabilitada.'
-                  : 'Cargando el detalle completo de la operación…'}
+                  ? "No se pudo cargar el detalle completo de la operación. La asignación está deshabilitada."
+                  : "Cargando el detalle completo de la operación…"}
                 {operationQuery.isError && (
                   <Button
                     type="button"
@@ -722,15 +816,18 @@ export function OperationDispatchDrawer({
             <div className={styles.operationHeading}>
               <span className={styles.operationCode}>#{operation.id}</span>
               <span className={styles.typeBadge}>
-                {typeLabels[operation.type] ?? operation.type.replace(/_/g, ' ')}
+                {typeLabels[operation.type] ??
+                  operation.type.replace(/_/g, " ")}
               </span>
             </div>
             <h3 className={styles.clientName}>
-              {operation.client?.razonSocial ?? 'Cliente sin nombre'}
+              {operation.client?.razonSocial ?? "Cliente sin nombre"}
             </h3>
             <p className={styles.route}>
               <span>{originName}</span>
-              <span className={styles.routeArrow} aria-hidden="true">→</span>
+              <span className={styles.routeArrow} aria-hidden="true">
+                →
+              </span>
               <span>{destinationName}</span>
             </p>
             <div className={styles.contextDetails}>
@@ -746,10 +843,10 @@ export function OperationDispatchDrawer({
                 <span>
                   <strong>Tipología requerida</strong>
                   {operation.cargoVehicleType?.name ??
-                    'Configuración no disponible'}
+                    "Configuración no disponible"}
                   {operation.cargoVehicleType?.maxPayloadKg != null
-                    ? ` · Hasta ${operation.cargoVehicleType.maxPayloadKg.toLocaleString('es-CO')} kg`
-                    : ''}
+                    ? ` · Hasta ${operation.cargoVehicleType.maxPayloadKg.toLocaleString("es-CO")} kg`
+                    : ""}
                 </span>
               </div>
               <div className={styles.contextDetail}>
@@ -758,11 +855,13 @@ export function OperationDispatchDrawer({
                   <strong>Tipo de tráiler / carrocería requerido</strong>
                   {operation.requiredTrailerType
                     ? TRAILER_TYPE_LABELS[operation.requiredTrailerType]
-                    : 'Cualquiera / sin restricción'}
+                    : "Cualquiera / sin restricción"}
                 </span>
               </div>
               <div className={styles.contextDetail}>
-                <span className={styles.sealIcon} aria-hidden="true">kg</span>
+                <span className={styles.sealIcon} aria-hidden="true">
+                  kg
+                </span>
                 <span>
                   <strong>Peso de la carga</strong>
                   {formatCapacity(operation.weight ?? null)}
@@ -774,31 +873,37 @@ export function OperationDispatchDrawer({
                     <Truck size={16} aria-hidden="true" />
                     <span>
                       <strong>Contenedor</strong>
-                      {operation.containerNumber || 'Sin contenedor asociado'}
+                      {operation.containerNumber || "Sin contenedor asociado"}
                     </span>
                   </div>
                   <div className={styles.contextDetail}>
-                    <span className={styles.sealIcon} aria-hidden="true">#</span>
+                    <span className={styles.sealIcon} aria-hidden="true">
+                      #
+                    </span>
                     <span>
                       <strong>Sello / precinto</strong>
-                      {operation.sealNumber || 'Sin sello registrado'}
+                      {operation.sealNumber || "Sin sello registrado"}
                     </span>
                   </div>
                 </>
               ) : (
                 <>
                   <div className={styles.contextDetail}>
-                    <span className={styles.sealIcon} aria-hidden="true">#</span>
+                    <span className={styles.sealIcon} aria-hidden="true">
+                      #
+                    </span>
                     <span>
                       <strong>Bultos / empaque</strong>
-                      {`${operation.packageCount ?? '—'} · ${operation.packageType ?? 'Sin empaque'}`}
+                      {`${operation.packageCount ?? "—"} · ${operation.packageType ?? "Sin empaque"}`}
                     </span>
                   </div>
                   <div className={styles.contextDetail}>
-                    <span className={styles.sealIcon} aria-hidden="true">m³</span>
+                    <span className={styles.sealIcon} aria-hidden="true">
+                      m³
+                    </span>
                     <span>
                       <strong>Volumen / dimensiones</strong>
-                      {`${operation.volumeM3 != null ? `${operation.volumeM3} m³` : 'Sin volumen'} · ${operation.dimensions || 'Sin dimensiones'}`}
+                      {`${operation.volumeM3 != null ? `${operation.volumeM3} m³` : "Sin volumen"} · ${operation.dimensions || "Sin dimensiones"}`}
                     </span>
                   </div>
                 </>
@@ -821,31 +926,41 @@ export function OperationDispatchDrawer({
             </section>
           </aside>
 
-          <section className={styles.assignmentPanel} aria-label="Asignación de recursos">
-            <div className={styles.tabs} role="tablist" aria-label="Tipo de flota">
-              {!isAnalyst && (
+          <section
+            className={styles.assignmentPanel}
+            aria-label="Asignación de recursos"
+          >
+            <div
+              className={styles.tabs}
+              role="tablist"
+              aria-label="Tipo de flota"
+            >
+              {canUseOwnFleet && (
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={activeTab === 'PROPIO'}
-                  className={`${styles.tab} ${activeTab === 'PROPIO' ? styles.activeTab : ''}`}
-                  onClick={() => setSelectedTab('PROPIO')}
+                  aria-selected={activeTab === "PROPIO"}
+                  className={`${styles.tab} ${activeTab === "PROPIO" ? styles.activeTab : ""}`}
+                  onClick={() => setSelectedTab("PROPIO")}
                 >
                   Flota propia
                 </button>
               )}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'TERCERO'}
-                className={`${styles.tab} ${activeTab === 'TERCERO' ? styles.activeTab : ''}`}
-                onClick={() => setSelectedTab('TERCERO')}
-              >
-                Flota de tercero
-              </button>
+              {!selectionOnly &&
+                (!isAnalyst || !allowAnalystFleetReassignment) && (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === "TERCERO"}
+                    className={`${styles.tab} ${activeTab === "TERCERO" ? styles.activeTab : ""}`}
+                    onClick={() => setSelectedTab("TERCERO")}
+                  >
+                    Flota de tercero
+                  </button>
+                )}
             </div>
 
-            {activeTab === 'PROPIO' && !isAnalyst ? (
+            {activeTab === "PROPIO" && canUseOwnFleet ? (
               <div className={styles.ownFleet}>
                 <div className={styles.searchControls}>
                   <label className={styles.searchInput}>
@@ -862,7 +977,9 @@ export function OperationDispatchDrawer({
                     <input
                       type="checkbox"
                       checked={onlyAvailable}
-                      onChange={(event) => setOnlyAvailable(event.target.checked)}
+                      onChange={(event) =>
+                        setOnlyAvailable(event.target.checked)
+                      }
                     />
                     Solo disponibles ahora
                   </label>
@@ -880,7 +997,8 @@ export function OperationDispatchDrawer({
                   </div>
                 ) : liveQuery.isError || driversQuery.isError ? (
                   <div className={styles.errorMessage} role="alert">
-                    No se pudo cargar toda la disponibilidad requerida para asignar.
+                    No se pudo cargar toda la disponibilidad requerida para
+                    asignar.
                     <Button
                       type="button"
                       variant="secondary"
@@ -905,11 +1023,16 @@ export function OperationDispatchDrawer({
                         !eligibility.canAssign ||
                         isSubmitting;
                       return (
-                        <article key={vehicle.id} className={styles.vehicleCard}>
+                        <article
+                          key={vehicle.id}
+                          className={styles.vehicleCard}
+                        >
                           <div className={styles.vehicleHeader}>
                             <div>
                               <h3>{vehicle.plate}</h3>
-                              <span className={`${styles.statusBadge} ${styles[vehicle.status]}`}>
+                              <span
+                                className={`${styles.statusBadge} ${styles[vehicle.status]}`}
+                              >
                                 {statusLabels[vehicle.status]}
                               </span>
                             </div>
@@ -923,34 +1046,42 @@ export function OperationDispatchDrawer({
                               }
                               onClick={() => void assignOwnVehicle(vehicle)}
                             >
-                              Asignar
+                              {selectionOnly
+                                ? "Seleccionar para amparo"
+                                : isReassigningFleet
+                                  ? "Reasignar"
+                                  : "Asignar"}
                             </Button>
                           </div>
 
                           <div className={styles.resourceDetails}>
                             <span>
                               <UserRound size={15} aria-hidden="true" />
-                              {eligibility.driver?.name || 'Sin conductor vinculado'}
+                              {eligibility.driver?.name ||
+                                "Sin conductor vinculado"}
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              {eligibility.trailer?.plate || 'Sin tráiler acoplado'}
+                              {eligibility.trailer?.plate ||
+                                "Sin tráiler acoplado"}
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              Vehículo: {vehicle.type} · Cabezote: {vehicle.axles ?? '—'} ejes · Tráiler:{' '}
+                              Vehículo: {vehicle.type} · Cabezote:{" "}
+                              {vehicle.axles ?? "—"} ejes · Tráiler:{" "}
                               {eligibility.trailer
-                                ? `${eligibility.trailer.trailerType ? TRAILER_TYPE_LABELS[eligibility.trailer.trailerType] : 'Tipo sin registrar'} · ${eligibility.trailer.axles ?? '—'} ejes`
-                                : 'no acoplado'}
+                                ? `${eligibility.trailer.trailerType ? TRAILER_TYPE_LABELS[eligibility.trailer.trailerType] : "Tipo sin registrar"} · ${eligibility.trailer.axles ?? "—"} ejes`
+                                : "no acoplado"}
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              Configuración resultante:{' '}
-                              {vehicle.configurationCode ?? 'Sin calcular'}
+                              Configuración resultante:{" "}
+                              {vehicle.configurationCode ?? "Sin calcular"}
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
-                              Capacidad efectiva: {formatCapacity(vehicle.effectiveCapacityKg)}
+                              Capacidad efectiva:{" "}
+                              {formatCapacity(vehicle.effectiveCapacityKg)}
                             </span>
                             <span>
                               <Truck size={15} aria-hidden="true" />
@@ -958,11 +1089,15 @@ export function OperationDispatchDrawer({
                             </span>
                             <span>
                               <Clock3 size={15} aria-hidden="true" />
-                              Próxima cita: {formatDateTime(vehicle.appointmentAt)}
+                              Próxima cita:{" "}
+                              {formatDateTime(vehicle.appointmentAt)}
                             </span>
                           </div>
 
-                          <div className={styles.eligibilityBadges} aria-label="Elegibilidad">
+                          <div
+                            className={styles.eligibilityBadges}
+                            aria-label="Elegibilidad"
+                          >
                             {!eligibility.statusAvailable && (
                               <span className={styles.badgeDanger}>
                                 <AlertTriangle size={13} />
@@ -994,13 +1129,14 @@ export function OperationDispatchDrawer({
                                 <AlertTriangle size={13} />
                               )}
                               {eligibility.compatibility.compatible
-                                ? 'Compatible'
-                                : `Incompatible: ${eligibility.compatibility.reasons.join('; ')}`}
+                                ? "Compatible"
+                                : `Incompatible: ${eligibility.compatibility.reasons.join("; ")}`}
                             </span>
                             {eligibility.overlap && (
                               <span className={styles.badgeWarning}>
                                 <AlertTriangle size={13} />
-                                Posible cruce de cita ±60 min; validación final al asignar
+                                Posible cruce de cita ±60 min; validación final
+                                al asignar
                               </span>
                             )}
                             {eligibility.canAssign && !eligibility.overlap && (
@@ -1017,9 +1153,14 @@ export function OperationDispatchDrawer({
                 )}
               </div>
             ) : (
-              <form className={styles.externalForm} onSubmit={assignExternalFleet} noValidate>
+              <form
+                className={styles.externalForm}
+                onSubmit={assignExternalFleet}
+                noValidate
+              >
                 <p className={styles.formIntro}>
-                  Registra el vehículo, el conductor externo y el flete acordado para esta operación.
+                  Registra el vehículo, el conductor externo y el flete acordado
+                  para esta operación.
                 </p>
                 <div className={styles.externalFields}>
                   <FormField
@@ -1028,23 +1169,27 @@ export function OperationDispatchDrawer({
                   >
                     <input
                       autoComplete="off"
-                      {...externalForm.register('plate')}
-                      aria-invalid={Boolean(externalForm.formState.errors.plate)}
+                      {...externalForm.register("plate")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.plate,
+                      )}
                     />
                   </FormField>
                   <FormField
                     label={
                       operation.cargoVehicleType?.requiresTrailer ||
                       operation.requiredTrailerType
-                        ? 'Placa de tráiler *'
-                        : 'Placa de tráiler (opcional)'
+                        ? "Placa de tráiler *"
+                        : "Placa de tráiler (opcional)"
                     }
                     error={externalForm.formState.errors.trailerPlate?.message}
                   >
                     <input
                       autoComplete="off"
-                      {...externalForm.register('trailerPlate')}
-                      aria-invalid={Boolean(externalForm.formState.errors.trailerPlate)}
+                      {...externalForm.register("trailerPlate")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.trailerPlate,
+                      )}
                     />
                   </FormField>
                   <FormField
@@ -1052,11 +1197,13 @@ export function OperationDispatchDrawer({
                     error={externalForm.formState.errors.tractorAxles?.message}
                   >
                     <select
-                      {...externalForm.register('tractorAxles', {
+                      {...externalForm.register("tractorAxles", {
                         setValueAs: (value: string) =>
-                          value === '' ? undefined : Number(value),
+                          value === "" ? undefined : Number(value),
                       })}
-                      aria-invalid={Boolean(externalForm.formState.errors.tractorAxles)}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.tractorAxles,
+                      )}
                     >
                       <option value="">Selecciona ejes</option>
                       <option value="2">2 ejes</option>
@@ -1064,67 +1211,79 @@ export function OperationDispatchDrawer({
                     </select>
                   </FormField>
                   <FormField
-                        label={
-                          operation.cargoVehicleType?.requiresTrailer ||
-                          operation.requiredTrailerType
-                            ? 'Tipo de tráiler *'
-                            : 'Tipo de tráiler (opcional)'
-                        }
-                        error={externalForm.formState.errors.trailerType?.message}
-                      >
-                        <select
-                          {...externalForm.register('trailerType')}
-                          aria-invalid={Boolean(externalForm.formState.errors.trailerType)}
-                        >
-                          <option value="">Selecciona tipo</option>
-                          {Object.entries(TRAILER_TYPE_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
+                    label={
+                      operation.cargoVehicleType?.requiresTrailer ||
+                      operation.requiredTrailerType
+                        ? "Tipo de tráiler *"
+                        : "Tipo de tráiler (opcional)"
+                    }
+                    error={externalForm.formState.errors.trailerType?.message}
+                  >
+                    <select
+                      {...externalForm.register("trailerType")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.trailerType,
+                      )}
+                    >
+                      <option value="">Selecciona tipo</option>
+                      {Object.entries(TRAILER_TYPE_LABELS).map(
+                        ([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ),
+                      )}
+                    </select>
                   </FormField>
                   <FormField
-                        label={
-                          operation.cargoVehicleType?.requiresTrailer ||
-                          operation.requiredTrailerType
-                            ? 'Ejes del tráiler *'
-                            : 'Ejes del tráiler (opcional)'
-                        }
-                        error={externalForm.formState.errors.trailerAxles?.message}
-                      >
-                        <select
-                          {...externalForm.register('trailerAxles', {
-                            setValueAs: (value: string) =>
-                              value === '' ? undefined : Number(value),
-                          })}
-                          aria-invalid={Boolean(externalForm.formState.errors.trailerAxles)}
-                        >
-                          <option value="">Selecciona ejes</option>
-                          <option value="1">1 eje</option>
-                          <option value="2">2 ejes</option>
-                          <option value="3">3 ejes</option>
-                        </select>
+                    label={
+                      operation.cargoVehicleType?.requiresTrailer ||
+                      operation.requiredTrailerType
+                        ? "Ejes del tráiler *"
+                        : "Ejes del tráiler (opcional)"
+                    }
+                    error={externalForm.formState.errors.trailerAxles?.message}
+                  >
+                    <select
+                      {...externalForm.register("trailerAxles", {
+                        setValueAs: (value: string) =>
+                          value === "" ? undefined : Number(value),
+                      })}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.trailerAxles,
+                      )}
+                    >
+                      <option value="">Selecciona ejes</option>
+                      <option value="1">1 eje</option>
+                      <option value="2">2 ejes</option>
+                      <option value="3">3 ejes</option>
+                    </select>
                   </FormField>
                   <FormField
-                        label="Capacidad de carga (kg) · opcional"
-                        error={externalForm.formState.errors.cargoCapacityKg?.message}
-                      >
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          inputMode="numeric"
-                          {...externalForm.register('cargoCapacityKg', {
-                            setValueAs: (value: string) =>
-                              value === '' ? undefined : Number(value),
-                          })}
-                          aria-invalid={Boolean(externalForm.formState.errors.cargoCapacityKg)}
-                        />
-                        {typeof thirdPartyCapacityKg === 'number' &&
-                          thirdPartyCapacityKg > 0 && (
-                            <small>
-                              = {(thirdPartyCapacityKg / 1000).toFixed(1)} Ton
-                            </small>
-                          )}
+                    label="Capacidad de carga (kg) · opcional"
+                    error={
+                      externalForm.formState.errors.cargoCapacityKg?.message
+                    }
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      {...externalForm.register("cargoCapacityKg", {
+                        setValueAs: (value: string) =>
+                          value === "" ? undefined : Number(value),
+                      })}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.cargoCapacityKg,
+                      )}
+                    />
+                    {typeof thirdPartyCapacityKg === "number" &&
+                      thirdPartyCapacityKg > 0 && (
+                        <small>
+                          = {(thirdPartyCapacityKg / 1000).toFixed(1)} Ton
+                        </small>
+                      )}
                   </FormField>
                   <FormField
                     label="Nombre completo del conductor"
@@ -1132,8 +1291,10 @@ export function OperationDispatchDrawer({
                   >
                     <input
                       autoComplete="name"
-                      {...externalForm.register('driverName')}
-                      aria-invalid={Boolean(externalForm.formState.errors.driverName)}
+                      {...externalForm.register("driverName")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.driverName,
+                      )}
                     />
                   </FormField>
                   <FormField
@@ -1143,8 +1304,10 @@ export function OperationDispatchDrawer({
                     <input
                       inputMode="numeric"
                       autoComplete="off"
-                      {...externalForm.register('driverCedula')}
-                      aria-invalid={Boolean(externalForm.formState.errors.driverCedula)}
+                      {...externalForm.register("driverCedula")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.driverCedula,
+                      )}
                     />
                   </FormField>
                   <FormField
@@ -1154,8 +1317,10 @@ export function OperationDispatchDrawer({
                     <input
                       type="tel"
                       autoComplete="tel"
-                      {...externalForm.register('driverPhone')}
-                      aria-invalid={Boolean(externalForm.formState.errors.driverPhone)}
+                      {...externalForm.register("driverPhone")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.driverPhone,
+                      )}
                     />
                   </FormField>
                   <FormField
@@ -1167,18 +1332,24 @@ export function OperationDispatchDrawer({
                       min="1"
                       step="1"
                       inputMode="decimal"
-                      {...externalForm.register('agreedFreight')}
-                      aria-invalid={Boolean(externalForm.formState.errors.agreedFreight)}
+                      {...externalForm.register("agreedFreight")}
+                      aria-invalid={Boolean(
+                        externalForm.formState.errors.agreedFreight,
+                      )}
                     />
                   </FormField>
                 </div>
                 <div className={styles.formFooter}>
-                  <Button type="submit" isLoading={externalFleetMutation.isPending}
+                  <Button
+                    type="submit"
+                    isLoading={externalFleetMutation.isPending}
                     disabled={
                       !operationDetailsReady ||
                       !externalForm.formState.isValid ||
+                      !hasLooseCargoProgramming(operation) ||
                       externalFleetMutation.isPending
-                    }>
+                    }
+                  >
                     Asignar flota de tercero
                   </Button>
                 </div>
@@ -1203,9 +1374,9 @@ function DeadlineIndicator({
   detail?: string;
 }) {
   const Icon =
-    state === 'closed' || state === 'on-time'
+    state === "closed" || state === "on-time"
       ? CheckCircle2
-      : state === 'missing'
+      : state === "missing"
         ? Clock3
         : AlertTriangle;
   return (
@@ -1213,7 +1384,10 @@ function DeadlineIndicator({
       <Icon size={16} aria-hidden="true" />
       <span className={styles.deadlineText}>
         <strong>{label}</strong>
-        <span>{formatDate(date)}{detail ? ` · ${detail}` : ''}</span>
+        <span>
+          {formatDate(date)}
+          {detail ? ` · ${detail}` : ""}
+        </span>
       </span>
       <span className={styles.deadlineState}>{deadlineLabels[state]}</span>
     </div>
@@ -1233,7 +1407,11 @@ function FormField({
     <label className={styles.formField}>
       <span>{label}</span>
       {children}
-      {error && <span className={styles.fieldError} role="alert">{error}</span>}
+      {error && (
+        <span className={styles.fieldError} role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 }

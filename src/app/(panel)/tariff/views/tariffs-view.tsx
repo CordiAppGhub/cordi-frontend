@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/atoms/button/button';
 import PaginationTable from '@/components/organisms/pagination-table/pagination-table';
 import { ClientTariffModal } from '../components/client-tariff-modal';
 import { getClientGroupColumns, getTariffColumns, groupTariffsByClient } from '../components/tariff-columns';
 import { useTariffs } from '../hooks/useTariff';
 import { SurchargeFormsModal } from '../components/SurchargeFormModal';
-import { getSurchargeColumns } from '../components/surcharge-columns';
+import {
+  getSurchargeColumns,
+  type SurchargeCatalogRow,
+} from '../components/surcharge-columns';
 
 // IMPORTACIONES PARA VEHÍCULOS
 
@@ -19,6 +22,7 @@ import { getVehicleTariffColumns } from '../components/Vehicle-Tariff-columns';
 import { TruckLoader } from '@/components/TruckLoader';
 import { PageHeader } from '@/components/molecules/page-header/page-header';
 import styles from '../tariffs.module.css';
+import { showConfirm } from '@/utils/alerts';
 
 type TabState = 'BASE' | 'NOVEDADES' | 'VEHICULOS';
 
@@ -29,6 +33,9 @@ export const TariffsView: React.FC = () => {
     vehicleTariffs,
     isLoadingTariffs, 
     error,
+    deleteTariff,
+    deleteBaseSurcharge,
+    deleteVehicleTariff,
   } = useTariffs();
   
   const [activeTab, setActiveTab] = useState<TabState>('BASE');
@@ -36,6 +43,7 @@ export const TariffsView: React.FC = () => {
   const [isTariffModalOpen, setIsTariffModalOpen] = useState(false);
   const [selectedClientTariff, setSelectedClientTariff] = useState<ClientTariff | null>(null);
   const [isSurchargeModalOpen, setIsSurchargeModalOpen] = useState(false);
+  const [selectedSurcharge, setSelectedSurcharge] = useState<SurchargeCatalogRow | null>(null);
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [selectedVehicleTariff, setSelectedVehicleTariff] = useState<AffiliationTariff | null>(null);
 
@@ -51,10 +59,26 @@ export const TariffsView: React.FC = () => {
   ], []);
 
  
-  const tariffColumns = useMemo(() => getTariffColumns((tariff) => {
-    setSelectedClientTariff(tariff);
-    setIsTariffModalOpen(true);
-  }), []);
+  const handleDeleteClientTariff = useCallback(async (tariff: ClientTariff) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar tarifa comercial?',
+      text: 'Esta acción no se puede deshacer.',
+      confirmButtonText: 'Sí, eliminar',
+      destructive: true,
+    });
+    if (confirmed) await deleteTariff(tariff.id);
+  }, [deleteTariff]);
+  const tariffColumns = useMemo(
+    () =>
+      getTariffColumns(
+        (tariff) => {
+          setSelectedClientTariff(tariff);
+          setIsTariffModalOpen(true);
+        },
+        (tariff) => void handleDeleteClientTariff(tariff),
+      ),
+    [handleDeleteClientTariff],
+  );
   const clientGroupColumns = useMemo(() => getClientGroupColumns(), []);
   const clientGroups = useMemo(() => groupTariffsByClient(clientTariffs || []), [clientTariffs]);
   const totalPagesBase = Math.ceil(clientGroups.length / itemsPerPage) || 1;
@@ -63,25 +87,60 @@ export const TariffsView: React.FC = () => {
     return clientGroups.slice(startIndex, startIndex + itemsPerPage);
   }, [clientGroups, currentPageBase]);
 
-  const surchargeColumns = useMemo(() => getSurchargeColumns(), []);
+  const handleDeleteSurcharge = useCallback(async (surcharge: SurchargeCatalogRow) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar concepto?',
+      text: 'No se puede eliminar si ya está asociado a operaciones, tarifas o reportes activos.',
+      confirmButtonText: 'Sí, eliminar',
+      destructive: true,
+    });
+    if (confirmed) await deleteBaseSurcharge(surcharge.code);
+  }, [deleteBaseSurcharge]);
+  const surchargeColumns = useMemo(
+    () =>
+      getSurchargeColumns(
+        (surcharge) => {
+          setSelectedSurcharge(surcharge);
+          setIsSurchargeModalOpen(true);
+        },
+        (surcharge) => void handleDeleteSurcharge(surcharge),
+      ),
+    [handleDeleteSurcharge],
+  );
   const totalPagesSurcharge = Math.ceil((surcharges?.length || 0) / itemsPerPage) || 1;
-  const paginatedSurcharges = useMemo(() => {
+  const paginatedSurcharges: SurchargeCatalogRow[] = useMemo(() => {
     const startIndex = (currentPageSurcharge - 1) * itemsPerPage;
-    return (surcharges || []).slice(startIndex, startIndex + itemsPerPage);
+    return (surcharges || [])
+      .slice(startIndex, startIndex + itemsPerPage)
+      .map((surcharge) => ({ ...surcharge, id: surcharge.code }));
   }, [surcharges, currentPageSurcharge]);
 
-  const vehicleColumns = useMemo(() => getVehicleTariffColumns((tariff) => {
-    setSelectedVehicleTariff(tariff);
-    setIsVehicleModalOpen(true);
-  }), []);
+  const handleDeleteVehicleTariff = useCallback(async (tariff: AffiliationTariff) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar tarifa de afiliación?',
+      text: 'La afiliación dejará de tener una retención configurada.',
+      confirmButtonText: 'Sí, eliminar',
+      destructive: true,
+    });
+    if (confirmed) await deleteVehicleTariff(tariff.id);
+  }, [deleteVehicleTariff]);
+  const vehicleColumns = useMemo(
+    () =>
+      getVehicleTariffColumns(
+        (tariff) => {
+          setSelectedVehicleTariff(tariff);
+          setIsVehicleModalOpen(true);
+        },
+        (tariff) => void handleDeleteVehicleTariff(tariff),
+      ),
+    [handleDeleteVehicleTariff],
+  );
   const totalPagesVehicle = Math.ceil((vehicleTariffs?.length || 0) / itemsPerPage) || 1;
   const paginatedVehicles = useMemo(() => {
     const startIndex = (currentPageVehicle - 1) * itemsPerPage;
     return (vehicleTariffs || []).slice(startIndex, startIndex + itemsPerPage);
   }, [vehicleTariffs, currentPageVehicle]);
 
-
-  
   const handleOpenMainModal = () => {
     if (activeTab === 'BASE') {
       setSelectedClientTariff(null);
@@ -169,8 +228,18 @@ export const TariffsView: React.FC = () => {
       {isSurchargeModalOpen && (
         <div className={styles.surchargeOverlay}>
           <div className={styles.surchargeDialog}>
-            <h2 className={styles.surchargeTitle}>Registrar Concepto de Novedad / Recargo</h2>
-            <SurchargeFormsModal onClose={() => setIsSurchargeModalOpen(false)} />
+            <h2 className={styles.surchargeTitle}>
+              {selectedSurcharge
+                ? 'Editar Concepto de Novedad / Recargo'
+                : 'Registrar Concepto de Novedad / Recargo'}
+            </h2>
+            <SurchargeFormsModal
+              initialData={selectedSurcharge}
+              onClose={() => {
+                setIsSurchargeModalOpen(false);
+                setSelectedSurcharge(null);
+              }}
+            />
           </div>
         </div>
       )}

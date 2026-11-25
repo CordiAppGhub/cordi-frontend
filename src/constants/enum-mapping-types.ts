@@ -14,6 +14,8 @@ export const VehicleStatusLabels: Record<string, string> = {
 
 export const OperationStatusLabels: Record<string, string> = {
   CREADO: "Creado",
+  PENDIENTE_PROGRAMACION: "Pendiente de programación",
+  PROGRAMADA: "Programada",
   PENDIENTE_CARGUE: "Pendiente de cargue",
   LISTA_PARA_CARGUE: "Lista para cargue",
   ASIGNADO: "Asignado",
@@ -36,14 +38,20 @@ export const ContainerStatusLabels: Record<string, string> = {
   PENDIENTE: "Pendiente",
   PENDIENTE_CARGUE: "Pendiente de cargue",
   RESERVADO_ANTICIPADO: "Reservado por retiro anticipado",
+  VACIO: "Vacío",
   EN_PISO: "En piso",
   PENDIENTE_DEVOLUCION: "Pendiente de devolución",
   EN_INSPECCION: "En inspección",
   FALLA_REPORTADA: "Falla reportada",
+  CARGANDO_AL_TRAILER: "Cargando al tráiler",
+  CARGADO_AL_TRAILER: "Cargado al tráiler",
   EN_CARGUE: "En cargue",
   CARGADO: "Cargado",
   EN_DESCARGUE: "En descargue",
   DESCARGADO: "Descargado",
+  DESMONTANDO_DEL_TRAILER: "Desmontando del tráiler",
+  DESMONTADO_DEL_TRAILER: "Desmontado del tráiler",
+  ENTREGADO: "Entregado",
   DEVUELTO_VACIO: "Devuelto vacío",
 };
 
@@ -58,6 +66,22 @@ export type StatusConfigType = {
 };
 
 export const StatusConfig: Record<string, StatusConfigType> = {
+  PENDIENTE_PROGRAMACION: {
+    label: "PENDIENTE DE PROGRAMACIÓN",
+    bg: "#fef3c7",
+    color: "#92400e",
+    border: "#fcd34d",
+    dot: "#f59e0b",
+    description: "La operación espera programación y/o citas obligatorias.",
+  },
+  PROGRAMADA: {
+    label: "PROGRAMADA",
+    bg: "#eff6fe",
+    color: "#1d4ed8",
+    border: "#93c5fd",
+    dot: "#3b82f6",
+    description: "La operación tiene programación y citas obligatorias completas.",
+  },
   CREADO: {
     label: "PENDIENTE",
     bg: "#fef2f2",
@@ -171,6 +195,26 @@ export const StatusConfig: Record<string, StatusConfigType> = {
     color: "#0f766e",
   },
   EN_CLIENTE: { label: "En Cliente", bg: "#ffedd5", color: "#c2410c" },
+  CARGANDO_AL_TRAILER: {
+    label: "Cargando al tráiler",
+    bg: "#dbeafe",
+    color: "#1d4ed8",
+  },
+  CARGADO_AL_TRAILER: {
+    label: "Cargado al tráiler",
+    bg: "#dcfce7",
+    color: "#15803d",
+  },
+  DESMONTANDO_DEL_TRAILER: {
+    label: "Desmontando del tráiler",
+    bg: "#fef3c7",
+    color: "#b45309",
+  },
+  DESMONTADO_DEL_TRAILER: {
+    label: "Desmontado del tráiler",
+    bg: "#e2e8f0",
+    color: "#334155",
+  },
 
   AVAILABLE: { label: "Disponible", bg: "#dcfce7", color: "#15803d" },
   IN_TRANSIT: { label: "En Tránsito", bg: "#e0f2fe", color: "#0369a1" },

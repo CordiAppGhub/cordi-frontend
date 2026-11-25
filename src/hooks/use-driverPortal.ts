@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   driverAuthService,
   driverPortalService,
+  type DriverExtraConcept,
 } from "@/services/driverPortal.service";
 import {
   OperationContainerStatus,
@@ -66,6 +67,37 @@ export function useDriverPortal() {
   const driver = queryDriver ?? storeDriver;
   const isAuthenticated =
     storeIsAuthenticated || (isProfileSuccess && !!queryDriver);
+  const extraConceptsQuery = useQuery({
+    queryKey: ["driver-extra-concepts"],
+    queryFn: () => driverPortalService.getExtraConcepts(),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 10,
+  });
+  const extraConcepts: DriverExtraConcept[] =
+    extraConceptsQuery.data ?? [];
+  const getExtraConceptsForOperation = (operationId: number) => {
+    const operationType = driver?.assignedOperations
+      .find((operation) => operation.id === operationId)
+      ?.type?.trim().toUpperCase();
+    return extraConcepts.filter((concept) => {
+      const appliesTo = concept.appliesTo?.trim().toUpperCase();
+      if (
+        !appliesTo ||
+        appliesTo === "NO DEFINIDO" ||
+        appliesTo === "NO_DEFINIDO" ||
+        appliesTo === "SIN RESTRICCION" ||
+        appliesTo === "SIN_RESTRICCION"
+      ) {
+        return true;
+      }
+      if (appliesTo === "AMBOS") {
+        return (
+          operationType === "IMPORTACION" || operationType === "EXPORTACION"
+        );
+      }
+      return appliesTo === operationType;
+    });
+  };
 
   useEffect(() => {
     const operationIds =
@@ -200,14 +232,29 @@ export function useDriverPortal() {
       operationId,
       file,
       evidenceType,
+      beforeState,
     }: {
       operationId: number;
       file: File | File[];
       evidenceType?: string;
-    }) => driverPortalService.uploadEvidence(operationId, file, evidenceType),
+      beforeState?: string;
+    }) =>
+      driverPortalService.uploadEvidence(
+        operationId,
+        file,
+        evidenceType,
+        undefined,
+        undefined,
+        beforeState,
+      ),
     onSuccess: async () => {
       showToast.success("¡Evidencia subida correctamente!");
-      await Promise.all([loadData(), refetchHistory()]);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["driver-portal-profile"],
+        }),
+        refetchHistory(),
+      ]);
     },
     onError: (err: unknown) => {
       showToast.error(err, "No pudimos subir la imagen. Inténtalo de nuevo.");
@@ -246,6 +293,30 @@ export function useDriverPortal() {
     },
   });
 
+  const reportExtraMutation = useMutation({
+    mutationFn: ({
+      operationId,
+      payload,
+    }: {
+      operationId: number;
+      payload: Parameters<typeof driverPortalService.reportExtraReport>[1];
+    }) => driverPortalService.reportExtraReport(operationId, payload),
+    onSuccess: async () => {
+      showToast.success(
+        "Novedad enviada al analista para su valoración. No se asignó ningún cobro.",
+      );
+      await Promise.all([
+        loadData(),
+        queryClient.invalidateQueries({
+          queryKey: ["driver-portal-profile"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", "operation-alerts"],
+        }),
+      ]);
+    },
+  });
+
   const updateStateMutation = useMutation({
     mutationFn: ({
       operationId,
@@ -276,10 +347,19 @@ export function useDriverPortal() {
   });
 
   const scanContainerMutation = useMutation({
-    mutationFn: ({ operationId, file }: { operationId: number; file: File }) =>
-      driverPortalService.scanContainer(operationId, file),
+    mutationFn: ({
+      operationId,
+      file,
+      containerNumber,
+    }: {
+      operationId: number;
+      file: File;
+      containerNumber?: string;
+    }) => driverPortalService.scanContainer(operationId, file, containerNumber),
     onSuccess: async () => {
-      await loadData();
+      await queryClient.invalidateQueries({
+        queryKey: ["driver-portal-profile"],
+      });
     },
     onError: (err: unknown) => {
       showToast.error(
@@ -341,8 +421,14 @@ export function useDriverPortal() {
     operationId: number,
     file: File | File[],
     evidenceType?: string,
+    beforeState?: string,
   ): Promise<void> => {
-    await uploadEvidenceMutation.mutateAsync({ operationId, file, evidenceType });
+    await uploadEvidenceMutation.mutateAsync({
+      operationId,
+      file,
+      evidenceType,
+      beforeState,
+    });
   };
 
   const reportDeviation = async (
@@ -351,6 +437,13 @@ export function useDriverPortal() {
     reason: "AVERIA_NO_APTO" | "PATIO_LLENO" = "AVERIA_NO_APTO",
   ): Promise<void> => {
     await reportDeviationMutation.mutateAsync({ operationId, file, reason });
+  };
+
+  const reportExtra = async (
+    operationId: number,
+    payload: Parameters<typeof driverPortalService.reportExtraReport>[1],
+  ): Promise<void> => {
+    await reportExtraMutation.mutateAsync({ operationId, payload });
   };
 
   const updateTravelState = async (
@@ -427,11 +520,23 @@ export function useDriverPortal() {
     containerStatus: OperationContainerStatus,
     issueDescription?: string,
   ): Promise<void> => {
-    await updateContainerStatusMutation.mutateAsync({
-      operationId,
-      containerStatus,
-      issueDescription,
-    });
+    try {
+      await updateContainerStatusMutation.mutateAsync({
+        operationId,
+        containerStatus,
+        issueDescription,
+      });
+    } finally {
+      await Promise.all([
+        loadData(),
+        queryClient.invalidateQueries({
+          queryKey: ["driver-portal-profile"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["driver-trip-history"],
+        }),
+      ]);
+    }
   };
 
   const updateCargoStatusMutation = useMutation({
@@ -481,7 +586,19 @@ export function useDriverPortal() {
     operationId: number,
     sealNumber: string,
   ): Promise<void> => {
-    await updateSealNumberMutation.mutateAsync({ operationId, sealNumber });
+    try {
+      await updateSealNumberMutation.mutateAsync({ operationId, sealNumber });
+    } finally {
+      await Promise.all([
+        loadData(),
+        queryClient.invalidateQueries({
+          queryKey: ["driver-portal-profile"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["driver-trip-history"],
+        }),
+      ]);
+    }
   };
 
   const scanPlate = async (
@@ -498,8 +615,13 @@ export function useDriverPortal() {
   const scanContainer = async (
     operationId: number,
     file: File,
+    containerNumber?: string,
   ): Promise<OcrResult> => {
-    return scanContainerMutation.mutateAsync({ operationId, file });
+    return scanContainerMutation.mutateAsync({
+      operationId,
+      file,
+      containerNumber,
+    });
   };
 
   const verifyFleetPlates = async (
@@ -546,6 +668,12 @@ export function useDriverPortal() {
 
     uploadEvidence,
     reportDeviation,
+    reportExtra,
+    extraConcepts,
+    getExtraConceptsForOperation,
+    loadingExtraConcepts: extraConceptsQuery.isLoading,
+    extraConceptsError: extraConceptsQuery.isError,
+    isReportingExtra: reportExtraMutation.isPending,
     updateTravelState,
     updateContainerStatus,
     updateCargoStatus,
@@ -570,6 +698,7 @@ export function useDriverPortal() {
       completeStopMutation.isPending ||
       updateSealNumberMutation.isPending ||
       reportDeviationMutation.isPending ||
+      reportExtraMutation.isPending ||
       reportTrailerLocationMutation.isPending,
   };
 }

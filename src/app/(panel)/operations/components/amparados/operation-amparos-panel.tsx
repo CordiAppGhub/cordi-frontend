@@ -20,6 +20,9 @@ import {
 } from "@/services/operation.service";
 import { TRAILER_TYPE_LABELS, type Vehicle } from "@/types/vehicles";
 import { useAmparos } from "../../hooks/use-amparos";
+import { operationService } from "@/services/operation.service";
+import type { Operation } from "@/types/operation-types";
+import { OperationDispatchDrawer } from "../actions/operation-dispatch-drawer";
 
 interface Props {
   enabled: boolean;
@@ -31,6 +34,13 @@ interface AmparoGroup {
   importOptions: (AmparoSuggestionOperation & {
     suggestion: AmparoSuggestion;
   })[];
+}
+
+interface SelectedAmparoFleet {
+  driverId: number;
+  vehicleId: number;
+  driverName: string;
+  vehiclePlate: string;
 }
 
 const groupSuggestions = (suggestions: AmparoSuggestion[]): AmparoGroup[] => {
@@ -98,10 +108,10 @@ const getAmparoAxleIssues = (
     const configuration = operation.cargoVehicleType;
     if (
       configuration?.tractorAxles != null &&
-      vehicle.axles !== configuration.tractorAxles
+      (vehicle.axles ?? 0) < configuration.tractorAxles
     ) {
       issues.push(
-        `operación #${operation.id}: cabezote de ${configuration.tractorAxles} ejes`,
+        `operación #${operation.id}: requiere al menos ${configuration.tractorAxles} ejes en el cabezote`,
       );
     }
     if (configuration?.requiresTrailer && !vehicle.currentTrailer) {
@@ -109,10 +119,10 @@ const getAmparoAxleIssues = (
     }
     if (
       configuration?.trailerAxles != null &&
-      vehicle.currentTrailer?.axles !== configuration.trailerAxles
+      (vehicle.currentTrailer?.axles ?? 0) < configuration.trailerAxles
     ) {
       issues.push(
-        `operación #${operation.id}: tráiler de ${configuration.trailerAxles} ejes`,
+        `operación #${operation.id}: requiere al menos ${configuration.trailerAxles} ejes en el tráiler`,
       );
     }
     if (
@@ -131,6 +141,11 @@ const getAmparoAxleIssues = (
 export function OperationAmparosPanel({ enabled }: Props) {
   const user = useAuthStore((state) => state.user);
   const [isOpen, setIsOpen] = useState(false);
+  const [fleetDrawerOperation, setFleetDrawerOperation] =
+    useState<Operation | null>(null);
+  const [isOpeningFleetDrawer, setIsOpeningFleetDrawer] = useState(false);
+  const [selectedFleet, setSelectedFleet] =
+    useState<SelectedAmparoFleet | null>(null);
   const canConfirmAmparo =
     user?.role === "ADMIN" ||
     user?.role === "JEFE_DE_FLOTA" ||
@@ -171,24 +186,83 @@ export function OperationAmparosPanel({ enabled }: Props) {
     selectedVehicle && selectedSuggestion
       ? getAmparoAxleIssues(selectedVehicle, selectedSuggestion)
       : [];
-  const compatibleVehicleCount = selectedSuggestion
-    ? (vehiclesQuery.data ?? []).filter(
-        (vehicle) =>
-          getAmparoAxleIssues(vehicle, selectedSuggestion).length === 0,
-      ).length
-    : 0;
+  const selectedDriver =
+    (driversQuery.data ?? []).find(
+      (driver) => String(driver.id) === driverId,
+    ) ??
+    (selectedSuggestion?.exportOperation.driver?.id === Number(driverId)
+      ? selectedSuggestion.exportOperation.driver
+      : selectedSuggestion?.importOperation.driver);
+  const selectedVehicleSuggestion =
+    (vehiclesQuery.data ?? []).find(
+      (vehicle) => String(vehicle.id) === vehicleId,
+    ) ??
+    (selectedSuggestion?.exportOperation.vehicle?.id === Number(vehicleId)
+      ? selectedSuggestion.exportOperation.vehicle
+      : selectedSuggestion?.importOperation.vehicle);
+
+  const handleOpenConfirmation = (suggestion: AmparoSuggestion) => {
+    setSelectedFleet(null);
+    openConfirmation(suggestion);
+    setDriverId(
+      String(
+        suggestion.exportOperation.driver?.id ??
+          suggestion.importOperation.driver?.id ??
+          "",
+      ),
+    );
+    setVehicleId(
+      String(
+        suggestion.exportOperation.vehicle?.id ??
+          suggestion.importOperation.vehicle?.id ??
+          "",
+      ),
+    );
+  };
+
+  const handleCloseConfirmation = () => {
+    setFleetDrawerOperation(null);
+    setSelectedFleet(null);
+    closeConfirmation();
+  };
+
+  const handleOpenFleetDrawer = async () => {
+    if (!selectedSuggestion || isOpeningFleetDrawer) return;
+    setIsOpeningFleetDrawer(true);
+    try {
+      const operation = await operationService.getOperationById(
+        selectedSuggestion.exportOperation.id,
+      );
+      setFleetDrawerOperation(operation);
+    } catch (error) {
+      showToast.error(
+        error,
+        getUserFriendlyErrorMessage(
+          error,
+          "No se pudo cargar la operación para seleccionar flota.",
+        ),
+      );
+    } finally {
+      setIsOpeningFleetDrawer(false);
+    }
+  };
 
   const handleConfirm = () => {
-    if (!selectedSuggestion || selectedSuggestion.conflictingDrivers ||
-        (!selectedSuggestion.hasAssignedDriver && !driverId) || !vehicleId ||
-        !selectedVehicle || selectedVehicleIssues.length > 0) return;
+    if (
+      !selectedSuggestion ||
+      !driverId ||
+      !vehicleId ||
+      selectedVehicleIssues.length > 0
+    ) {
+      return;
+    }
     if (user?.role === "ANALISTA" && !agreementConfirmed) return;
 
     confirmMutation.mutate({
       kind: selectedSuggestion.kind ?? "PUERTO",
       exportOperationId: selectedSuggestion.exportOperation.id,
       importOperationId: selectedSuggestion.importOperation.id,
-      ...(selectedSuggestion.hasAssignedDriver ? {} : { driverId: Number(driverId) }),
+      driverId: Number(driverId),
       vehicleId: Number(vehicleId),
     });
   };
@@ -269,95 +343,108 @@ export function OperationAmparosPanel({ enabled }: Props) {
       ) : (
         isOpen && (
           <ul className={styles.suggestionList}>
-            {groupedSuggestions.map(({ kind, exportOperation, importOptions }) => (
-              <li key={exportOperation.id}>
-                <article className={styles.groupCard}>
-                  <span className={styles.rowExport}>
-                    {kind === "PATIO"
-                      ? "Doble traslado / Amparo en patio · Retiro de vacío #"
-                      : "Exportación #"}
-                    {exportOperation.numeroPedido?.trim() || "Sin pedido"}
-                  </span>
-                  <div className={styles.suggestionMeta}>
-                    <span className={styles.metaItem}>
-                      <MapPin size={14} aria-hidden="true" />
-                      {exportOperation.port?.name ?? "Puerto sin nombre"}
+            {groupedSuggestions.map(
+              ({ kind, exportOperation, importOptions }) => (
+                <li key={exportOperation.id}>
+                  <article className={styles.groupCard}>
+                    <span className={styles.rowExport}>
+                      {kind === "PATIO"
+                        ? "Doble traslado / Amparo en patio · Retiro de vacío #"
+                        : "Exportación #"}
+                      {exportOperation.numeroPedido?.trim() || "Sin pedido"}
                     </span>
-                    {(kind === "PATIO" ||
-                      exportOperation.isContainerized === true) && (
+                    <div className={styles.suggestionMeta}>
                       <span className={styles.metaItem}>
-                        <CalendarClock size={14} aria-hidden="true" />
-                        {kind === "PATIO"
-                          ? formatAppointment(exportOperation.appointmentAt)
-                          : formatDestination(exportOperation.fechaCitaDestino)}
+                        <MapPin size={14} aria-hidden="true" />
+                        {exportOperation.port?.name ?? "Puerto sin nombre"}
                       </span>
-                    )}
-                    <span>
-                      Responsable: {exportOperation.analyst?.name || "No disponible"}
-                    </span>
-                    <span>
-                      Conductor: {exportOperation.driver?.name || "No disponible"}
-                    </span>
-                    <span>
-                      Vehículo: {exportOperation.vehicle?.plate || "No disponible"}
-                    </span>
-                  </div>
-                  <details className={styles.groupDetails}>
-                    <summary className={styles.groupSummary}>
+                      {(kind === "PATIO" ||
+                        exportOperation.isContainerized === true) && (
+                        <span className={styles.metaItem}>
+                          <CalendarClock size={14} aria-hidden="true" />
+                          {kind === "PATIO"
+                            ? formatAppointment(exportOperation.appointmentAt)
+                            : formatDestination(
+                                exportOperation.fechaCitaDestino,
+                              )}
+                        </span>
+                      )}
                       <span>
-                        {importOptions.length} {importOptions.length === 1
-                          ? kind === "PATIO"
-                            ? "devolución compatible"
-                            : "opción de importación"
-                          : kind === "PATIO"
-                            ? "devoluciones compatibles"
-                            : "opciones de importación"}
+                        Responsable:{" "}
+                        {exportOperation.analyst?.name || "No disponible"}
                       </span>
-                      <ChevronDown
-                        className={styles.groupChevron}
-                        size={16}
-                        aria-hidden="true"
-                      />
-                    </summary>
-                    <ul className={styles.importOptions}>
-                      {importOptions.map((option) => (
-                        <li key={option.id} className={styles.importOption}>
-                          <div className={styles.importOptionInfo}>
-                            <span className={styles.rowImport}>
-                              {kind === "PATIO"
-                                ? "Devolución"
-                                : option.isReturnAmparo
+                      <span>
+                        Conductor:{" "}
+                        {exportOperation.driver?.name || "No disponible"}
+                      </span>
+                      <span>
+                        Vehículo:{" "}
+                        {exportOperation.vehicle?.plate || "No disponible"}
+                      </span>
+                    </div>
+                    <details className={styles.groupDetails}>
+                      <summary className={styles.groupSummary}>
+                        <span>
+                          {importOptions.length}{" "}
+                          {importOptions.length === 1
+                            ? kind === "PATIO"
+                              ? "devolución compatible"
+                              : "opción de importación"
+                            : kind === "PATIO"
+                              ? "devoluciones compatibles"
+                              : "opciones de importación"}
+                        </span>
+                        <ChevronDown
+                          className={styles.groupChevron}
+                          size={16}
+                          aria-hidden="true"
+                        />
+                      </summary>
+                      <ul className={styles.importOptions}>
+                        {importOptions.map((option) => (
+                          <li key={option.id} className={styles.importOption}>
+                            <div className={styles.importOptionInfo}>
+                              <span className={styles.rowImport}>
+                                {kind === "PATIO"
                                   ? "Devolución"
-                                  : "Importación"}{" "}
-                              #{option.numeroPedido?.trim() || "Sin pedido"}
-                            </span>
-                            <span>Responsable: {option.analyst?.name || "Sin responsable"}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className={styles.acceptButton}
-                            onClick={() => openConfirmation(option.suggestion)}
-                            aria-label={`Seleccionar ${option.isReturnAmparo ? "devolución" : "importación"} ${option.numeroPedido?.trim() || `sin pedido, operación ${option.id}`} para la exportación ${exportOperation.numeroPedido?.trim() || `sin pedido, operación ${exportOperation.id}`}`}
-                          >
-                            {kind === "PATIO"
-                              ? "Seleccionar doble traslado"
-                              : "Seleccionar amparo"}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                </article>
-              </li>
-            ))}
+                                  : option.isReturnAmparo
+                                    ? "Devolución"
+                                    : "Importación"}{" "}
+                                #{option.numeroPedido?.trim() || "Sin pedido"}
+                              </span>
+                              <span>
+                                Responsable:{" "}
+                                {option.analyst?.name || "Sin responsable"}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className={styles.acceptButton}
+                              onClick={() =>
+                                handleOpenConfirmation(option.suggestion)
+                              }
+                              aria-label={`Seleccionar ${option.isReturnAmparo ? "devolución" : "importación"} ${option.numeroPedido?.trim() || `sin pedido, operación ${option.id}`} para la exportación ${exportOperation.numeroPedido?.trim() || `sin pedido, operación ${exportOperation.id}`}`}
+                            >
+                              {kind === "PATIO"
+                                ? "Seleccionar doble traslado"
+                                : "Seleccionar amparo"}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  </article>
+                </li>
+              ),
+            )}
           </ul>
         )
       )}
 
       {/* MODAL DE CONFIRMACIÓN */}
       <SuperModal
-        isOpen={Boolean(selectedSuggestion)}
-        onClose={closeConfirmation}
+        isOpen={Boolean(selectedSuggestion) && !fleetDrawerOperation}
+        onClose={handleCloseConfirmation}
         title={
           selectedSuggestion?.kind === "PATIO"
             ? "Confirmar doble traslado en patio"
@@ -396,7 +483,8 @@ export function OperationAmparosPanel({ enabled }: Props) {
                   {selectedSuggestion.exportOperation.port?.name ?? "—"}
                 </p>
                 {(selectedSuggestion.kind === "PATIO" ||
-                  selectedSuggestion.exportOperation.isContainerized === true) && (
+                  selectedSuggestion.exportOperation.isContainerized ===
+                    true) && (
                   <p className={styles.modalOperationId}>
                     {selectedSuggestion.kind === "PATIO"
                       ? "Fecha programada: "
@@ -436,9 +524,11 @@ export function OperationAmparosPanel({ enabled }: Props) {
                 </p>
                 <p className={styles.modalOperationId}>
                   {selectedSuggestion.kind === "PATIO" ? "Patio" : "Puerto"}:{" "}
-                  {selectedSuggestion.importOperation.port?.name ?? "Por confirmar"}
+                  {selectedSuggestion.importOperation.port?.name ??
+                    "Por confirmar"}
                 </p>
-                {selectedSuggestion.importOperation.isContainerized === true && (
+                {selectedSuggestion.importOperation.isContainerized ===
+                  true && (
                   <p className={styles.modalOperationId}>
                     Cita destino:{" "}
                     {formatDestination(
@@ -450,13 +540,14 @@ export function OperationAmparosPanel({ enabled }: Props) {
             </div>
 
             <p className={styles.modalDescription}>
-              Al aceptar, ambas operaciones compartirán conductor y vehículo.
-              Si ya hay un conductor asignado, se conservará. La relación
-              quedará registrada en la trazabilidad de ambas.
+              Selecciona la flota común para ambas operaciones. Si ya hay flota
+              asignada, aparecerá como selección inicial; puedes cambiarla desde
+              el drawer antes de confirmar.
             </p>
             {selectedSuggestion.conflictingDrivers && (
               <p className={styles.panelError} role="alert">
-                Las operaciones tienen conductores distintos. Coordina la reasignación antes de confirmar el amparo.
+                Las operaciones tienen conductores distintos. Se prioriza la
+                flota de Exportación; puedes cambiarla desde el drawer.
               </p>
             )}
 
@@ -480,82 +571,43 @@ export function OperationAmparosPanel({ enabled }: Props) {
               </label>
             )}
 
-            <label className={styles.fieldLabel}>
-              Conductor
-              <select
-                value={driverId}
-                onChange={(e) => setDriverId(e.target.value)}
-                disabled={selectedSuggestion.hasAssignedDriver || driversQuery.isLoading}
-                className={styles.select}
+            <div className={styles.fieldLabel}>
+              Conductor y vehículo
+              <span>
+                Conductor:{" "}
+                {selectedFleet?.driverId === Number(driverId)
+                  ? selectedFleet.driverName
+                  : selectedDriver?.name || "Sin seleccionar"}
+              </span>
+              <span>
+                Vehículo:{" "}
+                {selectedFleet?.vehicleId === Number(vehicleId)
+                  ? selectedFleet.vehiclePlate
+                  : selectedVehicleSuggestion?.plate || "Sin seleccionar"}
+              </span>
+              <button
+                type="button"
+                className={styles.acceptButton}
+                onClick={() => void handleOpenFleetDrawer()}
+                disabled={isOpeningFleetDrawer}
               >
-                <option value="">
-                  {selectedSuggestion.hasAssignedDriver
-                    ? "Se utilizará el conductor ya asignado"
-                    : "Seleccionar conductor"}
-                </option>
-                {driverId && !(driversQuery.data ?? []).some((driver) => driver.isActive && String(driver.id) === driverId) && (
-                  <option value={driverId}>
-                    {selectedSuggestion.exportOperation.driver?.name ||
-                      selectedSuggestion.importOperation.driver?.name ||
-                      "Conductor asignado"}
-                  </option>
-                )}
-                {(driversQuery.data ?? [])
-                  .filter((d) => d.isActive)
-                  .map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.name || driver.cedula}
-                    </option>
-                  ))}
-              </select>
-              {selectedSuggestion.hasAssignedDriver && !selectedSuggestion.conflictingDrivers && (
-                <span>El amparo conservará el conductor ya asignado a la operación.</span>
-              )}
-            </label>
-
-            <label className={styles.fieldLabel}>
-              Vehículo
-              <select
-                value={vehicleId}
-                onChange={(e) => setVehicleId(e.target.value)}
-                disabled={vehiclesQuery.isLoading}
-                className={styles.select}
-              >
-                <option value="">Seleccionar vehículo</option>
-                {vehicleId && !(vehiclesQuery.data ?? []).some((vehicle) => String(vehicle.id) === vehicleId) && (
-                  <option value={vehicleId}>
-                    {selectedSuggestion.exportOperation.vehicle?.plate ||
-                      selectedSuggestion.importOperation.vehicle?.plate ||
-                      "Vehículo asignado"}
-                  </option>
-                )}
-                {(vehiclesQuery.data ?? []).map((vehicle) => (
-                  <option
-                    key={vehicle.id}
-                    value={vehicle.id}
-                    disabled={
-                      getAmparoAxleIssues(vehicle, selectedSuggestion).length > 0
-                    }
-                  >
-                    {vehicle.plate} · Cabezote {vehicle.axles ?? "—"} ejes
-                  </option>
-                ))}
-              </select>
+                {isOpeningFleetDrawer
+                  ? "Cargando operación..."
+                  : driverId && vehicleId
+                    ? "Cambiar conductor / vehículo"
+                    : "Seleccionar conductor y vehículo"}
+              </button>
               {selectedVehicleIssues.length > 0 ? (
                 <span role="alert">
                   No compatible por ejes: {selectedVehicleIssues.join("; ")}.
                 </span>
-              ) : compatibleVehicleCount === 0 && !vehiclesQuery.isLoading ? (
-                <span role="alert">
-                  No hay vehículos con ejes compatibles para ambas operaciones.
-                </span>
               ) : null}
-            </label>
+            </div>
 
             <div className={styles.modalActions}>
               <button
                 type="button"
-                onClick={closeConfirmation}
+                onClick={handleCloseConfirmation}
                 disabled={confirmMutation.isPending}
                 className={styles.cancelButton}
               >
@@ -567,10 +619,8 @@ export function OperationAmparosPanel({ enabled }: Props) {
                 disabled={
                   !canConfirmAmparo ||
                   confirmMutation.isPending ||
-                  selectedSuggestion.conflictingDrivers ||
-                  (!selectedSuggestion.hasAssignedDriver && !driverId) ||
+                  !driverId ||
                   !vehicleId ||
-                  !selectedVehicle ||
                   selectedVehicleIssues.length > 0 ||
                   (user?.role === "ANALISTA" && !agreementConfirmed) // Valida que el checkbox esté marcado
                 }
@@ -585,6 +635,30 @@ export function OperationAmparosPanel({ enabled }: Props) {
           </div>
         )}
       </SuperModal>
+      <OperationDispatchDrawer
+        operation={fleetDrawerOperation}
+        isAnalyst={user?.role === "ANALISTA"}
+        allowAnalystFleetReassignment
+        selectionOnly
+        preassignedFleet={{
+          driverIds: [
+            selectedSuggestion?.exportOperation.driver?.id,
+            selectedSuggestion?.importOperation.driver?.id,
+          ].filter((id): id is number => typeof id === "number"),
+          vehicleIds: [
+            selectedSuggestion?.exportOperation.vehicle?.id,
+            selectedSuggestion?.importOperation.vehicle?.id,
+          ].filter((id): id is number => typeof id === "number"),
+        }}
+        onClose={() => setFleetDrawerOperation(null)}
+        onFleetSelected={(selection) => {
+          setDriverId(String(selection.driverId));
+          setVehicleId(String(selection.vehicleId));
+          setSelectedFleet(selection);
+          setFleetDrawerOperation(null);
+          showToast.success("Flota seleccionada para el amparo.");
+        }}
+      />
     </section>
   );
 }

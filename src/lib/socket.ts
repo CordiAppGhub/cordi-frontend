@@ -56,6 +56,7 @@ export function bindSocketQueryCache(queryClient: QueryClient) {
       ['trafico'],
       ['trafico-client-operations'],
       ['operation-history'],
+      ['driver-extra-reports', 'pending'],
       ['operations', 'pending-count'],
       ['operations', 'by-date'],
       ['fleet-live-status'],
@@ -87,7 +88,6 @@ export function bindSocketQueryCache(queryClient: QueryClient) {
       ['tariff-lookup'],
       ['client-tariffs'],
       ['vehicle-tariffs'],
-      ['patio-tariffs'],
       ['operations'],
       ['trafico'],
       ['dashboard'],
@@ -104,6 +104,7 @@ export function bindSocketQueryCache(queryClient: QueryClient) {
   operationEvents.forEach((event) =>
     socket.on(event, invalidateOperationData),
   );
+  socket.on('driver_extra_report_pending', invalidateOperationData);
   socket.on('vehicle:updated', invalidateVehicleData);
   socket.on('tariff:updated', invalidateTariffData);
   socket.on('operation_alerts_updated', invalidateDashboard);
@@ -112,6 +113,7 @@ export function bindSocketQueryCache(queryClient: QueryClient) {
     operationEvents.forEach((event) =>
       socket.off(event, invalidateOperationData),
     );
+    socket.off('driver_extra_report_pending', invalidateOperationData);
     socket.off('vehicle:updated', invalidateVehicleData);
     socket.off('tariff:updated', invalidateTariffData);
     socket.off('operation_alerts_updated', invalidateDashboard);

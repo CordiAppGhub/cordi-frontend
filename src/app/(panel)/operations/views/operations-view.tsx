@@ -240,6 +240,8 @@ export function OperationsView() {
   const [historyCount, setHistoryCount] = useState<number | null>(null);
 
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
+  const [reviewExtraReportOperationId, setReviewExtraReportOperationId] =
+    useState<number | null>(null);
   const [novedadOperation, setNovedadOperation] = useState<Operation | null>(null);
 
   // 🚀 ESTADOS PARA EL MODAL DE EDICIÓN / COMPLETAR DATOS
@@ -318,7 +320,13 @@ export function OperationsView() {
 
   const operationColumns = getOperationsColumns(
     () => { },
-    setSurchargeModalOpId,
+    (operationId, hasPendingDriverReport) => {
+      if (hasPendingDriverReport) {
+        setReviewExtraReportOperationId(operationId);
+      } else {
+        setSurchargeModalOpId(operationId);
+      }
+    },
     handleEditOperation,
     setTraceContext,
     (operationId, isActive) => {
@@ -339,7 +347,9 @@ export function OperationsView() {
     (operation) => {
       void handleUnassignOperation(operation);
     },
-    user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA',
+    user?.role === 'ADMIN' ||
+      user?.role === 'JEFE_DE_FLOTA' ||
+      user?.role === 'ANALISTA',
     isUnassigningVehicle,
     (operation) => { void handleDeleteOperation(operation); },
     user?.role === 'ADMIN' || user?.role === 'JEFE_DE_FLOTA',
@@ -426,7 +436,10 @@ export function OperationsView() {
       {section === 'active' ? (
         <>
           <div className={styles.insightGrid}>
-            {/* <PendingDriverExtraReports /> */}
+            <PendingDriverExtraReports
+              autoOpenOperationId={reviewExtraReportOperationId}
+              onAutoOpenHandled={() => setReviewExtraReportOperationId(null)}
+            />
             <OperationAmparosPanel
               enabled={
                 user?.role === 'ADMIN' ||
@@ -538,6 +551,7 @@ export function OperationsView() {
         key={operationToDispatch?.id ?? 'closed'}
         operation={operationToDispatch}
         isAnalyst={user?.role === 'ANALISTA'}
+        allowAnalystFleetReassignment
         onClose={() => setOperationToDispatch(null)}
         onAssigned={() => {
           setOperationToDispatch(null);

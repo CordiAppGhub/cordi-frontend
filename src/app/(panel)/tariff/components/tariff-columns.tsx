@@ -61,11 +61,15 @@ export const getClientGroupColumns = (): ColumnDef<ClientTariffGroup>[] => [
 
 export const getTariffColumns = (
   onEdit: (tariff: ClientTariff) => void,
+  onDelete: (tariff: ClientTariff) => void,
 ): ColumnDef<ClientTariff>[] =>
-  getClientTariffColumns(onEdit).filter((column) => column.id !== "client");
+  getClientTariffColumns(onEdit, onDelete).filter(
+    (column) => column.id !== "client",
+  );
 
 const getClientTariffColumns = (
   onEdit: (tariff: ClientTariff) => void,
+  onDelete: (tariff: ClientTariff) => void,
 ): ColumnDef<ClientTariff>[] => [
   {
     id: "client",
@@ -134,16 +138,28 @@ const getClientTariffColumns = (
     header: "Acciones",
     type: "text",
     renderCell: (row) => (
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={(event) => {
-          event.stopPropagation();
-          onEdit(row);
-        }}
-      >
-        Editar
-      </Button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row);
+          }}
+        >
+          Editar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row);
+          }}
+        >
+          Eliminar
+        </Button>
+      </div>
     ),
   },
 ];

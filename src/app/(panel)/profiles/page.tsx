@@ -21,7 +21,6 @@ import {
 import styles from "./profiles.module.css";
 import { TruckLoader } from "@/components/TruckLoader";
 import { useAuthStore } from "@/store/use-auth.store";
-import { formatExtraChargeTypeLabel } from "@/utils/format-labels";
 
 const PROFILE_TABS: Array<{
   id: ProfileKind;
@@ -698,7 +697,7 @@ function OperationRecord({
           {surcharges.map((surcharge) => (
             <div className={styles.financialRow} key={surcharge.id}>
               <span>
-                {formatExtraChargeTypeLabel(surcharge.surcharge?.name ?? surcharge.surchargeCode)}
+                {surcharge.surcharge?.name ?? surcharge.surchargeCode}
                 {surcharge.quantity > 1 ? ` · ${surcharge.quantity} unid.` : ""}
                 {surcharge.novedad
                   ? ` · Novedad #${surcharge.novedad.id}`

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createSurchargeCatalogSchema = z.object({
   code: z
     .string()
-    .min(3, 'El código debe tener al menos 3 caracteres (Ej: STAND_BY_CARGUE)')
+    .min(3, 'El código debe tener al menos 3 caracteres.')
     .transform((val) => val.toUpperCase()), 
   
   name: z.string().min(3, 'El nombre es obligatorio'),
@@ -13,6 +13,10 @@ export const createSurchargeCatalogSchema = z.object({
   applicableTo: z.enum(['IMPORTACION', 'EXPORTACION', 'AMBOS'], {
     message: 'Selecciona a qué modalidad aplica',
   }),
+  basePrice: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().min(0, 'El precio base no puede ser negativo').optional(),
+  ),
 });
 
 export const createSurchargeOverrideSchema = z.object({

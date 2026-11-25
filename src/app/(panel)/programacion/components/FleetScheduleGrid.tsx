@@ -82,12 +82,55 @@ export default function FleetScheduleGrid() {
     (user) => user.role === 'ANALISTA' && user.isActive,
   );
 
+  const isLooseForeignTradeOperation = (
+    operation: (typeof operations)[number],
+  ) => {
+    const cargoType =
+      'cargoType' in operation ? operation.cargoType : undefined;
+    return (
+      (operation.isContainerized === false ||
+        operation.tipoCarga === 'SUELTA' ||
+        cargoType === 'LOOSE_CARGO') &&
+      [
+        'IMPORTACION',
+        'EXPORTACION',
+        'EXPORTACION_ANTICIPADA',
+      ].includes(operation.type)
+    );
+  };
+  const hasLooseCargoProgramming = (
+    operation: (typeof operations)[number],
+  ) => {
+    const portAppointment =
+      operation.type === 'IMPORTACION'
+        ? operation.fechaCitaOrigen
+        : operation.fechaCitaDestino;
+    return Boolean(operation.scheduledAt && portAppointment);
+  };
+  const canAssignFleet = (operation: (typeof operations)[number]) => {
+    const isLooseForeignTrade = isLooseForeignTradeOperation(operation);
+    if (isLooseForeignTrade) {
+      const needsFleet = !operation.vehicleId || !operation.driverId;
+      const isAssignableStatus = ![
+        'CANCELADO',
+        'FINALIZADO',
+        'EN_CURSO',
+        'CIERRE_FISICO',
+        'PAUSADA',
+      ].includes(operation.status);
+      return (
+        needsFleet &&
+        isAssignableStatus &&
+        hasLooseCargoProgramming(operation)
+      );
+    }
+
+    return isAwaitingVehicle(operation.status) && !operation.vehicleId;
+  };
   const selectedOperation =
     operations.find(
       (operation) =>
-        operation.id === selectedOperationId &&
-        isAwaitingVehicle(operation.status) &&
-        !operation.vehicleId,
+        operation.id === selectedOperationId && canAssignFleet(operation),
     ) ?? null;
 
   const closeAssignDrawer = () => setSelectedOperationId(null);
@@ -256,11 +299,36 @@ export default function FleetScheduleGrid() {
                   getOperationRouteNames(operation);
                 const pending =
                   isAwaitingVehicle(operation.status) && !operation.vehicleId;
-                const requiresAction =
+                const requiresActionStatus =
                   pending ||
+                  operation.status === 'PENDIENTE_PROGRAMACION' ||
                   operation.status === 'PENDIENTE' ||
                   operation.status === 'PENDIENTE_CARGUE' ||
                   operation.status === 'CIERRE_FISICO';
+                const missingFreight =
+                  !operation.fleteACobrar && !operation.fleteACobrarManual;
+                const needsFleet = !operation.vehicleId || !operation.driverId;
+                const actionReason =
+                  operation.status === 'CANCELADO' ||
+                  operation.status === 'FINALIZADO'
+                    ? null
+                    : operation.status === 'PENDIENTE_PROGRAMACION'
+                      ? 'Requiere acción · Falta programación'
+                      : needsFleet
+                        ? `Requiere acción · Asignar flota${missingFreight ? ' · Sin flete' : ''}`
+                        : missingFreight
+                          ? 'Requiere acción · Falta flete'
+                          : null;
+                const requiresAction =
+                  requiresActionStatus || actionReason !== null;
+                const assignFleet = canAssignFleet(operation);
+                const statusLabel =
+                  actionReason ??
+                  (pending
+                    ? 'Pendiente de vehículo'
+                    : operation.status === 'ASIGNADO'
+                      ? 'Asignado'
+                      : operation.status.replace(/_/g, ' '));
                 const hasAssignedVehicle = Boolean(operation.vehicleId);
                 const canUnassign = operation.status === 'ASIGNADO';
                 const urgent = pending && now !== null &&
@@ -317,13 +385,7 @@ export default function FleetScheduleGrid() {
                           requiresAction ? styles.pendingStatus : styles.assignedStatus
                         }
                       >
-                        {pending
-                          ? 'Pendiente de vehículo'
-                          : requiresAction
-                            ? 'Requiere acción'
-                          : operation.status === 'ASIGNADO'
-                            ? 'Asignado'
-                            : operation.status.replace(/_/g, ' ')}
+                        {statusLabel}
                       </span>
                     </td>
                     <td>
@@ -353,16 +415,16 @@ export default function FleetScheduleGrid() {
                           Quitar asignación
                         </Button>
                       )}
-                      {pending ? (
+                      {assignFleet ? (
                         <Button
                           variant="primary"
                           type="button"
                           className={styles.assignButton}
                           onClick={() => setSelectedOperationId(operation.id)}
-                          aria-label={`Asignar vehículo a la operación ${operation.id}`}
+                          aria-label={`Asignar flota a la operación ${operation.id}`}
                         >
                           <Truck size={15} />
-                          Asignar
+                          Asignar flota
                         </Button>
                       ) : (
                         operation.vehicleId ? (

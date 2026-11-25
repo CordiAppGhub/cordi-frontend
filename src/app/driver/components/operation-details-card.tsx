@@ -88,6 +88,7 @@ function formatCodeLabel(value?: string | null): string {
     ISO_TANK_20: "Tanque ISO · 20 pies",
     PENDIENTE_DEVOLUCION: "Pendiente de devolución",
     DEVUELTO_VACIO: "Devuelto vacío",
+    VACIO: "Vacío",
     EN_PISO: "En piso",
     PENDIENTE_CARGUE: "Pendiente de cargue",
     EN_CARGUE: "En cargue",
@@ -96,6 +97,7 @@ function formatCodeLabel(value?: string | null): string {
     INSPECCIONADO: "Inspeccionado",
     EN_DESCARGUE: "En descargue",
     DESCARGADO: "Descargado",
+    ENTREGADO: "Entregado",
     DEVUELTO: "Devuelto",
   };
   if (labels[value]) return labels[value];

@@ -10,7 +10,7 @@ import { showToast } from '@/utils/alerts';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { useTariffs } from '@/app/(panel)/tariff/hooks/useTariff';
 import { operationService } from '@/services/operation.service';
-import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
+import { OperationPatioChargeSelector } from './operation-patio-charge-selector';
 
 
 interface ApplySurchargeModalProps {
@@ -34,11 +34,19 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
   const availableNovedades = operationQuery.data?.historialNovedades;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isPatioCharge, setIsPatioCharge] = useState(false);
+  const [patioLocationId, setPatioLocationId] = useState<number | null>(null);
+
+  const closeModal = () => {
+    setIsPatioCharge(false);
+    setPatioLocationId(null);
+    onClose();
+  };
 
   const formFields: FormField[] = useMemo(() => {
     const surchargeOptions = (surcharges || []).map(s => ({
       value: s.code,
-      label: formatExtraChargeTypeLabel(s.name || s.code),
+      label: s.name,
     }));
 
     return [
@@ -51,7 +59,7 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
           { value: '', label: 'Sin asociar a una novedad' },
           ...(availableNovedades ?? []).map((novedad) => ({
             value: novedad.id,
-            label: `#${novedad.id} · ${novedad.category ? formatExtraChargeTypeLabel(novedad.category) : 'Novedad'} · ${novedad.description.slice(0, 55)}`,
+            label: `#${novedad.id} · ${novedad.category ?? 'Novedad'} · ${novedad.description.slice(0, 55)}`,
           })),
         ],
         disabled: operationQuery.isLoading || !availableNovedades?.length,
@@ -62,9 +70,6 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
         ? 'Costo (patio/proveedor) por unidad ($)'
         : 'Costo del proveedor por unidad ($)', type: 'number', placeholder: 'Ej: 80000 (0 si no aplica)' },
       { name: 'observations', label: 'Observaciones (Opcional)', type: 'text', placeholder: 'Motivo del cobro extra' },
-      ...(operationQuery.data?.isContainerized === true
-        ? [{ name: 'isPatioCharge', label: 'Es cargo de patio', type: 'checkbox' as const }]
-        : []),
     ];
   }, [
     surcharges,
@@ -80,12 +85,16 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
       return;
     }
     const unitPrice = Number(formData.unitPrice);
-    if (formData.unitPrice === '' || formData.unitPrice == null || Number.isNaN(unitPrice) || unitPrice < 0) {
-      setErrors({ unitPrice: 'Ingresa el valor a cobrar (0 si no se cobra)' });
+    if (formData.unitPrice === '' || formData.unitPrice == null || Number.isNaN(unitPrice) || unitPrice <= 0) {
+      setErrors({ unitPrice: 'Ingresa un valor a cobrar mayor que cero' });
       return;
     }
 
     if (!operationId) return;
+    if (isPatioCharge && patioLocationId === null) {
+      showToast.error('Selecciona el patio asociado al cobro.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -99,9 +108,10 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
         unitPrice,
         costPrice: Number(formData.costPrice) || 0,
         observations: formData.observations ? String(formData.observations) : undefined,
-        isPatioCharge:
-          operationQuery.data?.isContainerized === true &&
-          Boolean(formData.isPatioCharge),
+        isPatioCharge,
+        ...(isPatioCharge && patioLocationId !== null
+          ? { patioLocationId }
+          : {}),
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['trafico-detail', operationId] }),
@@ -111,7 +121,7 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
         queryClient.invalidateQueries({ queryKey: ['profile'] }),
       ]);
       showToast.success('Concepto aplicado exitosamente a la operación.');
-      onClose();
+      closeModal();
     } catch (error) {
       showToast.error(getUserFriendlyErrorMessage(error, 'Error al aplicar el concepto.'));
     } finally {
@@ -122,7 +132,7 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
   return (
     <SuperModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={closeModal}
       title={operationId ? `💰 Añadir Costo Extra a Operación #${operationId}` : '💰 Añadir Costo Extra'}
       width="500px"
     >
@@ -136,10 +146,18 @@ export const ApplySurchargeModal: React.FC<ApplySurchargeModalProps> = ({
           el cobro sin asociarlo a una novedad.
         </p>
       )}
+      <OperationPatioChargeSelector
+        operation={operationQuery.data}
+        isPatioCharge={isPatioCharge}
+        patioLocationId={patioLocationId}
+        disabled={isSubmitting}
+        onPatioChargeChange={setIsPatioCharge}
+        onPatioLocationChange={setPatioLocationId}
+      />
       <SuperForm
         fields={formFields}
         onSubmit={handleSubmit}
-        onCancel={onClose}
+        onCancel={closeModal}
         errors={errors}
         isLoading={isSubmitting}
         submitText="Aplicar Cobro"

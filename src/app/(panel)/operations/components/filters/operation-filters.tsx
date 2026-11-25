@@ -124,6 +124,8 @@ export const OperationFilters: React.FC<OperationFiltersProps> = ({ onFilter, is
               <Select name="status" value={filters.status || ''} onChange={handleChange} className={styles.input}>
                 <option value="">Todos</option>
                 <option value="CREADO">Creado</option>
+                <option value="PENDIENTE_PROGRAMACION">Pendiente de programación</option>
+                <option value="PROGRAMADA">Programada</option>
                 <option value="PROGRAMADO">Programado</option>
                 <option value="ASIGNADO">Asignado</option>
                 <option value="EN_CURSO">En curso</option>

@@ -1,8 +1,9 @@
 // src/app/driver/page.tsx
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useDriverPortal } from "@/hooks/use-driverPortal";
+import React, { useEffect, useState, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDriverAuth } from "@/providers/authDriverProvider";
 import { TruckLoader } from "@/components/TruckLoader";
 import styles from "./driver.module.css";
 import { Button } from "@/components/atoms/button/button";
@@ -10,6 +11,7 @@ import { Select } from "@/components/atoms/select/select";
 import { SuperModal } from "@/components/organisms/modal/modal";
 import type {
   Operation,
+  OperationContainerStatus,
   TrailerDestinationType,
 } from "@/types/driver-portal.types";
 import { DriverHeaderNav } from "./components/DriverHeaderNav";
@@ -25,8 +27,37 @@ import { showAlert } from "@/utils/alerts";
 import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 import { compressFiles } from "@/utils/image-compressor";
 import { formatEvidenceTypeLabel } from "@/utils/format-labels";
+import { SealAndClosureModal } from "./components/workflow/components/SealAndClosureModal";
+
+type PairedAmparoPreview = {
+  id: number;
+  type: string;
+  status: string;
+  estadoViaje: string | null;
+  numeroPedido: string | null;
+  containerNumber: string | null;
+  containerType: string | null;
+  containerStatus: string | null;
+  scheduledAt: string | null;
+  clientName: string;
+  origenName: string;
+  destinoName: string;
+};
+
+type DriverOperation = Operation & {
+  isAmparado?: boolean;
+  amparoExportOperationId?: number | null;
+  amparoExportFinished?: boolean | null;
+  pairedAmparoOperation?: PairedAmparoPreview | null;
+};
+
+type PendingEvidenceFile = {
+  file: File;
+  previewUrl: string | null;
+};
 
 export default function DriverPortalPage() {
+  const queryClient = useQueryClient();
   const {
     driver,
     loading,
@@ -55,7 +86,7 @@ export default function DriverPortalPage() {
     isVerifyingFleetPlates,
     history = [],
     loadingHistory,
-  } = useDriverPortal();
+  } = useDriverAuth();
 
   const [cedulaInput, setCedulaInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
@@ -69,9 +100,6 @@ export default function DriverPortalPage() {
   const [extraReportOperationId, setExtraReportOperationId] = useState<number | null>(
     null,
   );
-  const [extraReportDefaultType, setExtraReportDefaultType] = useState<
-    "EN_PISO" | undefined
-  >();
   const [modalType, setModalType] = useState<
     | "DETAILS"
     | "OCR"
@@ -79,13 +107,23 @@ export default function DriverPortalPage() {
     | "EVIDENCE"
     | "DEVIATION"
     | "PLATE_VERIFICATION"
+    | "EXPORT_SEAL"
   >("DETAILS");
   const [evidenceTypes, setEvidenceTypes] = useState<string[]>([]);
   const [evidenceIndex, setEvidenceIndex] = useState(0);
   const [evidenceNextState, setEvidenceNextState] = useState<
     string | undefined
   >();
+  const [evidenceBeforeState, setEvidenceBeforeState] = useState<
+    string | undefined
+  >();
+  const [pendingContainerStatus, setPendingContainerStatus] = useState<
+    OperationContainerStatus | undefined
+  >();
   const [ocrStep, setOcrStep] = useState<"PLATE" | "CONTAINER">("PLATE");
+  const [ocrContainerPhoto, setOcrContainerPhoto] = useState<File | null>(null);
+  const [ocrFallback, setOcrFallback] = useState(false);
+  const [manualContainerNumber, setManualContainerNumber] = useState("");
   const [cabPlateImage, setCabPlateImage] = useState<File | null>(null);
   const [trailerPlateImage, setTrailerPlateImage] = useState<File | null>(null);
   const [deviationReason, setDeviationReason] = useState<
@@ -99,10 +137,89 @@ export default function DriverPortalPage() {
   const [selectedOwnYardId, setSelectedOwnYardId] = useState("");
   const [isConfirmingTrailerLocation, setIsConfirmingTrailerLocation] =
     useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exportSealNumber, setExportSealNumber] = useState("");
+  const [exportSealPhoto, setExportSealPhoto] = useState<File | null>(null);
+  const [hasRegisteredExportPhoto, setHasRegisteredExportPhoto] =
+    useState(false);
+  const [isExportSealSubmitting, setIsExportSealSubmitting] = useState(false);
+  const submissionLockRef = useRef(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [pendingEvidenceFiles, setPendingEvidenceFiles] = useState<
+    PendingEvidenceFile[]
+  >([]);
 
-  const assignedOperations: Operation[] = driver?.assignedOperations || [];
+  useEffect(
+    () => () => {
+      pendingEvidenceFiles.forEach(({ previewUrl }) => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+      });
+    },
+    [pendingEvidenceFiles],
+  );
+
+  const assignedOperations: DriverOperation[] =
+    driver?.assignedOperations || [];
+  const currentEvidenceType = evidenceTypes[evidenceIndex];
+  const closingRequiresEir =
+    modalType === "CLOSING" &&
+    selectedOperation?.isContainerized === true &&
+    (selectedOperation.type === "IMPORTACION" ||
+      selectedOperation.type === "DEVOLUCION_VACIO");
+  const galleryAllowsPdf =
+    currentEvidenceType === "COMODATO" ||
+    currentEvidenceType === "TIRILLA_EIR" ||
+    modalType === "DEVIATION" ||
+    closingRequiresEir;
+  const allowsMultipleFiles =
+    modalType === "DEVIATION" ||
+    (modalType === "EVIDENCE" && currentEvidenceType !== "TIRILLA_EIR");
+
+  const closeEvidenceModal = () => {
+    setPendingEvidenceFiles([]);
+    setIsModalOpen(false);
+  };
+
+  const handleDriverTravelStateUpdate = async (
+    operationId: number,
+    newState: string,
+  ) => {
+    const operation = assignedOperations.find(
+      (candidate) => candidate.id === operationId,
+    );
+    const isImportClientDeparture =
+      operation?.type === "IMPORTACION" && newState === "RUMBO_AL_CLIENTE";
+
+    try {
+      await updateTravelState(operationId, newState);
+    } catch (error: unknown) {
+      if (isImportClientDeparture) {
+        await showAlert({
+          title: "No se pudo iniciar el viaje",
+          text: getUserFriendlyErrorMessage(
+            error,
+            "No se pudo iniciar el viaje al cliente. Verifica los soportes del puerto e inténtalo de nuevo.",
+          ),
+          icon: "error",
+          confirmButtonColor: "#dc2626",
+        });
+      }
+      throw error;
+    }
+
+    if (isImportClientDeparture) {
+      await queryClient.invalidateQueries({
+        queryKey: ["driver-portal-profile"],
+      });
+    }
+  };
   const firstSuggestedOperation =
+    assignedOperations.find(
+      (operation) =>
+        operation.isAmparado &&
+        operation.type === "EXPORTACION" &&
+        operation.status !== "FINALIZADO",
+    ) ||
     assignedOperations.find((operation) => operation.status === "EN_CURSO") ||
     assignedOperations.find((operation) => operation.isActive) ||
     assignedOperations[0];
@@ -119,12 +236,24 @@ export default function DriverPortalPage() {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files ?? []);
-    if (rawFiles.length === 0) return;
+    e.target.value = "";
+    if (submissionLockRef.current || rawFiles.length === 0) return;
+    setPendingEvidenceFiles(
+      rawFiles.map((file) => ({
+        file,
+        previewUrl: file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : null,
+      })),
+    );
+  };
 
+  const handleConfirmFileSelection = async () => {
+    if (submissionLockRef.current || pendingEvidenceFiles.length === 0) return;
     if (!selectedOperation) {
-      showAlert({
+      await showAlert({
         title: "⚠️ Operación no encontrada",
         text: "No hay una operación activa seleccionada.",
         icon: "warning",
@@ -132,7 +261,10 @@ export default function DriverPortalPage() {
       return;
     }
 
+    submissionLockRef.current = true;
+    let completed = false;
     try {
+      const rawFiles = pendingEvidenceFiles.map(({ file }) => file);
       const files = await compressFiles(rawFiles);
       const file = files[0];
       if (!file) return;
@@ -154,20 +286,30 @@ export default function DriverPortalPage() {
             });
           }
         } else {
+          setOcrContainerPhoto(file);
+          setOcrFallback(false);
           const result = await scanContainer(selectedOperation.id, file);
-          if (result?.legible && result?.codigo) {
+          if (pendingContainerStatus) {
+            await updateContainerStatus(
+              selectedOperation.id,
+              pendingContainerStatus,
+            );
+            setPendingContainerStatus(undefined);
+          }
+          await queryClient.invalidateQueries({
+            queryKey: ["driver-portal-profile"],
+          });
+          if (result?.ocrFallback || !result?.legible || !result?.codigo) {
+            setOcrFallback(true);
+            setManualContainerNumber(result?.codigo ?? "");
+          } else {
             showAlert({
               title: "✅ Contenedor validado",
               text: result.codigo,
               icon: "success",
             });
             setIsModalOpen(false);
-          } else {
-            showAlert({
-              title: "⚠️ No detectado",
-              text: "No se detectó un código válido. Intenta con otra imagen.",
-              icon: "warning",
-            });
+            setOcrContainerPhoto(null);
           }
         }
       } else if (modalType === "CLOSING") {
@@ -187,7 +329,23 @@ export default function DriverPortalPage() {
         if (!evidenceType) {
           throw new Error("No se encontró el tipo de soporte solicitado.");
         }
-        await uploadEvidence(selectedOperation.id, files, evidenceType);
+        const containerStatusBeforeEvidence =
+          evidenceNextState && pendingContainerStatus
+            ? pendingContainerStatus
+            : undefined;
+        if (containerStatusBeforeEvidence) {
+          await updateContainerStatus(
+            selectedOperation.id,
+            containerStatusBeforeEvidence,
+          );
+          setPendingContainerStatus(undefined);
+        }
+        await uploadEvidence(
+          selectedOperation.id,
+          files,
+          evidenceType,
+          evidenceBeforeState,
+        );
         const nextIndex = evidenceIndex + 1;
         if (nextIndex < evidenceTypes.length) {
           setEvidenceIndex(nextIndex);
@@ -195,15 +353,26 @@ export default function DriverPortalPage() {
           if (evidenceNextState) {
             await updateTravelState(selectedOperation.id, evidenceNextState);
           }
+          if (pendingContainerStatus && !containerStatusBeforeEvidence) {
+            await updateContainerStatus(
+              selectedOperation.id,
+              pendingContainerStatus,
+            );
+            setPendingContainerStatus(undefined);
+          }
           setIsModalOpen(false);
         }
       } else if (modalType === "DEVIATION") {
-        if (deviationReason !== "AVERIA_NO_APTO" && deviationReason !== "PATIO_LLENO") {
+        if (
+          deviationReason !== "AVERIA_NO_APTO" &&
+          deviationReason !== "PATIO_LLENO"
+        ) {
           throw new Error("Selecciona un motivo de desvío válido.");
         }
         await reportDeviation(selectedOperation.id, files, deviationReason);
         setIsModalOpen(false);
       }
+      completed = true;
     } catch (err: unknown) {
       // Axios/Nest 400 (p. ej. getClosingMissingRequirements) no debe quedar silencioso
       const message = getUserFriendlyErrorMessage(
@@ -217,7 +386,117 @@ export default function DriverPortalPage() {
         confirmButtonColor: "#dc2626",
       });
     } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      submissionLockRef.current = false;
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
+      if (completed) setPendingEvidenceFiles([]);
+    }
+  };
+
+  const handleConfirmManualContainerNumber = async () => {
+    if (!selectedOperation || !ocrContainerPhoto) return;
+    if (!manualContainerNumber.trim()) {
+      await showAlert({
+        title: "Falta el número",
+        text: "Digita el número que aparece en la foto del contenedor.",
+        icon: "warning",
+      });
+      return;
+    }
+    if (submissionLockRef.current) return;
+    submissionLockRef.current = true;
+    try {
+      await scanContainer(
+        selectedOperation.id,
+        ocrContainerPhoto,
+        manualContainerNumber.trim(),
+      );
+      if (pendingContainerStatus) {
+        await updateContainerStatus(
+          selectedOperation.id,
+          pendingContainerStatus,
+        );
+        setPendingContainerStatus(undefined);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["driver-portal-profile"],
+      });
+      await showAlert({
+        title: "Evidencia guardada",
+        text: "El número quedó asociado a la foto. El analista validará la evidencia OCR.",
+        icon: "success",
+      });
+      setOcrContainerPhoto(null);
+      setOcrFallback(false);
+      setManualContainerNumber("");
+      setIsModalOpen(false);
+    } catch (error: unknown) {
+      await showAlert({
+        title: "No se pudo guardar el número",
+        text: getUserFriendlyErrorMessage(
+          error,
+          "Ocurrió un error al guardar la foto y el número digitado.",
+        ),
+        icon: "error",
+      });
+    } finally {
+      submissionLockRef.current = false;
+    }
+  };
+
+  const handleConfirmExportSeal = async () => {
+    if (submissionLockRef.current) return;
+    if (!selectedOperation) return;
+    if (!exportSealNumber.trim()) {
+      await showAlert({
+        title: "Falta el sello",
+        text: "Ingresa el número de sello o precinto.",
+        icon: "warning",
+      });
+      return;
+    }
+    if (!hasRegisteredExportPhoto && !exportSealPhoto) {
+      await showAlert({
+        title: "Falta la foto",
+        text: "Adjunta la foto del contenedor cerrado.",
+        icon: "warning",
+      });
+      return;
+    }
+
+    submissionLockRef.current = true;
+    setIsExportSealSubmitting(true);
+    try {
+      await updateSealNumber(selectedOperation.id, exportSealNumber.trim());
+      if (exportSealPhoto && !hasRegisteredExportPhoto) {
+        const [compressed] = await compressFiles([exportSealPhoto]);
+        if (!compressed) throw new Error("No se pudo preparar la foto.");
+        await uploadEvidence(selectedOperation.id, compressed, "FOTO_CARGUE");
+      }
+      if (pendingContainerStatus) {
+        await updateContainerStatus(
+          selectedOperation.id,
+          pendingContainerStatus,
+        );
+        setPendingContainerStatus(undefined);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["driver-portal-profile"],
+      });
+      setIsModalOpen(false);
+      setExportSealPhoto(null);
+    } catch (err: unknown) {
+      await showAlert({
+        title: "No se pudo completar",
+        text: getUserFriendlyErrorMessage(
+          err,
+          "No pudimos guardar el sello y la foto.",
+        ),
+        icon: "error",
+      });
+    } finally {
+      submissionLockRef.current = false;
+      setIsExportSealSubmitting(false);
     }
   };
 
@@ -408,6 +687,7 @@ export default function DriverPortalPage() {
   const trailerReportOwnYard = trailerReportOperation?.trailerOwnYards?.find(
     (location) => String(location.id) === selectedOwnYardId,
   );
+  const pairedAmparoOperation = activeOperation?.pairedAmparoOperation;
 
   return (
     <div className={styles.dashboardContainer}>
@@ -419,70 +699,180 @@ export default function DriverPortalPage() {
       />
 
       {activeTab === "current" ? (
-        <CurrentTripTab
-          driver={driver}
-          assignedOperations={assignedOperations}
-          activeOperation={activeOperation}
-          onSelectOperation={setSelectedOperationId}
-          vehiculo={vehiculo}
-          processingState={processingState}
-          onUpdateState={updateTravelState}
-          onUpdateContainerStatus={updateContainerStatus}
-          onUpdateCargoStatus={updateCargoStatus}
-          onCompleteStop={completeStop}
-          onUpdateSealNumber={updateSealNumber}
-          onReportDeviation={(reason = "AVERIA_NO_APTO") => {
-            setSelectedOperation(activeOperation || null);
-            setDeviationReason(reason);
-            setModalType("DEVIATION");
-            setIsModalOpen(true);
-          }}
-          onReportExtra={(operationId, defaultType) => {
-            setExtraReportOperationId(operationId);
-            setExtraReportDefaultType(defaultType);
-          }}
-          onOpenOcrModal={() => {
-            const operation = activeOperation || null;
-            setSelectedOperation(operation);
-            setOcrStep("CONTAINER");
-            setModalType("OCR");
-            setIsModalOpen(true);
-          }}
-          onOpenPlateVerification={() => {
-            setSelectedOperation(activeOperation || null);
-            setCabPlateImage(null);
-            setTrailerPlateImage(null);
-            setModalType("PLATE_VERIFICATION");
-            setIsModalOpen(true);
-          }}
-          onOpenEvidenceModal={(operationId, requestedTypes, nextState) => {
-            const operation =
-              assignedOperations.find((item) => item.id === operationId) ||
-              null;
-            setSelectedOperation(operation);
-            setEvidenceTypes(requestedTypes);
-            setEvidenceIndex(0);
-            setEvidenceNextState(nextState);
-            setModalType("EVIDENCE");
-            setIsModalOpen(true);
-          }}
-          onOpenClosingModal={() => {
-            setSelectedOperation(activeOperation || null);
-            setModalType("CLOSING");
-            setIsModalOpen(true);
-          }}
-          onOpenDetailsModal={() => {
-            if (activeOperation) {
-              setSelectedOperation(activeOperation);
-              setModalType("DETAILS");
+        <>
+          {activeOperation?.isAmparado && pairedAmparoOperation && (
+            <section
+              role="status"
+              style={{
+                margin: "16px auto",
+                maxWidth: 960,
+                padding: 16,
+                border: "1px solid #bfdbfe",
+                borderRadius: 12,
+                background: "#eff6ff",
+              }}
+            >
+              <strong>
+                {activeOperation.type === "EXPORTACION"
+                  ? "Exportación amparada con una Importación"
+                  : "Importación amparada con una Exportación"}
+              </strong>
+              {activeOperation.type === "IMPORTACION" &&
+              activeOperation.amparoExportFinished === false ? (
+                <p>
+                  La importación está en espera. Podrás iniciarla cuando la
+                  exportación termine de desmontar el contenedor en el puerto.
+                </p>
+              ) : (
+                <p>
+                  Operación vinculada #{pairedAmparoOperation.id}; continúa en
+                  secuencia cuando se habilite.
+                </p>
+              )}
+              <details>
+                <summary>
+                  Ver detalles de{" "}
+                  {pairedAmparoOperation.type === "IMPORTACION"
+                    ? "la Importación"
+                    : "la Exportación"}{" "}
+                  #{pairedAmparoOperation.id}
+                </summary>
+                <dl>
+                  <dt>Pedido</dt>
+                  <dd>{pairedAmparoOperation.numeroPedido || "Sin pedido"}</dd>
+                  <dt>Cliente</dt>
+                  <dd>{pairedAmparoOperation.clientName}</dd>
+                  <dt>Contenedor</dt>
+                  <dd>
+                    {pairedAmparoOperation.containerNumber || "Sin registrar"}
+                    {pairedAmparoOperation.containerType
+                      ? ` · ${pairedAmparoOperation.containerType}`
+                      : ""}
+                  </dd>
+                  <dt>Origen / destino</dt>
+                  <dd>
+                    {pairedAmparoOperation.origenName} →{" "}
+                    {pairedAmparoOperation.destinoName}
+                  </dd>
+                  <dt>Estado</dt>
+                  <dd>
+                    {pairedAmparoOperation.status} ·{" "}
+                    {pairedAmparoOperation.estadoViaje || "Sin iniciar"} ·{" "}
+                    {pairedAmparoOperation.containerStatus || "Pendiente"}
+                  </dd>
+                  <dt>Fecha programada</dt>
+                  <dd>
+                    {pairedAmparoOperation.scheduledAt
+                      ? new Date(
+                          pairedAmparoOperation.scheduledAt,
+                        ).toLocaleDateString("es-CO")
+                      : "Sin fecha"}
+                  </dd>
+                </dl>
+              </details>
+            </section>
+          )}
+          <CurrentTripTab
+            driver={driver}
+            assignedOperations={assignedOperations}
+            activeOperation={activeOperation}
+            onSelectOperation={setSelectedOperationId}
+            vehiculo={vehiculo}
+            processingState={processingState}
+            onUpdateState={handleDriverTravelStateUpdate}
+            onUpdateContainerStatus={updateContainerStatus}
+            onUpdateCargoStatus={updateCargoStatus}
+            onCompleteStop={completeStop}
+            onUpdateSealNumber={updateSealNumber}
+            onReportDeviation={(reason = "AVERIA_NO_APTO") => {
+              setSelectedOperation(activeOperation || null);
+              setDeviationReason(reason);
+              setModalType("DEVIATION");
               setIsModalOpen(true);
+            }}
+            onReportExtra={(operationId) => {
+              setExtraReportOperationId(operationId);
+            }}
+            onOpenOcrModal={(containerStatus) => {
+              const operation = activeOperation || null;
+              setSelectedOperation(operation);
+              setOcrStep("CONTAINER");
+              setPendingContainerStatus(containerStatus);
+              setOcrContainerPhoto(null);
+              setOcrFallback(false);
+              setManualContainerNumber("");
+              setModalType("OCR");
+              setIsModalOpen(true);
+            }}
+            onOpenPlateVerification={() => {
+              setSelectedOperation(activeOperation || null);
+              setCabPlateImage(null);
+              setTrailerPlateImage(null);
+              setModalType("PLATE_VERIFICATION");
+              setIsModalOpen(true);
+            }}
+            onOpenExportSealModal={(operationId, containerStatus) => {
+              const operation =
+                assignedOperations.find((item) => item.id === operationId) ??
+                null;
+              setSelectedOperation(operation);
+              setPendingContainerStatus(containerStatus);
+              setExportSealNumber(operation?.sealNumber ?? "");
+              setExportSealPhoto(null);
+              setHasRegisteredExportPhoto(
+                Boolean(
+                  operation?.evidences?.some(
+                    (evidence) =>
+                      [
+                        "FOTO_CARGUE",
+                        "LOADING_PHOTO_EVIDENCE",
+                        "SELLOS_CONTENEDOR",
+                        "SEAL_EVIDENCE",
+                      ].includes(evidence.type) &&
+                      evidence.estadoRevision !== "DEVUELTO",
+                  ),
+                ),
+              );
+              setModalType("EXPORT_SEAL");
+              setIsModalOpen(true);
+            }}
+            onOpenEvidenceModal={(
+              operationId,
+              requestedTypes,
+              nextState,
+              beforeState,
+              containerStatus,
+            ) => {
+              const operation =
+                assignedOperations.find((item) => item.id === operationId) ||
+                null;
+              setSelectedOperation(operation);
+              setEvidenceTypes(requestedTypes);
+              setEvidenceIndex(0);
+              setEvidenceNextState(nextState);
+              setEvidenceBeforeState(beforeState);
+              setPendingContainerStatus(containerStatus);
+              setModalType("EVIDENCE");
+              setIsModalOpen(true);
+            }}
+            onOpenClosingModal={() => {
+              setSelectedOperation(activeOperation || null);
+              setModalType("CLOSING");
+              setIsModalOpen(true);
+            }}
+            onOpenDetailsModal={() => {
+              if (activeOperation) {
+                setSelectedOperation(activeOperation);
+                setModalType("DETAILS");
+                setIsModalOpen(true);
+              }
+            }}
+            onReportTrailerLocation={(operationId, destinationType) =>
+              handleOpenTrailerLocationReport(operationId, destinationType)
             }
-          }}
-          onReportTrailerLocation={(operationId, destinationType) =>
-            handleOpenTrailerLocationReport(operationId, destinationType)
-          }
-          isUncouplingTrailer={isUncouplingTrailer}
-        />
+            isUncouplingTrailer={isUncouplingTrailer}
+          />
+        </>
       ) : activeTab === "history" ? (
         <HistoryTab history={history} loadingHistory={loadingHistory} />
       ) : activeTab === "novedades" ? (
@@ -496,29 +886,29 @@ export default function DriverPortalPage() {
 
       <ReportExtraModal
         operationId={extraReportOperationId}
-        defaultType={extraReportDefaultType}
         onClose={() => setExtraReportOperationId(null)}
         onSuccess={() => {
           setExtraReportOperationId(null);
-          setExtraReportDefaultType(undefined);
         }}
       />
 
       <SuperModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isModalOpen && modalType !== "EXPORT_SEAL"}
+        onClose={closeEvidenceModal}
         title={
           modalType === "OCR"
             ? "📸 Escáner de IA"
             : modalType === "PLATE_VERIFICATION"
               ? "Verificar Placas de la Flota"
-            : modalType === "EVIDENCE"
-              ? `📸 ${formatEvidenceTypeLabel(evidenceTypes[evidenceIndex])}`
-              : modalType === "CLOSING"
-                ? "✅ Subir Soporte"
-                : modalType === "DEVIATION"
-                  ? "⚠️ Reportar desvío"
-                  : `Detalle #${selectedOperation?.id || ""}`
+              : modalType === "EVIDENCE"
+                ? `📸 ${formatEvidenceTypeLabel(evidenceTypes[evidenceIndex])}`
+                : modalType === "EXPORT_SEAL"
+                  ? "Sello y contenedor cerrado"
+                  : modalType === "CLOSING"
+                    ? "✅ Subir Soporte"
+                    : modalType === "DEVIATION"
+                      ? "⚠️ Reportar desvío"
+                      : `Detalle #${selectedOperation?.id || ""}`
         }
       >
         {selectedOperation && (
@@ -535,9 +925,13 @@ export default function DriverPortalPage() {
                 <p style={{ margin: 0 }}>
                   Las placas deben coincidir con la asignación de esta
                   operación. Cabezote esperado:{" "}
-                  <strong>{selectedOperation.vehicle?.plate || "No asignado"}</strong>
+                  <strong>
+                    {selectedOperation.vehicle?.plate || "No asignado"}
+                  </strong>
                   {" · "}Tráiler esperado:{" "}
-                  <strong>{selectedOperation.trailer?.plate || "No asignado"}</strong>
+                  <strong>
+                    {selectedOperation.trailer?.plate || "No asignado"}
+                  </strong>
                 </p>
                 <label style={{ display: "grid", gap: 6 }}>
                   Foto Placa Cabezote
@@ -581,8 +975,7 @@ export default function DriverPortalPage() {
                 </Button>
               </div>
             )}
-            {modalType !== "DETAILS" &&
-              modalType !== "PLATE_VERIFICATION" && (
+            {modalType !== "DETAILS" && modalType !== "PLATE_VERIFICATION" && (
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
@@ -604,6 +997,60 @@ export default function DriverPortalPage() {
                     </p>
                   </div>
                 )}
+                {modalType === "OCR" &&
+                  ocrStep === "CONTAINER" &&
+                  ocrFallback &&
+                  ocrContainerPhoto && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 10,
+                        padding: 12,
+                        border: "1px solid #f59e0b",
+                        borderRadius: 8,
+                        backgroundColor: "#fffbeb",
+                      }}
+                    >
+                      <p role="status" style={{ margin: 0 }}>
+                        El servicio OCR está temporalmente indisponible o no
+                        logró leer la foto. La evidencia ya se guardó para
+                        validación; puedes digitar el número para asociarlo.
+                      </p>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Número del contenedor
+                        <input
+                          type="text"
+                          value={manualContainerNumber}
+                          onChange={(event) =>
+                            setManualContainerNumber(event.target.value)
+                          }
+                          maxLength={16}
+                          autoComplete="off"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          void handleConfirmManualContainerNumber()
+                        }
+                        disabled={uploading || processingState}
+                      >
+                        Confirmar número con la misma foto
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setOcrContainerPhoto(null);
+                          setOcrFallback(false);
+                          setManualContainerNumber("");
+                          setIsModalOpen(false);
+                        }}
+                      >
+                        Continuar con validación del analista
+                      </Button>
+                    </div>
+                  )}
                 {modalType === "DEVIATION" && (
                   <label
                     style={{ display: "flex", flexDirection: "column", gap: 6 }}
@@ -613,7 +1060,8 @@ export default function DriverPortalPage() {
                       value={deviationReason}
                       onChange={(event) =>
                         setDeviationReason(
-                          event.target.value as "AVERIA_NO_APTO" | "PATIO_LLENO",
+                          event.target.value as
+                            "AVERIA_NO_APTO" | "PATIO_LLENO",
                         )
                       }
                       disabled={processingState}
@@ -658,58 +1106,119 @@ export default function DriverPortalPage() {
                   </p>
                 )}
 
-                {/* 
-                  El atributo "capture" ha sido removido aquí para que funcione 
-                  perfectamente el explorador de archivos en PC 
-                */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple={allowsMultipleFiles}
+                  ref={cameraInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  style={{ display: "none" }}
+                />
                 <input
                   type="file"
                   accept={
-                    modalType === "OCR" ||
-                    (modalType === "EVIDENCE" &&
-                      [
-                        "EVIDENCIA_CARGA_SUELTA",
-                        "FOTOS_LLEGADA_CARGA_SUELTA",
-                        "FOTOS_DESCARGUE_CARGA_SUELTA",
-                        "ANOMALY_PHOTO",
-                      ].includes(evidenceTypes[evidenceIndex]))
-                      ? "image/*"
-                      : "image/*,application/pdf"
+                    galleryAllowsPdf
+                      ? "image/*,application/pdf,.pdf"
+                      : "image/*"
                   }
-                  multiple={
-                    modalType === "DEVIATION" ||
-                    (modalType === "EVIDENCE" &&
-                      evidenceTypes[evidenceIndex] !== "TIRILLA_EIR")
-                  }
-                  ref={fileInputRef}
+                  multiple={allowsMultipleFiles}
+                  ref={galleryInputRef}
                   onChange={handleFileChange}
+                  className="hidden"
                   style={{ display: "none" }}
                 />
 
                 <Button
                   variant="primary"
                   onClick={() => {
-                    // Limpia el input antes de abrirlo para que funcione si seleccionas
-                    // la misma foto 2 veces seguidas en PC.
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                    fileInputRef.current?.click();
+                    cameraInputRef.current?.click();
                   }}
                   disabled={uploading || processingState}
                 >
-                  {uploading || processingState
-                    ? "Procesando..."
-                    : modalType === "EVIDENCE"
-                      ? "📎 Seleccionar archivo / Tomar foto"
-                      : "📸 Seleccionar imagen / Tomar foto"}
+                  Tomar foto con cámara
                 </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={uploading || processingState}
+                >
+                  {galleryAllowsPdf
+                    ? "Elegir de galería o PDF"
+                    : "Elegir foto de galería"}
+                </Button>
+                {pendingEvidenceFiles.length > 0 && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 8,
+                      padding: 10,
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <strong>Vista previa</strong>
+                    {pendingEvidenceFiles.map(({ file, previewUrl }, index) => (
+                      <div
+                        key={`${file.name}-${file.lastModified}-${index}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        {previewUrl ? (
+                          <img
+                            src={previewUrl}
+                            alt={`Vista previa de ${file.name}`}
+                            style={{
+                              width: 72,
+                              height: 56,
+                              objectFit: "cover",
+                              borderRadius: 4,
+                            }}
+                          />
+                        ) : (
+                          <span aria-hidden="true">PDF</span>
+                        )}
+                        <span>{file.name}</span>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={() => void handleConfirmFileSelection()}
+                      isLoading={uploading || processingState}
+                      disabled={uploading || processingState}
+                    >
+                      Confirmar y subir
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <Button variant="secondary" onClick={closeEvidenceModal}>
               Cerrar
             </Button>
           </div>
         )}
       </SuperModal>
+      {selectedOperation && (
+        <SealAndClosureModal
+          isOpen={isModalOpen && modalType === "EXPORT_SEAL"}
+          operationId={selectedOperation.id}
+          sealNumber={exportSealNumber}
+          onSealNumberChange={setExportSealNumber}
+          photo={exportSealPhoto}
+          onPhotoChange={setExportSealPhoto}
+          hasRegisteredPhoto={hasRegisteredExportPhoto}
+          isSubmitting={isExportSealSubmitting}
+          onConfirm={() => void handleConfirmExportSeal()}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
       <SuperModal
         isOpen={trailerLocationReport !== null}
         onClose={() => {
@@ -767,7 +1276,9 @@ export default function DriverPortalPage() {
                   ¿Confirmas que el tráiler{" "}
                   <strong>{trailerReportOperation.trailer.plate}</strong> se
                   dejará en el patio propio{" "}
-                  <strong>{trailerReportOwnYard?.name || "seleccionado"}</strong>
+                  <strong>
+                    {trailerReportOwnYard?.name || "seleccionado"}
+                  </strong>
                   {trailerReportOwnYard?.address
                     ? ` — ${trailerReportOwnYard.address}`
                     : ""}

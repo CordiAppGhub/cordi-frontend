@@ -35,6 +35,8 @@ export interface NovedadHistorial {
   status?: string;
   createdAt?: string;
   metadata?: {
+    conceptId?: string;
+    conceptName?: string;
     comodatoOcr?: {
       legible: boolean;
       destino: string | null;
@@ -126,6 +128,8 @@ export interface OperationSurcharge {
     category?: string | null;
     description: string;
   } | null;
+  patioLocationId?: number | null;
+  patioLocation?: { id: number; name: string } | null;
 
   surcharge?: {
     code: string;
@@ -160,6 +164,8 @@ export interface Operation {
   // 🚀 ACTUALIZADO: Añadido 'PROGRAMADO' que faltaba
   status:
     | "CREADO"
+    | "PENDIENTE_PROGRAMACION"
+    | "PROGRAMADA"
     | "PROGRAMADO"
     | "PENDIENTE_CARGUE"
     | "LISTA_PARA_CARGUE"
@@ -174,6 +180,10 @@ export interface Operation {
 
   isActive: boolean;
   amparosExportacion?: Array<{ id: number }>;
+  events?: Array<{
+    id: number;
+    eventType?: string;
+  }>;
   isAnticipada?: boolean;
   requiresInspection?: boolean;
   inspectionStatus?: "APROBADO" | "RECHAZADO_MAL_ESTADO" | null;
@@ -204,6 +214,7 @@ export interface Operation {
     appointmentAt?: string | null;
     actualArrivalAt?: string | null;
     actualDepartureAt?: string | null;
+    completedAt?: string | null;
     client?: { id: number; razonSocial: string };
     clientLocation?: {
       id: number;
@@ -261,14 +272,20 @@ export interface Operation {
     | "PENDIENTE"
     | "PENDIENTE_CARGUE"
     | "RESERVADO_ANTICIPADO"
+    | "VACIO"
     | "EN_PISO"
     | "PENDIENTE_DEVOLUCION"
     | "EN_INSPECCION"
     | "FALLA_REPORTADA"
+    | "CARGANDO_AL_TRAILER"
+    | "CARGADO_AL_TRAILER"
     | "EN_CARGUE"
     | "CARGADO"
     | "EN_DESCARGUE"
     | "DESCARGADO"
+    | "DESMONTANDO_DEL_TRAILER"
+    | "DESMONTADO_DEL_TRAILER"
+    | "ENTREGADO"
     | "DEVUELTO_VACIO";
   containerStatusUpdatedAt?: string | null;
   containerIssueDescription?: string | null;
@@ -304,6 +321,21 @@ export interface Operation {
   nuevoDestino?: LogisticNode | null;
 
   historialNovedades?: NovedadHistorial[];
+  driverExtraReports?: Array<{
+    id: number;
+    status?: "PENDING" | "APPROVED" | "REJECTED";
+    conceptCode?: string | null;
+    concept?: {
+      code: string;
+      name: string;
+      applicableTo?: string | null;
+    } | null;
+    description?: string;
+    evidenceUrl?: string | null;
+    createdAt?: string;
+    driver?: { id: number; name: string | null; cedula?: string | null };
+    novedad?: { metadata: NovedadHistorial["metadata"] };
+  }>;
   issues?: Array<{ id: number }>;
 
   // CLIENTE

@@ -26,7 +26,11 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
   onClose, 
   initialData 
 }) => {
-  const { createVehicleTariff, isLoadingVehicles } = useTariffs();
+  const {
+    createVehicleTariff,
+    updateVehicleTariff,
+    isLoadingVehicles,
+  } = useTariffs();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleCloseModal = () => {
@@ -90,7 +94,9 @@ export const VehicleTariffModal: React.FC<VehicleTariffModalProps> = ({
       description: formData.description ? String(formData.description) : undefined,
     };
 
-    const success = await createVehicleTariff(payload);
+    const success = initialData
+      ? await updateVehicleTariff(initialData.id, payload)
+      : await createVehicleTariff(payload);
     if (success) {
       handleCloseModal();
     }

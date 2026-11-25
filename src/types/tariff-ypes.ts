@@ -54,37 +54,39 @@ export interface CreateClientTariffInput {
   price: number;
 }
 
-export interface PatioTariff {
-  id: number;
-  clientId: number;
-  locationId: number;
-  paymentPrice: number;
-  billingPrice: number;
-  client?: { id: number; razonSocial: string };
-  location?: { id: number; name: string };
-}
-
-export interface UpsertPatioTariffInput {
-  clientId: number;
-  locationId: number;
-  paymentPrice: number;
-  billingPrice: number;
-}
-
 export interface SurchargeCatalog {
-  id: number;
   code: string;
   name: string;
   basePrice: number;
-  isActive: boolean;
-  description?: string;
-  applicableTo?: string;
+  description?: string | null;
+  applicableTo?: string | null;
 }
 
 export interface CreateSurchargeOverrideInput {
   clientId: number;
   surchargeCode: string;
   customPrice: number;
+}
+
+export interface ClientSurchargeOverride extends CreateSurchargeOverrideInput {
+  id: number;
+  client?: { id: number; razonSocial: string };
+  surcharge?: SurchargeCatalog;
+}
+
+export interface OperationSurcharge {
+  id: number;
+  operationId: number;
+  novedadId: number | null;
+  surchargeCode: string;
+  appliedPrice: number;
+  costPrice: number;
+  quantity: number;
+  totalPrice: number;
+  observations: string | null;
+  isPatioCharge: boolean;
+  patioLocationId?: number | null;
+  patioLocation?: { id: number; name: string } | null;
 }
 
 export interface QuoteResponse {

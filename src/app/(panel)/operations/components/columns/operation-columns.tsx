@@ -4,7 +4,6 @@ import { Operation } from '@/types/operation-types';
 import styles from '../../operations.module.css';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { formatLocationLabel } from '@/utils/location';
-import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 import {
   Building2,
   Calendar,
@@ -24,7 +23,7 @@ import {
 
 export const getOperationsColumns = (
   setTraceabilityId: (id: number) => void, // Puedes eliminar esto de tu vista si ya migraste 100% a setTraceContext
-  onAddSurcharge: (id: number) => void,
+  onAddSurcharge: (id: number, hasPendingDriverReport: boolean) => void,
   onEditOperation: (row: Operation) => void,
   setTraceContext: (context: { type: 'OPERATION' | 'CONTAINER' | 'ANALYST' | 'DRIVER' | 'VEHICLE'; id: string | number }) => void,
   onSetDriverAccess: (id: number, isActive: boolean) => void,
@@ -298,7 +297,7 @@ export const getOperationsColumns = (
                   fontVariantNumeric: 'tabular-nums'
                 }}
               >
-                <strong>{formatExtraChargeTypeLabel(surcharge.surcharge?.name || surcharge.surchargeCode)}</strong>
+                <strong>{surcharge.surcharge?.name || surcharge.surchargeCode}</strong>
                 <span>Venta: ${Number(surcharge.totalPrice).toLocaleString('es-CO')}</span>
                 {Number(surcharge.costPrice) > 0 && (
                   <span style={{ color: '#b91c1c' }}>Costo: ${Number(surcharge.costPrice).toLocaleString('es-CO')}</span>
@@ -385,6 +384,7 @@ export const getOperationsColumns = (
       type: 'text',
       renderCell: (row) => {
         const tieneNovedades = Boolean(row.historialNovedades && row.historialNovedades.length > 0);
+        const pendingExtraReports = row.driverExtraReports?.length ?? 0;
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
@@ -407,6 +407,25 @@ export const getOperationsColumns = (
               </div>
             ) : (
               <StatusBadge status={row.status} />
+            )}
+            {pendingExtraReports > 0 && (
+              <span
+                style={{
+                  backgroundColor: '#fff7ed',
+                  color: '#c2410c',
+                  border: '1px solid #fdba74',
+                  padding: '4px 10px',
+                  borderRadius: '99px',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <AlertTriangle size={12} />
+                {pendingExtraReports} COBRO(S) POR VALORAR
+              </span>
             )}
 
             {row.status === 'EN_CURSO' && row.estadoViaje && (
@@ -438,6 +457,41 @@ export const getOperationsColumns = (
       header: 'Acciones',
       type: 'text',
       renderCell: (row: Operation) => {
+        const hasFleetAssignment = Boolean(
+          row.vehicleId || row.driverId || row.trailerId,
+        );
+        const hasFleetAssignmentHistory = Boolean(
+          row.events?.some(
+            (event) =>
+              event.eventType === 'REASIGNACION_VEHICULO' ||
+              event.eventType === 'REASIGNACION_CONDUCTOR',
+          ),
+        );
+        const analystCanManageFleet =
+          !isAnalyst || hasFleetAssignment || hasFleetAssignmentHistory;
+        const isLooseForeignTradeOperation =
+          (row.isContainerized === false || row.tipoCarga === 'SUELTA') &&
+          ['IMPORTACION', 'EXPORTACION', 'EXPORTACION_ANTICIPADA'].includes(
+            row.type,
+          );
+        const preExecutionStatus =
+          [
+            'CREADO',
+            'PROGRAMADO',
+            'PROGRAMADA',
+            'LISTA_PARA_CARGUE',
+            'ASIGNADO',
+          ].includes(row.status) ||
+          (isLooseForeignTradeOperation && row.status === 'PENDIENTE');
+        const hasLooseCargoProgramming =
+          !isLooseForeignTradeOperation ||
+          (Boolean(row.scheduledAt) &&
+            Boolean(
+              row.type === 'IMPORTACION'
+                ? row.fechaCitaOrigen
+                : row.fechaCitaDestino,
+            ));
+
         return (
           <div className={styles.actionsContainer} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 
@@ -464,13 +518,11 @@ export const getOperationsColumns = (
                 <button
                   type="button"
                   onClick={() => onSetDriverAccess(row.id, !row.isActive)}
-                  disabled={isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)}
+                  disabled={isSettingDriverAccess}
                   title={
-                    row.status === 'EN_CURSO' && row.isActive
-                      ? 'No se puede deshabilitar una operación en curso'
-                      : row.isActive
-                        ? 'Deshabilitar operación para el conductor'
-                        : 'Habilitar operación para el conductor'
+                    row.isActive
+                      ? 'Desactivar operación si el conductor aún no ha iniciado pasos'
+                      : 'Activar operación para el conductor'
                   }
                   aria-label={
                     row.isActive
@@ -483,12 +535,8 @@ export const getOperationsColumns = (
                     borderRadius: '8px', border: 'none',
                     backgroundColor: row.isActive ? '#dcfce7' : '#fee2e2',
                     color: row.isActive ? '#15803d' : '#b91c1c',
-                    cursor: isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)
-                      ? 'not-allowed'
-                      : 'pointer',
-                    opacity: isSettingDriverAccess || (row.status === 'EN_CURSO' && row.isActive)
-                      ? 0.6
-                      : 1,
+                    cursor: isSettingDriverAccess ? 'not-allowed' : 'pointer',
+                    opacity: isSettingDriverAccess ? 0.6 : 1,
                   }}
                 >
                   <Power size={16} />
@@ -515,21 +563,18 @@ export const getOperationsColumns = (
             )}
 
             {canReassign &&
-              ['CREADO', 'PROGRAMADO', 'LISTA_PARA_CARGUE', 'ASIGNADO'].includes(row.status) &&
-              (row.status === 'LISTA_PARA_CARGUE' ||
-                (isAnalyst ? !row.driverId : true)) && (
+              analystCanManageFleet &&
+              preExecutionStatus &&
+              hasLooseCargoProgramming && (
                 <button
                   type="button"
                   onClick={() => onReassign(row)}
                   title={
-                    row.vehicleId || row.driverId
-                      ? isAnalyst ? 'Reasignar tercero' : 'Reasignar flota'
-                      : isAnalyst ? 'Asignar tercero' : 'Asignar flota'
+                    hasFleetAssignment
+                      ? 'Reasignar flota'
+                      : 'Asignar flota anteriormente desvinculada'
                   }
-                  aria-label={`${row.vehicleId || row.driverId
-                    ? isAnalyst ? 'Reasignar tercero a' : 'Reasignar flota de'
-                    : isAnalyst ? 'Asignar tercero a' : 'Asignar flota a'
-                  } la operación ${row.id}`}
+                  aria-label={`${hasFleetAssignment ? 'Reasignar flota de' : 'Asignar flota a'} la operación ${row.id}`}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     gap: '5px', width: 'auto', minHeight: '32px', padding: '0 8px',
@@ -541,9 +586,7 @@ export const getOperationsColumns = (
                 >
                   <RefreshCw size={16} strokeWidth={2.5} />
                   <span>
-                    {row.vehicleId || row.driverId
-                      ? isAnalyst ? 'Reasignar Tercero' : 'Reasignar Flota'
-                      : isAnalyst ? 'Asignar Tercero' : 'Asignar Flota'}
+                    {hasFleetAssignment ? 'Reasignar Flota' : 'Asignar Flota'}
                   </span>
                 </button>
               )}
@@ -570,8 +613,8 @@ export const getOperationsColumns = (
               )}
 
             {canUnassignOperations &&
-              row.vehicleId &&
-              ['CREADO', 'PROGRAMADO', 'ASIGNADO'].includes(row.status) && (
+              hasFleetAssignment &&
+              row.status === 'ASIGNADO' && (
               <button
                 type="button"
                 onClick={() => onUnassignOperation(row)}
@@ -622,17 +665,35 @@ export const getOperationsColumns = (
             </button>
 
             <button
-              onClick={() => onAddSurcharge(row.id)}
-              title="Añadir Recargo Financiero"
+              onClick={() =>
+                onAddSurcharge(row.id, (row.driverExtraReports?.length ?? 0) > 0)
+              }
+              title={
+                row.driverExtraReports?.length
+                  ? `Valorar: ${row.driverExtraReports[0]?.concept?.name ?? row.driverExtraReports[0]?.conceptCode ?? 'Novedad reportada'}`
+                  : 'Añadir Recargo Financiero'
+              }
+              aria-label={
+                row.driverExtraReports?.length
+                  ? `Valorar ${row.driverExtraReports[0]?.concept?.name ?? row.driverExtraReports[0]?.conceptCode ?? 'novedad reportada'}`
+                  : 'Añadir recargo financiero'
+              }
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                width: 'auto', maxWidth: '180px', height: '32px', padding: '0 8px', gap: 5, borderRadius: '8px', border: 'none',
                 backgroundColor: '#fffbeb', color: '#d97706',
                 cursor: 'pointer', transition: 'all 0.2s',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
               }}
             >
               <BadgeDollarSign size={16} />
+              {(row.driverExtraReports?.length ?? 0) > 0 && (
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {row.driverExtraReports?.[0]?.concept?.name ??
+                    row.driverExtraReports?.[0]?.conceptCode ??
+                    'Novedad'}
+                </span>
+              )}
             </button>
           </div>
         );

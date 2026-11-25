@@ -19,6 +19,8 @@ const STATUS_LABELS: Record<string, string> = {
   MAINTENANCE: 'Mantenimiento',
   OUT_OF_SERVICE: 'Fuera de servicio',
   CREADO: 'Sin asignar',
+  PENDIENTE_PROGRAMACION: 'Pendiente de programación',
+  PROGRAMADA: 'Programada',
   PROGRAMADO: 'Programado',
   PENDIENTE: 'Pendiente',
   ASIGNADO: 'Asignado',

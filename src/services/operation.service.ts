@@ -1,4 +1,5 @@
 import { api } from "./api.service";
+import { isAxiosError } from "axios";
 import {
   Operation,
   OperationSurcharge,
@@ -9,6 +10,7 @@ import type {
   CargoVehicleTypeCode,
   TrailerType,
 } from "@/types/vehicles";
+import type { ContainerType } from "@/types/tariff-ypes";
 import type { CargoStatus, OperationContainerStatus } from "@/types/driver-portal.types";
 
 export async function correctContainerState(
@@ -90,10 +92,15 @@ export interface DriverExtraReport {
   id: number;
   operationId: number;
   driverId: number;
-  type: "STAND_BY" | "DESVIO" | "MANIOBRA_EXTRA" | "EN_PISO";
+  conceptCode: string | null;
+  concept: {
+    code: string;
+    name: string;
+    applicableTo: string | null;
+  } | null;
   durationHours: number | null;
   description: string;
-  evidenceUrl: string;
+  evidenceUrl: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
   driver: { id: number; name: string | null; cedula: string | null };
@@ -103,6 +110,12 @@ export interface DriverExtraReport {
     numeroPedido: string | null;
     client: { razonSocial: string } | null;
   };
+  novedad: {
+    metadata: {
+      conceptId?: string;
+      conceptName?: string;
+    } | null;
+  } | null;
 }
 
 export type HistoricalFilterOptionKind = "manifest";
@@ -140,6 +153,7 @@ export interface AmparoSuggestionOperation {
   appointmentAt: string;
   fechaCitaDestino?: string | null;
   requiredTrailerType?: TrailerType | null;
+  cargoDescription?: string;
   cargoVehicleType?: {
     tractorAxles: number | null;
     trailerAxles: number | null;
@@ -167,26 +181,53 @@ export interface ConfirmAmparoPayload {
   vehicleId: number;
 }
 
+export type BulkOperationType =
+  | "IMPORTACION"
+  | "EXPORTACION"
+  | "RETIRO_VACIO"
+  | "DEVOLUCION_VACIO"
+  | "NACIONAL"
+  | "MOVIMIENTO_INTERNO";
+
+export type BulkContainerType = ContainerType;
+
 export interface CreateBulkOperationsPayload {
   clientId: number;
-  type: "IMPORTACION" | "EXPORTACION";
+  type: BulkOperationType;
+  operationType: BulkOperationType;
   numeroPedido: string;
-  shippingLineId: number;
-  cargoVehicleTypeCode: CargoVehicleTypeCode;
-  requiredTrailerType?: TrailerType | null;
+  fechaLimiteDocumental?: string | null;
+  fechaLimiteFisico?: string | null;
+  fechaLimiteDevolucion?: string | null;
+  isContainerized?: boolean;
+  shippingLineId?: number;
   routeScope: "URBANO" | "NACIONAL";
-  origenId: number;
-  cargueId?: number;
-  destinoId: number;
-  depositoDevolucionId?: number;
-  scheduledAt: string;
-  fechaCitaOrigen?: string | null;
-  fechaCitaDestino?: string | null;
+  portId?: number;
+  clientLocationId?: number;
+  yardId?: number;
   requiresInspection?: boolean;
   containers: Array<{
+    operationType: BulkOperationType;
     containerNumber?: string | null;
-    containerType: string;
-    weight: number;
+    containerType?: BulkContainerType;
+    weight?: number;
+    cargoVehicleTypeCode: CargoVehicleTypeCode;
+    requiredTrailerType?: TrailerType | null;
+    vehicleId: null;
+    driverId: null;
+    scheduledAt?: string | null;
+    portAppointmentAt?: string | null;
+    yardAppointmentAt?: string | null;
+    fechaCitaOrigen?: string | null;
+    fechaCitaDestino?: string | null;
+    fechaRetiro?: string | null;
+    isAnticipada?: boolean;
+    requiresInspection?: boolean;
+    origenId?: number;
+    cargueId?: number;
+    destinoId?: number;
+    depositoDevolucionId?: number;
+    destinoTemporalId?: number;
   }>;
 }
 
@@ -377,8 +418,23 @@ export const operationService = {
   createBulkOperations: async (
     payload: CreateBulkOperationsPayload,
   ): Promise<Operation[]> => {
-    const response = await api.post<Operation[]>("/operations/bulk", payload);
-    return response.data;
+    try {
+      const response = await api.post<Operation[]>("/operations/bulk", payload);
+      return response.data;
+    } catch (error: unknown) {
+      if (
+        isAxiosError<{ message?: string | string[] }>(error)
+      ) {
+        const message = error.response?.data?.message;
+        if (Array.isArray(message)) {
+          throw new Error(message.join(" "));
+        }
+        if (typeof message === "string") {
+          throw new Error(message);
+        }
+      }
+      throw error;
+    }
   },
 
   getOperationsByDate: async (
@@ -603,7 +659,13 @@ export const operationService = {
 
   approveExtraReport: async (
     reportId: number,
-    payload: { conceptId: string; amount: number; cost: number },
+    payload: {
+      conceptId: string;
+      amount: number;
+      cost: number;
+      isPatioCharge?: boolean;
+      patioLocationId?: number;
+    },
   ): Promise<OperationSurcharge> => {
     const response = await api.post<OperationSurcharge>(
       `/operations/extra-reports/${reportId}/approve`,

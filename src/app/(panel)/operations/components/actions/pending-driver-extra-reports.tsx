@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SuperModal } from '@/components/organisms/modal/modal';
@@ -12,9 +12,23 @@ import {
 import { useTariffs } from '@/app/(panel)/tariff/hooks/useTariff';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { showToast } from '@/utils/alerts';
-import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
+import { OperationPatioChargeSelector } from './operation-patio-charge-selector';
 
-export function PendingDriverExtraReports() {
+interface PendingDriverExtraReportsProps {
+  autoOpenOperationId?: number | null;
+  autoOpenReportId?: number | null;
+  compact?: boolean;
+  onAutoOpenHandled?: () => void;
+  onClose?: () => void;
+}
+
+export function PendingDriverExtraReports({
+  autoOpenOperationId,
+  autoOpenReportId,
+  compact = false,
+  onAutoOpenHandled,
+  onClose,
+}: PendingDriverExtraReportsProps) {
   const queryClient = useQueryClient();
   const { surcharges } = useTariffs();
   const reportsQuery = useQuery({
@@ -24,22 +38,77 @@ export function PendingDriverExtraReports() {
   const [selectedReport, setSelectedReport] = useState<DriverExtraReport | null>(
     null,
   );
+  const selectedOperationQuery = useQuery({
+    queryKey: ['trafico-detail', selectedReport?.operationId],
+    queryFn: () =>
+      operationService.getOperationById(selectedReport?.operationId ?? 0),
+    enabled: selectedReport !== null,
+  });
   const [conceptId, setConceptId] = useState('');
   const [amount, setAmount] = useState('');
   const [cost, setCost] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPatioCharge, setIsPatioCharge] = useState(false);
+  const [patioLocationId, setPatioLocationId] = useState<number | null>(null);
 
   const openReport = (report: DriverExtraReport) => {
     setSelectedReport(report);
-    setConceptId('');
+    setConceptId(
+      report.concept?.code ??
+        report.novedad?.metadata?.conceptId ??
+        report.conceptCode ??
+        '',
+    );
     setAmount('');
     setCost('0');
+    setIsPatioCharge(false);
+    setPatioLocationId(null);
   };
+
+  const closeReport = () => {
+    setSelectedReport(null);
+    setIsPatioCharge(false);
+    setPatioLocationId(null);
+    onClose?.();
+  };
+
+  useEffect(() => {
+    if (
+      (autoOpenOperationId == null && autoOpenReportId == null) ||
+      !reportsQuery.data
+    ) return;
+    const report = reportsQuery.data.find((item) =>
+      autoOpenReportId != null
+        ? item.id === autoOpenReportId
+        : item.operationId === autoOpenOperationId,
+    );
+    if (report) openReport(report);
+    onAutoOpenHandled?.();
+  }, [
+    autoOpenOperationId,
+    autoOpenReportId,
+    onAutoOpenHandled,
+    reportsQuery.data,
+  ]);
+
+  const visibleReports =
+    autoOpenOperationId == null && autoOpenReportId == null
+      ? reportsQuery.data
+      : reportsQuery.data?.filter(
+          (report) =>
+            autoOpenReportId != null
+              ? report.id === autoOpenReportId
+              : report.operationId === autoOpenOperationId,
+        );
 
   const approveReport = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedReport || !conceptId) return;
+    if (isPatioCharge && patioLocationId === null) {
+      showToast.error('Selecciona el patio asociado al cobro.');
+      return;
+    }
     const parsedAmount = Number(amount);
     const parsedCost = Number(cost);
     if (
@@ -58,10 +127,17 @@ export function PendingDriverExtraReports() {
         conceptId,
         amount: parsedAmount,
         cost: parsedCost,
+        isPatioCharge,
+        ...(isPatioCharge && patioLocationId !== null
+          ? { patioLocationId }
+          : {}),
       });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['driver-extra-reports', 'pending'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', selectedReport.operationId],
         }),
         queryClient.invalidateQueries({ queryKey: ['trafico'] }),
         queryClient.invalidateQueries({
@@ -70,7 +146,8 @@ export function PendingDriverExtraReports() {
         queryClient.invalidateQueries({ queryKey: ['profiles'] }),
       ]);
       showToast.success('Reporte aprobado y recargo agregado a la operación.');
-      setSelectedReport(null);
+      closeReport();
+      onAutoOpenHandled?.();
     } catch (error) {
       showToast.error(
         getUserFriendlyErrorMessage(error, 'No se pudo aprobar el reporte.'),
@@ -81,7 +158,8 @@ export function PendingDriverExtraReports() {
   };
 
   return (
-    <section
+    <>
+    {/* {!compact && <section
       aria-labelledby="pending-extra-reports-heading"
       style={{
         margin: 0,
@@ -120,7 +198,7 @@ export function PendingDriverExtraReports() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {reportsQuery.data?.length ?? 0} pendientes
+              {visibleReports?.length ?? 0} pendientes
             </span>
           )}
           <Button
@@ -146,9 +224,9 @@ export function PendingDriverExtraReports() {
         isExpanded && <p role="status" style={{ marginBottom: 0 }}>Cargando reportes pendientes…</p>
       ) : reportsQuery.isError ? (
         isExpanded && <p role="alert" style={{ marginBottom: 0 }}>No se pudieron cargar los reportes pendientes.</p>
-      ) : reportsQuery.data?.length ? (
+      ) : visibleReports?.length ? (
         isExpanded && <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-          {reportsQuery.data.map((report) => (
+          {visibleReports.map((report) => (
             <article
               key={report.id}
               style={{
@@ -164,7 +242,7 @@ export function PendingDriverExtraReports() {
             >
               <div>
                 <strong>
-                  {formatExtraChargeTypeLabel(report.type)} · Operación #{report.operationId}
+                  {report.concept?.name ?? report.novedad?.metadata?.conceptName ?? report.conceptCode ?? 'Novedad'} · Operación #{report.operationId}
                 </strong>
                 <div style={{ color: '#475569', marginTop: 4 }}>
                   {report.operation.client?.razonSocial ?? 'Cliente sin registrar'}
@@ -185,10 +263,11 @@ export function PendingDriverExtraReports() {
       ) : (
         isExpanded && <p style={{ margin: '10px 0 0', color: '#64748b', fontSize: 13 }}>No hay reportes pendientes.</p>
       )}
+    </section>} */}
 
       <SuperModal
         isOpen={selectedReport !== null}
-        onClose={() => setSelectedReport(null)}
+        onClose={closeReport}
         title={
           selectedReport
             ? `Aprobar reporte #${selectedReport.id} · Operación #${selectedReport.operationId}`
@@ -199,7 +278,7 @@ export function PendingDriverExtraReports() {
         {selectedReport && (
           <form onSubmit={(event) => void approveReport(event)} style={{ display: 'grid', gap: 12 }}>
             <div>
-              <strong>{formatExtraChargeTypeLabel(selectedReport.type)}</strong>
+              <strong>{selectedReport.concept?.name ?? selectedReport.novedad?.metadata?.conceptName ?? selectedReport.conceptCode ?? 'Novedad'}</strong>
               <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.description}</p>
               {selectedReport.durationHours != null && (
                 <p>Duración reportada: {selectedReport.durationHours} horas</p>
@@ -207,10 +286,23 @@ export function PendingDriverExtraReports() {
               {selectedReport.operation.containerNumber && (
                 <p>Contenedor: {selectedReport.operation.containerNumber}</p>
               )}
-              <a href={selectedReport.evidenceUrl} target="_blank" rel="noreferrer">
-                Abrir evidencia del conductor
-              </a>
+              {selectedReport.evidenceUrl ? (
+                <a href={selectedReport.evidenceUrl} target="_blank" rel="noreferrer">
+                  Abrir evidencia del conductor
+                </a>
+              ) : (
+                <p>No se adjuntó evidencia fotográfica.</p>
+              )}
             </div>
+
+            <OperationPatioChargeSelector
+              operation={selectedOperationQuery.data}
+              isPatioCharge={isPatioCharge}
+              patioLocationId={patioLocationId}
+              disabled={isSubmitting}
+              onPatioChargeChange={setIsPatioCharge}
+              onPatioLocationChange={setPatioLocationId}
+            />
 
             <label style={{ display: 'grid', gap: 6 }}>
               Concepto del catálogo
@@ -229,7 +321,7 @@ export function PendingDriverExtraReports() {
                 <option value="">Selecciona un concepto</option>
                 {surcharges.map((concept) => (
                   <option key={concept.code} value={concept.code}>
-                    {formatExtraChargeTypeLabel(concept.name || concept.code)}
+                    {concept.name}
                   </option>
                 ))}
               </select>
@@ -266,7 +358,7 @@ export function PendingDriverExtraReports() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setSelectedReport(null)}
+                onClick={closeReport}
                 disabled={isSubmitting}
               >
                 Cancelar
@@ -274,7 +366,12 @@ export function PendingDriverExtraReports() {
               <Button
                 type="submit"
                 isLoading={isSubmitting}
-                disabled={isSubmitting || !conceptId || surcharges.length === 0}
+                disabled={
+                  isSubmitting ||
+                  !conceptId ||
+                  surcharges.length === 0 ||
+                  (isPatioCharge && patioLocationId === null)
+                }
               >
                 Aprobar y agregar recargo
               </Button>
@@ -282,6 +379,6 @@ export function PendingDriverExtraReports() {
           </form>
         )}
       </SuperModal>
-    </section>
+    </>
   );
 }

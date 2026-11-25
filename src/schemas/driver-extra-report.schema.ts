@@ -1,25 +1,7 @@
 import { z } from 'zod';
 
-export const driverExtraReportTypeSchema = z.enum([
-  'STAND_BY',
-  'DESVIO',
-  'MANIOBRA_EXTRA',
-  'EN_PISO',
-]);
-
 export const createDriverExtraReportSchema = z.object({
-  type: driverExtraReportTypeSchema,
-  durationHours: z
-    .string()
-    .optional()
-    .refine(
-      (value) =>
-        !value ||
-        (Number.isFinite(Number(value)) &&
-          Number(value) >= 0.1 &&
-          Number(value) <= 168),
-      'Ingresa una duración entre 0.1 y 168 horas.',
-    ),
+  conceptId: z.string().min(1, 'Selecciona un concepto del catálogo.'),
   description: z
     .string()
     .trim()
@@ -27,16 +9,22 @@ export const createDriverExtraReportSchema = z.object({
     .max(2000, 'La descripción no puede superar 2000 caracteres.'),
   evidence: z
     .custom<FileList>(
-      (value) => typeof FileList !== 'undefined' && value instanceof FileList,
-      'Adjunta una fotografía como evidencia.',
+      (value) =>
+        value === undefined ||
+        (typeof FileList !== 'undefined' && value instanceof FileList),
+      'Selecciona una fotografía válida.',
     )
-    .refine((files) => files.length > 0, 'Adjunta una fotografía como evidencia.')
+    .optional()
     .refine(
-      (files) => files.item(0)?.type.startsWith('image/') === true,
+      (files) =>
+        !files ||
+        files.length === 0 ||
+        files.item(0)?.type.startsWith('image/') === true,
       'La evidencia debe ser una imagen.',
     )
     .refine(
-      (files) => (files.item(0)?.size ?? 0) <= 10 * 1024 * 1024,
+      (files) =>
+        !files || files.length === 0 || (files.item(0)?.size ?? 0) <= 10 * 1024 * 1024,
       'La imagen no puede superar 10 MB.',
     ),
 });

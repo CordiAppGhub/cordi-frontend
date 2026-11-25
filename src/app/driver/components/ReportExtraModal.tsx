@@ -1,35 +1,40 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useEffect } from 'react';
 import { Button } from '@/components/atoms/button/button';
+import { Select } from '@/components/atoms/select/select';
 import { SuperModal } from '@/components/organisms/modal/modal';
 import {
   createDriverExtraReportSchema,
   type CreateDriverExtraReportFormData,
 } from '@/schemas/driver-extra-report.schema';
-import { driverPortalService } from '@/services/driverPortal.service';
+import { useDriverAuth } from '@/providers/authDriverProvider';
 import { getUserFriendlyErrorMessage } from '@/utils/api-error';
 import { showToast } from '@/utils/alerts';
-import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
 
 interface ReportExtraModalProps {
   operationId: number | null;
-  defaultType?: CreateDriverExtraReportFormData['type'];
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export function ReportExtraModal({
   operationId,
-  defaultType,
   onClose,
   onSuccess,
 }: ReportExtraModalProps) {
-  const queryClient = useQueryClient();
   const {
+    extraConcepts,
+    getExtraConceptsForOperation,
+    loadingExtraConcepts,
+    extraConceptsError,
+    reportExtra,
+    isReportingExtra,
+  } = useDriverAuth();
+  const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -37,8 +42,7 @@ export function ReportExtraModal({
   } = useForm<CreateDriverExtraReportFormData>({
     resolver: zodResolver(createDriverExtraReportSchema),
     defaultValues: {
-      type: 'STAND_BY',
-      durationHours: '',
+      conceptId: '',
       description: '',
     },
   });
@@ -46,31 +50,20 @@ export function ReportExtraModal({
   useEffect(() => {
     if (operationId === null) return;
     reset({
-      type: defaultType ?? 'STAND_BY',
-      durationHours: '',
-      description:
-        defaultType === 'EN_PISO'
-          ? 'Contenedor bajado a piso; adjunto evidencia fotográfica.'
-          : '',
+      conceptId: '',
+      description: '',
     });
-  }, [defaultType, operationId, reset]);
+  }, [extraConcepts, operationId, reset]);
 
   const submit = async (values: CreateDriverExtraReportFormData) => {
-    if (!operationId) return;
-    const file = values.evidence.item(0);
-    if (!file) return;
-
+    if (operationId === null) return;
+    const file = values.evidence?.item(0) ?? undefined;
     try {
-      await driverPortalService.reportExtraReport(operationId, {
-        type: values.type,
-        ...(values.durationHours
-          ? { durationHours: Number(values.durationHours) }
-          : {}),
+      await reportExtra(operationId, {
+        conceptId: values.conceptId,
         description: values.description,
-        file,
+        ...(file ? { file } : {}),
       });
-      await queryClient.invalidateQueries({ queryKey: ['driver-portal'] });
-      showToast.success('Reporte enviado para revisión del analista.');
       reset();
       onSuccess();
     } catch (error) {
@@ -81,15 +74,37 @@ export function ReportExtraModal({
   };
 
   const close = () => {
+    if (isSubmitting || isReportingExtra) return;
     reset();
     onClose();
   };
+
+  const submitting = isSubmitting || isReportingExtra;
+  const conceptsUnavailable =
+    !loadingExtraConcepts &&
+    !extraConceptsError &&
+    extraConcepts.length === 0;
+  const operationConcepts =
+    operationId === null ? [] : getExtraConceptsForOperation(operationId);
+  const noApplicableConcepts =
+    !loadingExtraConcepts &&
+    !extraConceptsError &&
+    extraConcepts.length > 0 &&
+    operationConcepts.length === 0;
+  const conceptsDisabled =
+    loadingExtraConcepts ||
+    extraConceptsError ||
+    operationConcepts.length === 0;
+  const conceptOptions = operationConcepts.map((concept) => ({
+    value: concept.code,
+    label: concept.name,
+  }));
 
   return (
     <SuperModal
       isOpen={operationId !== null}
       onClose={close}
-      title={`Reportar cobro extra · Operación #${operationId ?? ''}`}
+      title={`Reportar novedad · Operación #${operationId ?? ''}`}
       width="560px"
     >
       <form
@@ -97,38 +112,52 @@ export function ReportExtraModal({
         style={{ display: 'grid', gap: 14 }}
       >
         <p style={{ margin: 0, color: '#475569' }}>
-          Reporta el hecho y adjunta evidencia. El analista revisará y definirá
-          el concepto y los valores a cobrar.
+          El reporte se enviará al analista para valoración. No se asignará
+          ningún monto desde el portal.
         </p>
         <label style={{ display: 'grid', gap: 6 }}>
-          Tipo de evento
-          <select {...register('type')}>
-            {(['STAND_BY', 'DESVIO', 'MANIOBRA_EXTRA', 'EN_PISO'] as const).map((value) => (
-              <option key={value} value={value}>
-                {formatExtraChargeTypeLabel(value)}
-              </option>
-            ))}
-          </select>
-          {errors.type && (
-            <span role="alert">{errors.type.message}</span>
-          )}
-        </label>
-        <label style={{ display: 'grid', gap: 6 }}>
-          Duración en horas (opcional)
-          <input
-            type="number"
-            min="0.1"
-            max="168"
-            step="0.1"
-            inputMode="decimal"
-            {...register('durationHours')}
+          Concepto
+          <Controller
+            control={control}
+            name="conceptId"
+            render={({ field: { value, onChange } }) => (
+              <Select
+                id="driver-extra-concept"
+                name="conceptId"
+                value={value}
+                options={conceptOptions}
+                onValueChange={onChange}
+                searchable
+                searchPlaceholder={
+                  loadingExtraConcepts
+                    ? 'Cargando conceptos…'
+                    : 'Buscar concepto de cobro extra…'
+                }
+                required
+                disabled={conceptsDisabled}
+                error={errors.conceptId?.message}
+              />
+            )}
           />
-          {errors.durationHours && (
-            <span role="alert">{errors.durationHours.message}</span>
+          {conceptsUnavailable && (
+            <span role="alert">
+              No hay conceptos configurados en Tarifas de Cobro Extra.
+            </span>
+          )}
+          {noApplicableConcepts && (
+            <span role="alert">
+              No hay conceptos configurados para esta operación.
+            </span>
+          )}
+          {extraConceptsError && (
+            <span role="alert">
+              No se pudieron cargar los conceptos de Tarifas de Cobro Extra.
+              Inténtalo nuevamente más tarde.
+            </span>
           )}
         </label>
         <label style={{ display: 'grid', gap: 6 }}>
-          Descripción
+          Observación
           <textarea
             rows={4}
             maxLength={2000}
@@ -140,7 +169,7 @@ export function ReportExtraModal({
           )}
         </label>
         <label style={{ display: 'grid', gap: 6 }}>
-          Foto de evidencia
+          Foto de evidencia (opcional)
           <input
             type="file"
             accept="image/*"
@@ -156,12 +185,16 @@ export function ReportExtraModal({
             type="button"
             variant="secondary"
             onClick={close}
-            disabled={isSubmitting}
+            disabled={submitting}
           >
             Cancelar
           </Button>
-          <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
-            Enviar reporte
+          <Button
+            type="submit"
+            isLoading={submitting}
+            disabled={submitting || conceptsDisabled}
+          >
+            Enviar para valoración
           </Button>
         </div>
       </form>

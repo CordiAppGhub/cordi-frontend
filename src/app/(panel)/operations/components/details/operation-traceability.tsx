@@ -4,10 +4,15 @@ import { useEffect, useState } from 'react';
 import styles from './operation-traceability.module.css';
 
 import { useTrafico } from '../../hooks/use-operations';
-import type { Evidence, LogisticNode, Operation } from '@/types/operation-types';
+import type {
+  Evidence,
+  LogisticNode,
+  Operation,
+  OperationSurcharge,
+} from '@/types/operation-types';
 import { useOperationTimeline } from '../../hooks/use-operation-timeline';
 import { socket } from '@/lib/socket';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { Button } from '@/components/atoms/button/button';
 import { OperationTimeline } from '../timeline/operation-timeline';
@@ -15,42 +20,23 @@ import { EvidenceViewer, ImageViewer } from '@/components/organisms/evidence-vie
 import { FileText, Activity, AlertTriangle, MapPin, Clock, Truck, Check, CheckCircle2, XCircle, RotateCcw, FileCheck, Download } from 'lucide-react'; 
 import { TruckLoader } from '@/components/TruckLoader';
 import { ContainerStatusLabels } from '@/constants/enum-mapping-types';
-import { closeDocumentally, reviewEvidence, correctContainerState, operationService } from '@/services/operation.service';
+import { closeDocumentally, reviewEvidence, operationService } from '@/services/operation.service';
 import Swal from 'sweetalert2';
-import { showToast } from '@/utils/alerts';
+import { showConfirm, showToast } from '@/utils/alerts';
+import { tariffService } from '@/services/tariff.service';
+import type { UpdateOperationSurchargeInput } from '@/services/tariff.service';
+import { OperationSurchargeModal } from './operation-surcharge-modal';
 import { InspectionResult } from './inspection-result';
 import { useAuthStore } from '@/store/use-auth.store';
-import type { CargoStatus, OperationContainerStatus } from '@/types/driver-portal.types';
+import { PendingDriverExtraReports } from '../actions/pending-driver-extra-reports';
 import {
   formatEvidenceStageLabel,
   formatEvidenceTypeLabel,
-  formatExtraChargeTypeLabel,
 } from '@/utils/format-labels';
 import {
   getFleetConfigurationCode,
   TRAILER_TYPE_LABELS,
 } from '@/types/vehicles';
-
-const containerPredecessors: Partial<Record<OperationContainerStatus, OperationContainerStatus[]>> = {
-  EN_INSPECCION: ['PENDIENTE', 'EN_PISO'],
-  EN_CARGUE: ['PENDIENTE', 'PENDIENTE_CARGUE', 'EN_INSPECCION'],
-  CARGADO: ['EN_CARGUE'],
-  EN_DESCARGUE: ['CARGADO'],
-  DESCARGADO: ['EN_DESCARGUE'],
-  EN_PISO: ['CARGADO', 'EN_DESCARGUE', 'DESCARGADO'],
-  FALLA_REPORTADA: ['EN_INSPECCION', 'EN_CARGUE', 'EN_PISO'],
-};
-
-const cargoStates: CargoStatus[] = [
-  'PENDIENTE', 'EN_CARGUE', 'CARGADO', 'SELLADO',
-  'INSPECCIONADO', 'EN_DESCARGUE', 'DESCARGADO', 'DEVUELTO',
-];
-const requiredCargoState: Partial<Record<OperationContainerStatus, CargoStatus>> = {
-  EN_INSPECCION: 'INSPECCIONADO',
-  CARGADO: 'CARGADO',
-  EN_DESCARGUE: 'CARGADO',
-  DESCARGADO: 'DESCARGADO',
-};
 
 interface Props {
   operationId: number;
@@ -77,6 +63,7 @@ interface TraceabilityRoutePoint {
   appointmentAt?: string | null;
   actualArrivalAt?: string | null;
   actualDepartureAt?: string | null;
+  completedAt?: string | null;
   clientName?: string | null;
   contactName?: string | null;
   contactPhone?: string | null;
@@ -116,12 +103,57 @@ export function OperationTraceability({ operationId }: Props) {
   const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidences'>('details');
   const [isReviewing, setIsReviewing] = useState<number | null>(null);
   const [isClosingDocumentally, setIsClosingDocumentally] = useState(false);
-  const [isCorrectingContainer, setIsCorrectingContainer] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [reviewPendingExtraReportId, setReviewPendingExtraReportId] =
+    useState<number | null>(null);
+  const [editingSurcharge, setEditingSurcharge] =
+    useState<OperationSurcharge | null>(null);
 
   const { currentOperation, isLoadingCurrent, fetchOperationById } = useTrafico();
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } =
     useOperationTimeline(displayedOperationId);
+  const updateOperationSurchargeMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: UpdateOperationSurchargeInput;
+    }) => tariffService.updateOperationSurcharge(id, data),
+    onSuccess: async () => {
+      showToast.success('El recargo de la operación se actualizó.');
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-client-operations'],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo actualizar el recargo.'),
+  });
+  const deleteOperationSurchargeMutation = useMutation({
+    mutationFn: (id: number) => tariffService.deleteOperationSurcharge(id),
+    onSuccess: async () => {
+      showToast.success('El recargo de la operación se eliminó.');
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-detail', displayedOperationId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['trafico'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['trafico-client-operations'],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['operations'] }),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo eliminar el recargo.'),
+  });
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -189,8 +221,40 @@ export function OperationTraceability({ operationId }: Props) {
   );
   const recargos = currentOperation.surcharges || [];
   const totalCobrosExtras = Number(currentOperation.totalCobrosExtras ?? 0);
+  const driverExtraReports = currentOperation.driverExtraReports ?? [];
   const granTotalCobro = currentOperation.totalFacturacion;
   const fleteAPagar = Number(currentOperation.fleteAPagar || 0);
+  const canManageOperationSurcharges =
+    ['ADMIN', 'ANALISTA', 'JEFE_DE_FLOTA'].includes(role ?? '') &&
+    !['FINALIZADO', 'CANCELADO'].includes(currentOperation.status);
+
+  const saveOperationSurcharge = async (
+    id: number,
+    data: UpdateOperationSurchargeInput,
+  ): Promise<boolean> => {
+    try {
+      await updateOperationSurchargeMutation.mutateAsync({ id, data });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteOperationSurcharge = async (surcharge: OperationSurcharge) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar recargo de la operación?',
+      text: 'El total de cobros extra se recalculará al actualizar la operación.',
+      confirmButtonText: 'Sí, eliminar',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteOperationSurchargeMutation.mutateAsync(surcharge.id);
+    } catch {
+      // The mutation displays the backend error in its onError handler.
+    }
+  };
 
   // Lógica Gerencial: Alertas de Datos Faltantes
   const getMissingData = () => {
@@ -227,82 +291,11 @@ export function OperationTraceability({ operationId }: Props) {
     role ?? '',
   );
   const containerStatus = currentOperation.containerStatus || 'PENDIENTE';
-  const correctionStatus = Object.keys(containerPredecessors)
-    .find((status): status is OperationContainerStatus => status === containerStatus);
-  const possiblePreviousStates = correctionStatus
-    ? containerPredecessors[correctionStatus] ?? []
-    : [];
-  const canCorrectContainer =
-    currentOperation.isContainerized === true &&
-    currentOperation.isActive &&
-    !['CIERRE_FISICO', 'FINALIZADO', 'CANCELADO'].includes(currentOperation.status) &&
-    ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(role || '') &&
-    possiblePreviousStates.length > 0;
-  const handleContainerCorrection = async () => {
-    const expectedStatus = Object.keys(containerPredecessors)
-      .find((status): status is OperationContainerStatus => status === containerStatus);
-    if (!expectedStatus) return;
-    const target = await Swal.fire<OperationContainerStatus>({
-      title: 'Corregir estado del contenedor',
-      text: 'Selecciona el paso anterior verificado. Revisa las evidencias antes de continuar; no se borrarán ni invalidarán automáticamente.',
-      input: 'select',
-      inputOptions: Object.fromEntries(possiblePreviousStates.map((status) => [status, status.replace(/_/g, ' ')])),
-      inputPlaceholder: 'Selecciona el estado anterior',
-      inputValidator: (value) => value ? undefined : 'Selecciona el estado anterior.',
-      showCancelButton: true,
-      confirmButtonText: 'Continuar',
-      cancelButtonText: 'Cancelar',
-    });
-    if (!target.isConfirmed || !target.value || !possiblePreviousStates.includes(target.value)) return;
-    const requiredCargo = requiredCargoState[target.value];
-    const availableCargoStates = requiredCargo ? [requiredCargo] : cargoStates;
-    const cargo = await Swal.fire<CargoStatus>({
-      title: 'Estado real de la carga',
-      text: 'Confirma el estado de carga que corresponde al paso anterior.',
-      input: 'select',
-      inputOptions: Object.fromEntries(availableCargoStates.map((status) => [status, status.replace(/_/g, ' ')])),
-      inputValue: requiredCargo || '',
-      inputPlaceholder: 'Selecciona el estado de carga',
-      inputValidator: (value) => value ? undefined : 'Selecciona el estado de carga.',
-      showCancelButton: true,
-      confirmButtonText: 'Continuar',
-      cancelButtonText: 'Cancelar',
-    });
-    if (!cargo.isConfirmed || !cargo.value || !availableCargoStates.includes(cargo.value)) return;
-    const reason = await Swal.fire<string>({
-      title: 'Motivo de la corrección',
-      input: 'textarea',
-      inputPlaceholder: 'Describe el error y cómo verificaste el estado real',
-      inputValidator: (value) => value.trim().length >= 8 ? undefined : 'Escribe al menos 8 caracteres.',
-      showCancelButton: true,
-      confirmButtonText: 'Confirmar corrección',
-      cancelButtonText: 'Cancelar',
-    });
-    if (!reason.isConfirmed || !reason.value?.trim()) return;
-    setIsCorrectingContainer(true);
-    try {
-      await correctContainerState(displayedOperationId, {
-        expectedStatus,
-        targetStatus: target.value,
-        cargoStatus: cargo.value,
-        reason: reason.value.trim(),
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ['trafico-detail', displayedOperationId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ['operation-timeline', displayedOperationId],
-        }),
-      ]);
-      showToast.success('Estado del contenedor corregido.');
-    } finally {
-      setIsCorrectingContainer(false);
-    }
-  };
   const isContainerStatusAlert = containerStatus === 'FALLA_REPORTADA';
   const isContainerStatusComplete =
-    containerStatus === 'CARGADO' || containerStatus === 'DESCARGADO';
+    containerStatus === 'CARGADO' ||
+    containerStatus === 'DESCARGADO' ||
+    containerStatus === 'ENTREGADO';
   const deviationNotice = currentOperation.historialNovedades?.find(
     (notice) => notice.metadata?.comodatoOcr,
   );
@@ -451,6 +444,7 @@ export function OperationTraceability({ operationId }: Props) {
         appointmentAt: stop.appointmentAt,
         actualArrivalAt: stop.actualArrivalAt,
         actualDepartureAt: stop.actualDepartureAt,
+        completedAt: stop.completedAt,
         clientName: stop.client?.razonSocial,
         contactName: stop.contactName,
         contactPhone: stop.contactPhone,
@@ -540,7 +534,7 @@ export function OperationTraceability({ operationId }: Props) {
     point.stopOrder = index;
   });
   const firstLoadingPoint = routePoints.find(
-    (point) => point.role === 'CARGUE',
+    (point) => point.role === 'CARGUE' && point.isPatio !== true,
   );
   const lastUnloadingPoint = [...routePoints]
     .reverse()
@@ -905,46 +899,21 @@ export function OperationTraceability({ operationId }: Props) {
                           : point.role === 'CARGUE'
                             ? currentOperation.fechaCitaOrigen
                             : currentOperation.fechaCitaDestino);
-                  const arrivalFallback =
-                    point.role === 'EMPTY_RETURN'
-                      ? currentOperation.horaAtencion ??
-                        returnClosureDate
-                      : point.role === 'CARGUE' && isFirstLoadingPoint
-                        ? currentOperation.horaLlegada
-                        : point.role === 'DESCARGUE' &&
-                            isLastUnloadingPoint
-                          ? isExportOperation
-                            ? currentOperation.horaLlegada
-                            : currentOperation.horaAtencion ??
-                              currentOperation.horaLlegada
-                          : null;
-                  const departureFallback =
-                    point.role === 'EMPTY_RETURN'
-                      ? returnClosureDate
-                      : point.role === 'CARGUE' && isFirstLoadingPoint
-                        ? currentOperation.horaSalida
-                        : point.role === 'DESCARGUE' &&
-                            isLastUnloadingPoint
-                          ? currentOperation.horaFinal ??
-                            currentOperation.fechaCierreFisico
-                          : null;
-                  const arrivalAt =
-                    point.actualArrivalAt ?? arrivalFallback;
-                  const departureAt =
-                    point.actualDepartureAt ?? departureFallback;
+                  const arrivalAt = point.actualArrivalAt;
+                  const departureAt = point.actualDepartureAt;
                   const loadingStart = isFirstLoadingPoint
                     ? currentOperation.loadingStartedAt ??
-                      currentOperation.horaCargue
+                      point.actualArrivalAt
                     : null;
                   const loadingEnd = isFirstLoadingPoint
-                    ? currentOperation.loadingCompletedAt
+                    ? point.completedAt ?? currentOperation.loadingCompletedAt
                     : null;
                   const unloadingStart = isLastUnloadingPoint
                     ? currentOperation.unloadingStartedAt ??
-                      currentOperation.horaDescargue
+                      point.actualArrivalAt
                     : null;
                   const unloadingEnd = isLastUnloadingPoint
-                    ? currentOperation.unloadingCompletedAt
+                    ? point.completedAt ?? currentOperation.unloadingCompletedAt
                     : null;
 
                   return (
@@ -991,6 +960,12 @@ export function OperationTraceability({ operationId }: Props) {
                             {arrivalAt ? formatDate(arrivalAt) : 'Sin registrar'}
                           </strong>
                         </div>
+                        {point.completedAt && (
+                          <div className={styles.stopTimelineItem}>
+                            <span>Finalización de parada en {point.locationName}</span>
+                            <strong>{formatDate(point.completedAt)}</strong>
+                          </div>
+                        )}
                         {point.role === 'CARGUE' && (
                           <div className={styles.stopTimelineItem}>
                             <span>Cargue en {point.locationName}</span>
@@ -1145,6 +1120,75 @@ export function OperationTraceability({ operationId }: Props) {
               ))}
             </div>
           </section>
+
+          {driverExtraReports.length > 0 && (
+            <section className={styles.detailSection}>
+              <h3 className={styles.sectionTitle}>
+                <AlertTriangle size={18} color="#c2410c" /> Novedades del
+                conductor
+              </h3>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {driverExtraReports.map((report) => (
+                  <article
+                    key={report.id}
+                    style={{
+                      display: 'grid',
+                      gap: 6,
+                      padding: 12,
+                      border: '1px solid #fed7aa',
+                      borderRadius: 8,
+                      background: '#fff7ed',
+                    }}
+                  >
+                    <strong>
+                      {report.concept?.name ??
+                        report.novedad?.metadata?.conceptName ??
+                        report.conceptCode ??
+                        'Novedad'}
+                    </strong>
+                    <small>
+                      Reportada: {formatDate(report.createdAt)} ·{' '}
+                      {report.status === 'PENDING'
+                        ? 'Pendiente de valoración'
+                        : report.status === 'APPROVED'
+                          ? 'Aplicada'
+                          : 'Rechazada'}
+                    </small>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                      {report.description}
+                    </p>
+                    {report.evidenceUrl && (
+                      <a
+                        href={report.evidenceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Ver evidencia fotográfica
+                      </a>
+                    )}
+                    {report.status === 'PENDING' && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() =>
+                          setReviewPendingExtraReportId(report.id)
+                        }
+                      >
+                        Ingresar valor y aplicar cobro
+                      </Button>
+                    )}
+                  </article>
+                ))}
+              </div>
+              {reviewPendingExtraReportId !== null && (
+                <PendingDriverExtraReports
+                  autoOpenReportId={reviewPendingExtraReportId}
+                  compact
+                  onClose={() => setReviewPendingExtraReportId(null)}
+                />
+              )}
+            </section>
+          )}
 
           <section className={styles.detailSection}>
             <h3 className={styles.sectionTitle}>
@@ -1331,25 +1375,6 @@ export function OperationTraceability({ operationId }: Props) {
                           {ContainerStatusLabels[containerStatus] ||
                             containerStatus.replace(/_/g, ' ')}
                         </strong>
-                        {canCorrectContainer && (
-                          <button
-                            type="button"
-                            className={styles.btnViewEvidence}
-                            disabled={isCorrectingContainer}
-                            onClick={() =>
-                              void handleContainerCorrection().catch(
-                                (error: unknown) =>
-                                  showToast.error(
-                                    error,
-                                    'No se pudo corregir el contenedor.',
-                                  ),
-                              )
-                            }
-                          >
-                            <RotateCcw size={14} /> Corregir estado del
-                            contenedor
-                          </button>
-                        )}
                         {currentOperation.containerIssueDescription && (
                           <small className={styles.dateSub}>
                             Falla reportada:{' '}
@@ -1458,10 +1483,15 @@ export function OperationTraceability({ operationId }: Props) {
                       <span className={styles.surchargeDescription}>
                         <span>
                           <strong>
-                            {formatExtraChargeTypeLabel(
-                              surcharge.surcharge?.name || surcharge.surchargeCode,
-                            )}
+                            {surcharge.surcharge?.name || surcharge.surchargeCode}
                           </strong>
+                          {surcharge.isPatioCharge && (
+                            <small>
+                              Patio:{' '}
+                              {surcharge.patioLocation?.name ??
+                                'Sin patio vinculado'}
+                            </small>
+                          )}
                           {surcharge.quantity > 1
                             ? ` · ${surcharge.quantity} unid.`
                             : ''}
@@ -1473,7 +1503,7 @@ export function OperationTraceability({ operationId }: Props) {
                           <small>
                             Novedad #{surcharge.novedad.id}
                             {surcharge.novedad.category
-                              ? ` · ${formatExtraChargeTypeLabel(surcharge.novedad.category)}`
+                              ? ` · ${surcharge.novedad.category}`
                               : ''}
                           </small>
                         )}
@@ -1484,10 +1514,32 @@ export function OperationTraceability({ operationId }: Props) {
                           </small>
                         )}
                       </span>
-                      <strong>
-                        Venta: ${' '}
-                        {Number(surcharge.totalPrice).toLocaleString('es-CO')}
-                      </strong>
+                      <div className={styles.surchargeRowActions}>
+                        <strong>
+                          Venta: ${' '}
+                          {Number(surcharge.totalPrice).toLocaleString('es-CO')}
+                        </strong>
+                        {canManageOperationSurcharges && (
+                          <div className={styles.surchargeActionButtons}>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => setEditingSurcharge(surcharge)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() =>
+                                void deleteOperationSurcharge(surcharge)
+                              }
+                            >
+                              Eliminar
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -1869,6 +1921,16 @@ export function OperationTraceability({ operationId }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {editingSurcharge && canManageOperationSurcharges && (
+        <OperationSurchargeModal
+          surcharge={editingSurcharge}
+          operation={currentOperation}
+          isSaving={updateOperationSurchargeMutation.isPending}
+          onClose={() => setEditingSurcharge(null)}
+          onSave={saveOperationSurcharge}
+        />
       )}
 
       {/* MODAL / VISOR DE IMÁGENES */}

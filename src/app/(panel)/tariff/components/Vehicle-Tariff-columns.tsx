@@ -1,8 +1,11 @@
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { AffiliationTariff } from '@/types/tariff-ypes';
+import { Button } from '@/components/atoms/button/button';
 
-// Opcional: tipa los objetos como `any` de forma temporal en la estructura o asegúrate de importar el ColumnDef de tu tabla
-export const getVehicleTariffColumns = (onEdit: (tariff: AffiliationTariff) => void) => [
+export const getVehicleTariffColumns = (
+  onEdit: (tariff: AffiliationTariff) => void,
+  onDelete: (tariff: AffiliationTariff) => void,
+) => [
   {
     id: 'affiliation',
     header: 'Tipo de Flota',
@@ -30,18 +33,28 @@ export const getVehicleTariffColumns = (onEdit: (tariff: AffiliationTariff) => v
     header: 'Acciones',
     type: 'text' as const,
     renderCell: (row: AffiliationTariff) => (
-      <button
-        onClick={() => onEdit(row)}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#2563eb',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
-      >
-        Editar
-      </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row);
+          }}
+        >
+          Editar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row);
+          }}
+        >
+          Eliminar
+        </Button>
+      </div>
     ),
   },
 ];

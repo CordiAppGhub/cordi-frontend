@@ -486,11 +486,8 @@ export const useOperationForm = (
 
   const initialValues = useMemo(() => {
     if (!operationBase) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(8, 0, 0, 0);
       return {
-        scheduledAt: formatDateForForm(tomorrow),
+        scheduledAt: "",
         cargoFormat: "SUELTA",
         isContainerized: false,
         routeScope: null,
@@ -1107,6 +1104,7 @@ export const useOperationForm = (
               (location) => location.id === locationId,
             );
             const patioError =
+              formData.isContainerized === true &&
               selectedLocation &&
               !selectedLocation.isPort &&
               (selectedLocation.isDepot || selectedLocation.isOwnYard)
@@ -1142,7 +1140,7 @@ export const useOperationForm = (
             fullWidth: true,
             visible: (formData) => formData.isContainerized === true,
           },
-          dateTimeField("scheduledAt", "Fecha y hora de operación *"),
+          dateTimeField("scheduledAt", "Fecha y hora de operación (Por confirmar con cliente)"),
           appointmentDateField("destino"),
         );
       } else if (
@@ -1168,7 +1166,7 @@ export const useOperationForm = (
             fullWidth: true,
             visible: (formData) => formData.isContainerized === true,
           },
-          dateTimeField("scheduledAt", "Fecha y hora de operación *"),
+          dateTimeField("scheduledAt", "Fecha y hora de operación (Por confirmar con cliente)"),
           appointmentDateField("origen"),
           appointmentDateField("destino"),
         );
@@ -1181,7 +1179,7 @@ export const useOperationForm = (
             sectionTitle: true,
             fullWidth: true,
           },
-          dateTimeField("scheduledAt", "Fecha y hora de operación *"),
+          dateTimeField("scheduledAt", "Fecha y hora de operación (Por confirmar con cliente)"),
           appointmentDateField("origen"),
           appointmentDateField("destino"),
         );
@@ -1996,8 +1994,6 @@ export const useOperationForm = (
       localErrors.isContainerized =
         "El retiro de vacío debe ser una operación contenerizada.";
     }
-    if (!formData.scheduledAt)
-      localErrors.scheduledAt = "La fecha y hora son obligatorias.";
     if (!formData.origenId) localErrors.origenId = "Selecciona un origen.";
     if (!formData.destinoId) localErrors.destinoId = "Selecciona un destino.";
     if (isContainerized && isExport && !formData.descargueId) {
@@ -2017,6 +2013,7 @@ export const useOperationForm = (
           (location) => location.id === destinationAppointmentLocationId,
         );
     if (
+      isContainerized &&
       originAppointmentLocation &&
       !originAppointmentLocation.isPort &&
       (originAppointmentLocation.isDepot ||
@@ -2026,6 +2023,7 @@ export const useOperationForm = (
       if (error) localErrors.fechaCitaOrigen = error;
     }
     if (
+      isContainerized &&
       destinationAppointmentLocation &&
       !destinationAppointmentLocation.isPort &&
       (destinationAppointmentLocation.isDepot ||
@@ -2033,6 +2031,26 @@ export const useOperationForm = (
     ) {
       const error = getPatioAppointmentError(formData.fechaCitaDestino);
       if (error) localErrors.fechaCitaDestino = error;
+    }
+    const isEmptyYardOperation =
+      formData.type === "RETIRO_VACIO" ||
+      formData.type === "DEVOLUCION_VACIO";
+    const hasPatioRoute = [
+      originAppointmentLocation,
+      destinationAppointmentLocation,
+    ].some(
+      (location) =>
+        location &&
+        !location.isPort &&
+        (location.isDepot || location.isOwnYard),
+    );
+    if (isEmptyYardOperation && hasPatioRoute) {
+      const error = getPatioAppointmentError(formData.scheduledAt);
+      if (error) localErrors.scheduledAt = error;
+    }
+    if (isContainerized && isExport && isAnticipada && formData.fechaRetiro) {
+      const error = getPatioAppointmentError(formData.fechaRetiro);
+      if (error) localErrors.fechaRetiro = error;
     }
     if (
       (formData.type === "IMPORTACION" || formData.type === "EXPORTACION") &&
@@ -2188,6 +2206,11 @@ export const useOperationForm = (
       payload.routeScope = String(formData.routeScope) as "URBANO" | "NACIONAL";
     }
     payload.vehicleCapacityId = Number(formData.vehicleCapacityId);
+    if (!isEdit) {
+      payload.vehicleId = null;
+      payload.driverId = null;
+      payload.trailerId = null;
+    }
     payload.cargoVehicleTypeCode =
       CARGO_VEHICLE_TYPE_CODES.find(
         (vehicleTypeCode) =>

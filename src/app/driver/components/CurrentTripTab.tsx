@@ -38,16 +38,19 @@ interface CurrentTripTabProps {
     sealNumber: string,
   ) => Promise<void>;
   onReportDeviation: (reason?: "AVERIA_NO_APTO" | "PATIO_LLENO") => void;
-  onReportExtra: (
-    operationId: number,
-    defaultType?: "EN_PISO",
-  ) => void;
-  onOpenOcrModal: () => void;
+  onReportExtra: (operationId: number, defaultType?: "EN_PISO") => void;
+  onOpenOcrModal: (containerStatus?: OperationContainerStatus) => void;
   onOpenPlateVerification: () => void;
   onOpenEvidenceModal: (
     operationId: number,
     evidenceTypes: string[],
     nextState?: string,
+    beforeState?: string,
+    containerStatus?: OperationContainerStatus,
+  ) => void;
+  onOpenExportSealModal: (
+    operationId: number,
+    containerStatus?: OperationContainerStatus,
   ) => void;
   onOpenClosingModal: () => void;
   onOpenDetailsModal: () => void;
@@ -75,6 +78,7 @@ export function CurrentTripTab({
   onOpenOcrModal,
   onOpenPlateVerification,
   onOpenEvidenceModal,
+  onOpenExportSealModal,
   onOpenClosingModal,
   onOpenDetailsModal,
   onReportTrailerLocation,
@@ -155,7 +159,9 @@ export function CurrentTripTab({
                 >
                   {isAmparoImportBlocked(operation)
                     ? "Esperando exportación"
-                    : operation.isActive ? "Habilitada" : "Deshabilitada"}
+                    : operation.isActive
+                      ? "Habilitada"
+                      : "Deshabilitada"}
                 </span>
               </button>
             ))}
@@ -177,14 +183,17 @@ export function CurrentTripTab({
           {activeOperation && (
             <span
               className={
-                activeOperation.isActive && !isAmparoImportBlocked(activeOperation)
+                activeOperation.isActive &&
+                !isAmparoImportBlocked(activeOperation)
                   ? styles.statusBadgeGreen
                   : styles.statusBadgeRed
               }
             >
               {isAmparoImportBlocked(activeOperation)
                 ? "Esperando exportación"
-                : activeOperation.isActive ? "Habilitada" : "Deshabilitada"}
+                : activeOperation.isActive
+                  ? "Habilitada"
+                  : "Deshabilitada"}
             </span>
           )}
         </div>
@@ -207,8 +216,8 @@ export function CurrentTripTab({
               <span className={styles.value}>
                 {activeOperation.customer?.name ||
                   activeOperation.clientName ||
-                  "Gamalog"} (
-                {activeOperation.clientLocationName || "Sede"})
+                  "Gamalog"}{" "}
+                ({activeOperation.clientLocationName || "Sede"})
               </span>
 
               <span className={styles.label}>Ruta</span>
@@ -380,7 +389,7 @@ export function CurrentTripTab({
           </div>
         ) : activeOperation?.isActive ? (
           <OperationWorkflow
-            key={`${activeOperation.id}-${activeOperation.containerStatus || "PENDIENTE"}-${activeOperation.cargoStatus || "PENDIENTE"}-${activeOperation.sealNumber || ""}`}
+            key={activeOperation.id}
             operation={activeOperation}
             containerCardRef={containerCardRef}
             isLoading={processingState}
@@ -395,6 +404,7 @@ export function CurrentTripTab({
             onOpenOcrModal={onOpenOcrModal}
             onOpenPlateVerification={onOpenPlateVerification}
             onOpenEvidenceModal={onOpenEvidenceModal}
+            onOpenExportSealModal={onOpenExportSealModal}
             onOpenClosingModal={onOpenClosingModal}
           />
         ) : activeOperation ? (

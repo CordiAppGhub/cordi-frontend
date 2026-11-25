@@ -4,12 +4,16 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import{ AxiosError } from 'axios';
 
-import { tariffService, CreateSurchargeCatalogInput, CreateAffiliationTariffInput } from '@/services/tariff.service';
+import {
+  tariffService,
+  CreateSurchargeCatalogInput,
+  CreateAffiliationTariffInput,
+  UpdateClientTariffInput,
+} from '@/services/tariff.service';
 import { showToast } from '@/utils/alerts';
 import {
   CreateClientTariffInput,
   CreateSurchargeOverrideInput,
-  UpsertPatioTariffInput,
 } from '@/types/tariff-ypes';
 
 interface BackendErrorResponse {
@@ -71,26 +75,11 @@ export function useTariffs() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const {
-    data: patioTariffs = [],
-    isLoading: isLoadingPatioTariffs,
-    error: patioTariffsError,
-    refetch: refreshPatioTariffs,
-  } = useQuery({
-    queryKey: ['patio-tariffs'],
-    queryFn: tariffService.getAllPatioTariffs,
-    staleTime: 1000 * 60 * 10,
-  });
-
   const isLoadingTariffs =
     isLoadingClientTariffs ||
     isLoadingSurcharges ||
-    isLoadingPatioTariffs ||
     isLoadingVehicleTypes;
-  const error =
-    clientTariffsError || patioTariffsError
-      ? 'Error al cargar las tarifas o recargos'
-      : null;
+  const error = clientTariffsError ? 'Error al cargar las tarifas o recargos' : null;
 
 
 
@@ -110,7 +99,7 @@ export function useTariffs() {
   });
 
   const updateTariffMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: CreateClientTariffInput }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateClientTariffInput }) =>
       tariffService.updateClientTariff(id, data),
     onSuccess: async () => {
       showToast.success('La tarifa se actualizó correctamente.');
@@ -168,22 +157,116 @@ export function useTariffs() {
     }
   });
 
-  const upsertPatioTariffMutation = useMutation({
-    mutationFn: (data: UpsertPatioTariffInput) => tariffService.upsertPatioTariff(data),
+  const deleteTariffMutation = useMutation({
+    mutationFn: (id: number) => tariffService.deleteClientTariff(id),
     onSuccess: async () => {
-      showToast.success('La tarifa del patio se guardó correctamente.');
+      showToast.success('La tarifa se eliminó correctamente.');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['patio-tariffs'] }),
+        queryClient.invalidateQueries({ queryKey: ['client-tariffs'] }),
         invalidateOperationTariffs(),
       ]);
     },
-    onError: (err: AxiosError<BackendErrorResponse>) => {
-      const message = err.response?.data?.message || 'No se pudo guardar la tarifa del patio.';
-      showToast.error(message);
-    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo eliminar la tarifa.'),
   });
 
-  
+  const updateSurchargeMutation = useMutation({
+    mutationFn: ({
+      code,
+      data,
+    }: {
+      code: string;
+      data: Partial<Omit<CreateSurchargeCatalogInput, 'code'>>;
+    }) => tariffService.updateSurchargeCatalog(code, data),
+    onSuccess: async () => {
+      showToast.success('El concepto se actualizó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['surcharges'] }),
+        invalidateOperationTariffs(),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo actualizar el concepto.'),
+  });
+
+  const deleteSurchargeMutation = useMutation({
+    mutationFn: (code: string) => tariffService.deleteSurchargeCatalog(code),
+    onSuccess: async () => {
+      showToast.success('El concepto se eliminó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['surcharges'] }),
+        invalidateOperationTariffs(),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo eliminar el concepto.'),
+  });
+
+  const updateOverrideMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CreateSurchargeOverrideInput>;
+    }) => tariffService.updateSurchargeOverride(id, data),
+    onSuccess: async () => {
+      showToast.success('El precio especial se actualizó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['surcharge-overrides'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariffs'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariff-lookup'] }),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo actualizar el precio especial.'),
+  });
+
+  const deleteOverrideMutation = useMutation({
+    mutationFn: (id: number) => tariffService.deleteSurchargeOverride(id),
+    onSuccess: async () => {
+      showToast.success('El precio especial se eliminó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['surcharge-overrides'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariffs'] }),
+        queryClient.invalidateQueries({ queryKey: ['tariff-lookup'] }),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo eliminar el precio especial.'),
+  });
+
+  const updateVehicleTariffMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CreateAffiliationTariffInput>;
+    }) => tariffService.updateVehicleTariff(id, data),
+    onSuccess: async () => {
+      showToast.success('La tarifa de afiliación se actualizó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vehicle-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo actualizar la tarifa de afiliación.'),
+  });
+
+  const deleteVehicleTariffMutation = useMutation({
+    mutationFn: (id: number) => tariffService.deleteVehicleTariff(id),
+    onSuccess: async () => {
+      showToast.success('La tarifa de afiliación se eliminó correctamente.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vehicle-tariffs'] }),
+        invalidateOperationTariffs(),
+      ]);
+    },
+    onError: (error: unknown) =>
+      showToast.error(error, 'No se pudo eliminar la tarifa de afiliación.'),
+  });
 
   const createTariff = useCallback(async (data: CreateClientTariffInput): Promise<boolean> => {
     try {
@@ -194,7 +277,7 @@ export function useTariffs() {
 
   const updateTariff = useCallback(async (
     id: number,
-    data: CreateClientTariffInput,
+    data: UpdateClientTariffInput,
   ): Promise<boolean> => {
     try {
       await updateTariffMutation.mutateAsync({ id, data });
@@ -204,12 +287,42 @@ export function useTariffs() {
     }
   }, [updateTariffMutation]);
 
+  const deleteTariff = useCallback(async (id: number): Promise<boolean> => {
+    try {
+      await deleteTariffMutation.mutateAsync(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [deleteTariffMutation]);
+
   const createBaseSurcharge = useCallback(async (data: CreateSurchargeCatalogInput): Promise<boolean> => {
     try {
       await createSurchargeMutation.mutateAsync(data);
       return true;
     } catch { return false; }
   }, [createSurchargeMutation]);
+
+  const updateBaseSurcharge = useCallback(async (
+    code: string,
+    data: Partial<Omit<CreateSurchargeCatalogInput, 'code'>>,
+  ): Promise<boolean> => {
+    try {
+      await updateSurchargeMutation.mutateAsync({ code, data });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [updateSurchargeMutation]);
+
+  const deleteBaseSurcharge = useCallback(async (code: string): Promise<boolean> => {
+    try {
+      await deleteSurchargeMutation.mutateAsync(code);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [deleteSurchargeMutation]);
 
   const createClientOverride = useCallback(async (data: CreateSurchargeOverrideInput): Promise<boolean> => {
     try {
@@ -218,6 +331,27 @@ export function useTariffs() {
     } catch { return false; }
   }, [createOverrideMutation]);
 
+  const updateClientOverride = useCallback(async (
+    id: number,
+    data: Partial<CreateSurchargeOverrideInput>,
+  ): Promise<boolean> => {
+    try {
+      await updateOverrideMutation.mutateAsync({ id, data });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [updateOverrideMutation]);
+
+  const deleteClientOverride = useCallback(async (id: number): Promise<boolean> => {
+    try {
+      await deleteOverrideMutation.mutateAsync(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [deleteOverrideMutation]);
+
   const createVehicleTariff = useCallback(async (data: CreateAffiliationTariffInput): Promise<boolean> => {
     try {
       await createVehicleTariffMutation.mutateAsync(data);
@@ -225,15 +359,26 @@ export function useTariffs() {
     } catch { return false; }
   }, [createVehicleTariffMutation]);
 
-  const upsertPatioTariff = useCallback(async (data: UpsertPatioTariffInput): Promise<boolean> => {
+  const updateVehicleTariff = useCallback(async (
+    id: number,
+    data: Partial<CreateAffiliationTariffInput>,
+  ): Promise<boolean> => {
     try {
-      await upsertPatioTariffMutation.mutateAsync(data);
+      await updateVehicleTariffMutation.mutateAsync({ id, data });
       return true;
     } catch {
       return false;
     }
-  }, [upsertPatioTariffMutation]);
+  }, [updateVehicleTariffMutation]);
 
+  const deleteVehicleTariff = useCallback(async (id: number): Promise<boolean> => {
+    try {
+      await deleteVehicleTariffMutation.mutateAsync(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [deleteVehicleTariffMutation]);
 
   return {
     clientTariffs,
@@ -242,10 +387,15 @@ export function useTariffs() {
     error,
     createTariff,
     updateTariff,
+    deleteTariff,
     refreshTariffs,
     
     createBaseSurcharge,
+    updateBaseSurcharge,
+    deleteBaseSurcharge,
     createClientOverride,
+    updateClientOverride,
+    deleteClientOverride,
     refreshSurcharges,
 
     vehicleTariffs,
@@ -254,9 +404,7 @@ export function useTariffs() {
     vehicleTypesError,
     fetchVehicleTariffs,
     createVehicleTariff,
-    patioTariffs,
-    refreshPatioTariffs,
-    upsertPatioTariff,
-    
+    updateVehicleTariff,
+    deleteVehicleTariff,
   };
 }

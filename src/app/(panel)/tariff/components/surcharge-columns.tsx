@@ -3,16 +3,21 @@
 import React from 'react';
 import { ColumnDef } from '@/types/table';
 import { SurchargeCatalog } from '@/types/tariff-ypes';
-import { formatExtraChargeTypeLabel } from '@/utils/format-labels';
+import { Button } from '@/components/atoms/button/button';
 
-export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
+export type SurchargeCatalogRow = SurchargeCatalog & { id: string };
+
+export const getSurchargeColumns = (
+  onEdit: (surcharge: SurchargeCatalogRow) => void,
+  onDelete: (surcharge: SurchargeCatalogRow) => void,
+): ColumnDef<SurchargeCatalogRow>[] => [
   {
     id: 'code',
     header: 'Código Técnico',
     type: 'text',
     renderCell: (row) => (
       <span style={{ fontWeight: 600, color: '#475569', fontFamily: 'monospace' }}>
-        {formatExtraChargeTypeLabel(row.code)}
+        {row.code}
       </span>
     ),
   },
@@ -22,7 +27,7 @@ export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
     type: 'text',
     renderCell: (row) => (
       <strong style={{ color: '#0f172a' }}>
-        {formatExtraChargeTypeLabel(row.name || row.code)}
+        {row.name}
       </strong>
     ),
   },
@@ -59,6 +64,35 @@ export const getSurchargeColumns = (): ColumnDef<SurchargeCatalog>[] => [
       <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
         {row.description || 'El valor se define manualmente en cada operación'}
       </span>
+    ),
+  },
+  {
+    id: 'actions',
+    header: 'Acciones',
+    type: 'text',
+    renderCell: (row) => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row);
+          }}
+        >
+          Editar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row);
+          }}
+        >
+          Eliminar
+        </Button>
+      </div>
     ),
   },
 ];
