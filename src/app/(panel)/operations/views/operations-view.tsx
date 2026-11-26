@@ -38,6 +38,15 @@ import {
   operationService,
 } from '@/services/operation.service';
 
+const financialColumnIds = new Set([
+  'fleteACobrar',
+  'fleteAPagar',
+  'recargos',
+  'totalCobrosExtras',
+  'totalFacturacion',
+  'rentabilidad',
+]);
+
 function ClientOperationsExpansion({
   group,
   columns,
@@ -84,6 +93,44 @@ function ClientOperationsExpansion({
   });
   const operations = operationsQuery.data?.data ?? [];
   const totalPages = Math.max(1, operationsQuery.data?.meta.lastPage ?? 1);
+  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const operationsByBooking = new Map<string | null, Operation[]>();
+  for (const operation of operations) {
+    const booking = operation.numeroPedido?.trim() || null;
+    const bookingOperations = operationsByBooking.get(booking) ?? [];
+    bookingOperations.push(operation);
+    operationsByBooking.set(booking, bookingOperations);
+  }
+  const bookingGroups = [...operationsByBooking.entries()].sort(
+    ([first], [second]) =>
+      first === null
+        ? 1
+        : second === null
+          ? -1
+          : first.localeCompare(second, "es", { sensitivity: "base" }),
+  );
+  const renderOperationRow = (operation: Operation) => (
+    <tr key={operation.id}>
+      {columns.map((column) => (
+        <td
+          key={`${operation.id}-${column.id}`}
+          className={[
+            financialColumnIds.has(column.id) ? styles.financialCell : '',
+            column.id === 'status' ? styles.statusCell : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          style={{ borderBottom: '1px solid #e2e8f0' }}
+        >
+          {column.renderCell
+            ? column.renderCell(operation)
+            : String(Reflect.get(operation, column.id) ?? '-')}
+        </td>
+      ))}
+    </tr>
+  );
 
   return (
     <div style={{ padding: '12px 16px 16px 48px', background: '#f8fafc' }}>
@@ -131,17 +178,20 @@ function ClientOperationsExpansion({
         <p>No hay operaciones para mostrar.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className={styles.operationTable}>
             <thead>
               <tr>
                 {columns.map((column) => (
                   <th
                     key={column.id}
+                    className={
+                      financialColumnIds.has(column.id)
+                        ? styles.financialHeader
+                        : undefined
+                    }
                     style={{
-                      padding: '9px 12px',
                       background: '#f1f5f9',
                       color: '#475569',
-                      textAlign: 'left',
                     }}
                   >
                     {column.header}
@@ -150,23 +200,59 @@ function ClientOperationsExpansion({
               </tr>
             </thead>
             <tbody>
-              {operations.map((operation) => (
-                <tr key={operation.id}>
-                  {columns.map((column) => (
-                    <td
-                      key={`${operation.id}-${column.id}`}
-                      style={{
-                        padding: '8px 12px',
-                        borderBottom: '1px solid #e2e8f0',
-                      }}
-                    >
-                      {column.renderCell
-                        ? column.renderCell(operation)
-                        : String(Reflect.get(operation, column.id) ?? '-')}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {bookingGroups.map(([booking, bookingOperations]) =>
+                booking && bookingOperations.length > 1 ? (
+                  <React.Fragment key={booking}>
+                    <tr>
+                      <td
+                        colSpan={columns.length}
+                        style={{
+                          padding: '8px 10px',
+                          background: '#eef2f8',
+                          borderBottom: '1px solid #dbe3ee',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={expandedBookings.has(booking)}
+                          onClick={() =>
+                            setExpandedBookings((current) => {
+                              const next = new Set(current);
+                              if (next.has(booking)) next.delete(booking);
+                              else next.add(booking);
+                              return next;
+                            })
+                          }
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            width: '100%',
+                            padding: 0,
+                            border: 0,
+                            background: 'transparent',
+                            color: '#1e3a8a',
+                            cursor: 'pointer',
+                            font: 'inherit',
+                            fontWeight: 700,
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span aria-hidden="true">
+                            {expandedBookings.has(booking) ? '▼' : '▶'}
+                          </span>
+                          Pedido #{booking} · {bookingOperations.length}{' '}
+                          operaciones
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedBookings.has(booking) &&
+                      bookingOperations.map(renderOperationRow)}
+                  </React.Fragment>
+                ) : (
+                  bookingOperations.map(renderOperationRow)
+                ),
+              )}
             </tbody>
           </table>
         </div>

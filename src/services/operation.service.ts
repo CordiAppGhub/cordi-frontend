@@ -199,6 +199,7 @@ export interface CreateBulkOperationsPayload {
   fechaLimiteDocumental?: string | null;
   fechaLimiteFisico?: string | null;
   fechaLimiteDevolucion?: string | null;
+  scheduledAt?: string | null;
   isContainerized?: boolean;
   shippingLineId?: number;
   routeScope: "URBANO" | "NACIONAL";
@@ -208,9 +209,15 @@ export interface CreateBulkOperationsPayload {
   requiresInspection?: boolean;
   containers: Array<{
     operationType: BulkOperationType;
+    isContainerized: boolean;
     containerNumber?: string | null;
     containerType?: BulkContainerType;
+    cargoDescription?: string;
     weight?: number;
+    dimensions?: string | null;
+    packageType?: string | null;
+    packageCount?: number | null;
+    volumeM3?: number | null;
     cargoVehicleTypeCode: CargoVehicleTypeCode;
     requiredTrailerType?: TrailerType | null;
     vehicleId: null;

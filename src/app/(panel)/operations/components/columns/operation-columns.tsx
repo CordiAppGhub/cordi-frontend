@@ -5,7 +5,6 @@ import styles from '../../operations.module.css';
 import { StatusBadge } from '@/components/atoms/badge.tsx/badge';
 import { formatLocationLabel } from '@/utils/location';
 import {
-  Building2,
   Calendar,
   Truck,
   User,
@@ -54,14 +53,11 @@ export const getOperationsColumns = (
           <button
             type="button"
             onClick={() => setTraceContext({ type: 'OPERATION', id: row.id })}
-            title={`Ver detalles y trazabilidad de la operación ${row.id}`}
+            title={orderNumber || 'Sin registrar'}
             aria-label={`Ver trazabilidad del pedido ${orderNumber || 'sin registrar'}, operación ${row.id}`}
+            className={styles.orderNumberBadge}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: '3px',
-              padding: '6px 10px',
+              padding: '4px 8px',
               border: '1px solid #bfdbfe',
               borderRadius: '8px',
               backgroundColor: '#eff6ff',
@@ -70,27 +66,54 @@ export const getOperationsColumns = (
               textAlign: 'left',
             }}
           >
-            <strong style={{ fontSize: '0.875rem' }}>{orderNumber || 'Sin registrar'}</strong>
-
+            <strong>{orderNumber || 'Sin registrar'}</strong>
           </button>
         );
       },
     },
     {
       id: 'type',
-      header: 'Operación / Cliente',
+      header: 'Operación / Unidad',
       type: 'text',
-      renderCell: (row) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <strong style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>
-            {row.type}
-          </strong>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', fontSize: '0.75rem' }}>
-            <Building2 size={12} />
-            <span>{row.client?.razonSocial || 'Sin Cliente asignado'}</span>
+      renderCell: (row) => {
+        const unitDetails = row.isContainerized ? (
+          <>
+            <span
+              className={`${styles.containerUnitBadge} ${
+                row.containerNumber ? '' : styles.containerUnitPending
+              }`}
+              style={{
+                background: row.containerNumber ? undefined : '#fef3c7',
+                color: row.containerNumber ? undefined : '#92400e',
+              }}
+            >
+              {row.containerNumber || 'Pendiente'}
+            </span>
+            {row.containerType && <span>· {row.containerType}</span>}
+          </>
+        ) : (
+          <span style={{ color: '#92400e' }}>
+            Carga suelta
+            {row.packageCount != null
+              ? ` · ${row.packageCount} bultos`
+              : row.weight != null
+                ? ` · ${Number(row.weight).toLocaleString('es-CO')} kg`
+                : ''}
+          </span>
+        );
+
+        return (
+          <div className={styles.operationUnitCell}>
+            <strong className={styles.operationTypeText}>
+              {row.type.replace(/_/g, ' ')}
+              {row.isAnticipada ? ' · ANTICIPADA' : ''}
+            </strong>
+            <div className={styles.operationUnitDetails}>
+              {unitDetails}
+            </div>
           </div>
-        </div>
-      )
+        );
+      },
     },
     {
       id: 'tipoCarga',
@@ -136,17 +159,16 @@ export const getOperationsColumns = (
         const isMaintenance = row.vehicle?.status === 'MAINTENANCE';
 
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className={styles.vehicleAssignmentCell}>
             <button
+              type="button"
               onClick={() => row.vehicleId && setTraceContext({ type: 'VEHICLE', id: row.vehicleId })}
               disabled={!row.vehicleId}
+              className={styles.vehiclePlateBadge}
               style={{
-                fontWeight: 700, fontSize: '0.75rem',
                 color: isMaintenance ? '#b91c1c' : '#2563eb',
                 backgroundColor: isMaintenance ? '#fee2e2' : '#f1f5f9',
                 border: `1px solid ${isMaintenance ? '#f87171' : '#cbd5e1'}`,
-                padding: '2px 8px', borderRadius: '6px',
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
                 cursor: row.vehicleId ? 'pointer' : 'default',
                 textDecoration: row.vehicleId ? 'underline' : 'none'
               }}
@@ -157,12 +179,12 @@ export const getOperationsColumns = (
 
             {/* 🚀 CONDUCTOR CLICABLE PARA TRAZABILIDAD DE DRIVER */}
             <button
+              type="button"
               onClick={() => row.driverId && setTraceContext({ type: 'DRIVER', id: row.driverId })}
               disabled={!row.driverId}
               title={row.driverId ? "Ver perfil y trazabilidad del conductor" : ""}
+              className={styles.driverNameButton}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem',
-                background: 'none', border: 'none', padding: 0,
                 color: row.driverId ? '#2563eb' : '#94a3b8',
                 cursor: row.driverId ? 'pointer' : 'default',
                 textDecoration: row.driverId ? 'underline' : 'none',
@@ -170,7 +192,9 @@ export const getOperationsColumns = (
               }}
             >
               <User size={12} />
-              <span>{row.driver?.name || 'Pendiente'}</span>
+              <span className={styles.driverNameText}>
+                {row.driver?.name || 'Pendiente'}
+              </span>
             </button>
           </div>
         );
@@ -180,12 +204,15 @@ export const getOperationsColumns = (
       id: 'origen',
       header: 'Origen',
       type: 'text',
-      renderCell: (row) => (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.875rem', color: '#334155' }}>
-          <MapPin size={14} style={{ color: '#cbd5e1', marginTop: '2px' }} />
-          <span style={{ lineHeight: 1.2 }}>{row.origen ? formatLocationLabel(row.origen) : '--'}</span>
-        </div>
-      )
+      renderCell: (row) => {
+        const location = row.origen ? formatLocationLabel(row.origen) : '--';
+        return (
+          <div className={styles.operationLocationCell} title={location}>
+            <MapPin size={14} style={{ flex: 'none', color: '#cbd5e1', marginTop: '2px' }} />
+            <span className={styles.operationLocationText}>{location}</span>
+          </div>
+        );
+      },
     },
     {
       id: 'lugarDescargue',
@@ -193,10 +220,11 @@ export const getOperationsColumns = (
       type: 'text',
       renderCell: (row) => {
         const location = row.descargue || row.cargue || row.destino;
+        const locationLabel = location ? formatLocationLabel(location) : '--';
         return (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.875rem', color: '#334155' }}>
-            <MapPin size={14} style={{ color: '#3b82f6', marginTop: '2px' }} />
-            <span style={{ lineHeight: 1.2 }}>{location ? formatLocationLabel(location) : '--'}</span>
+          <div className={styles.operationLocationCell} title={locationLabel}>
+            <MapPin size={14} style={{ flex: 'none', color: '#3b82f6', marginTop: '2px' }} />
+            <span className={styles.operationLocationText}>{locationLabel}</span>
           </div>
         );
       },
@@ -259,7 +287,19 @@ export const getOperationsColumns = (
         return (
           <span style={{ color: fare == null ? '#94a3b8' : '#15803d', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {fare == null ? 'Pendiente' : `$${Number(fare).toLocaleString('es-CO')}`}
-            {row.fleteACobrarManual != null && <small style={{ display: 'block', color: '#64748b', fontWeight: 500 }}>Manual</small>}
+            {row.fleteACobrarManual != null && (
+              <small
+                style={{
+                  display: 'inline',
+                  marginLeft: 4,
+                  color: '#64748b',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                }}
+              >
+                Manual
+              </small>
+            )}
           </span>
         );
       },
@@ -479,19 +519,11 @@ export const getOperationsColumns = (
             'CREADO',
             'PROGRAMADO',
             'PROGRAMADA',
+            'PENDIENTE_PROGRAMACION',
             'LISTA_PARA_CARGUE',
             'ASIGNADO',
           ].includes(row.status) ||
           (isLooseForeignTradeOperation && row.status === 'PENDIENTE');
-        const hasLooseCargoProgramming =
-          !isLooseForeignTradeOperation ||
-          (Boolean(row.scheduledAt) &&
-            Boolean(
-              row.type === 'IMPORTACION'
-                ? row.fechaCitaOrigen
-                : row.fechaCitaDestino,
-            ));
-
         return (
           <div className={styles.actionsContainer} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 
@@ -564,31 +596,53 @@ export const getOperationsColumns = (
 
             {canReassign &&
               analystCanManageFleet &&
-              preExecutionStatus &&
-              hasLooseCargoProgramming && (
-                <button
-                  type="button"
-                  onClick={() => onReassign(row)}
-                  title={
-                    hasFleetAssignment
-                      ? 'Reasignar flota'
-                      : 'Asignar flota anteriormente desvinculada'
+              preExecutionStatus && (
+                <span
+                  className={styles.assignTooltipWrapper}
+                  data-tooltip={
+                    !row.scheduledAt
+                      ? 'Falta fecha de programación'
+                      : undefined
                   }
-                  aria-label={`${hasFleetAssignment ? 'Reasignar flota de' : 'Asignar flota a'} la operación ${row.id}`}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: '5px', width: 'auto', minHeight: '32px', padding: '0 8px',
-                    borderRadius: '8px', border: 'none',
-                    backgroundColor: '#eff6ff', color: '#2563eb',
-                    cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
-                    fontSize: '0.7rem', fontWeight: 700,
-                  }}
+                  title={
+                    !row.scheduledAt
+                      ? 'Falta fecha de programación'
+                      : undefined
+                  }
                 >
-                  <RefreshCw size={16} strokeWidth={2.5} />
-                  <span>
-                    {hasFleetAssignment ? 'Reasignar Flota' : 'Asignar Flota'}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onReassign(row)}
+                    disabled={!row.scheduledAt}
+                    title={
+                      row.scheduledAt
+                        ? hasFleetAssignment
+                          ? 'Reasignar flota'
+                          : 'Asignar flota anteriormente desvinculada'
+                        : undefined
+                    }
+                    aria-label={
+                      !row.scheduledAt
+                        ? `No se puede asignar flota a la operación ${row.id}: falta la fecha de programación`
+                        : `${hasFleetAssignment ? 'Reasignar flota de' : 'Asignar flota a'} la operación ${row.id}`
+                    }
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: '5px', width: 'auto', minHeight: '32px', padding: '0 8px',
+                      borderRadius: '8px', border: 'none',
+                      backgroundColor: '#eff6ff', color: '#2563eb',
+                      cursor: row.scheduledAt ? 'pointer' : 'not-allowed',
+                      opacity: row.scheduledAt ? 1 : 0.55,
+                      transition: 'all 0.2s', whiteSpace: 'nowrap',
+                      fontSize: '0.7rem', fontWeight: 700,
+                    }}
+                  >
+                    <RefreshCw size={16} strokeWidth={2.5} />
+                    <span>
+                      {hasFleetAssignment ? 'Reasignar Flota' : 'Asignar Flota'}
+                    </span>
+                  </button>
+                </span>
               )}
 
             {canCancelOperations &&

@@ -110,16 +110,12 @@ export default function FleetScheduleGrid() {
       ].includes(operation.type)
     );
   };
-  const hasLooseCargoProgramming = (
+  const hasScheduledProgramming = (
+    operation: (typeof operations)[number],
+  ) => Boolean(operation.scheduledAt);
+  const isFleetAssignmentAllowed = (
     operation: (typeof operations)[number],
   ) => {
-    const portAppointment =
-      operation.type === 'IMPORTACION'
-        ? operation.fechaCitaOrigen
-        : operation.fechaCitaDestino;
-    return Boolean(operation.scheduledAt && portAppointment);
-  };
-  const canAssignFleet = (operation: (typeof operations)[number]) => {
     const isLooseForeignTrade = isLooseForeignTradeOperation(operation);
     if (isLooseForeignTrade) {
       const needsFleet = !operation.vehicleId || !operation.driverId;
@@ -132,8 +128,7 @@ export default function FleetScheduleGrid() {
       ].includes(operation.status);
       return (
         needsFleet &&
-        isAssignableStatus &&
-        hasLooseCargoProgramming(operation)
+        isAssignableStatus
       );
     }
 
@@ -143,10 +138,14 @@ export default function FleetScheduleGrid() {
         'CREADO',
         'PROGRAMADO',
         'PROGRAMADA',
+        'PENDIENTE_PROGRAMACION',
+        'LISTA_PARA_CARGUE',
         'PENDIENTE',
       ].includes(operation.status)
     );
   };
+  const canAssignFleet = (operation: (typeof operations)[number]) =>
+    isFleetAssignmentAllowed(operation) && hasScheduledProgramming(operation);
   const selectedOperation =
     operations.find(
       (operation) =>
@@ -302,7 +301,8 @@ export default function FleetScheduleGrid() {
       operation.status === 'CIERRE_FISICO';
     const actionReason = getActionReason(operation);
     const actionRequired = requiresActionStatus || actionReason !== null;
-    const assignFleet = canAssignFleet(operation);
+    const assignFleet = isFleetAssignmentAllowed(operation);
+    const hasScheduledAt = hasScheduledProgramming(operation);
     const statusLabel =
       actionReason ??
       (pending
@@ -384,16 +384,28 @@ export default function FleetScheduleGrid() {
             </Button>
           )}
           {assignFleet ? (
+            <span
+              className={styles.assignTooltipWrapper}
+              data-tooltip={
+                !hasScheduledAt ? 'Falta fecha de programación' : undefined
+              }
+              title={
+                !hasScheduledAt ? 'Falta fecha de programación' : undefined
+              }
+            >
             <Button
               variant="primary"
               type="button"
               className={styles.assignButton}
               onClick={() => setSelectedOperationId(operation.id)}
+              disabled={!hasScheduledAt}
+              title={hasScheduledAt ? 'Asignar flota' : undefined}
               aria-label={`Asignar flota a la operación ${operation.id}`}
             >
               <Truck size={15} />
               Asignar flota
             </Button>
+            </span>
           ) : operation.vehicleId ? (
             <span className={styles.assignedStatus}>Vehículo asignado</span>
           ) : (

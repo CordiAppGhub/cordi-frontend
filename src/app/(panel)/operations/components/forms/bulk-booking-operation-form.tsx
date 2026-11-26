@@ -37,45 +37,80 @@ const containerTypes: Array<{ value: BulkContainerType; label: string }> = [
   { value: "ISO_TANK_20", label: "Tanque ISO de 20'" },
 ];
 
-const operationTypes = operationOptions;
+type BulkOperationChoice = BulkOperationType | "EXPORTACION_ANTICIPADA";
 
-interface ContainerRow {
+const operationTypes: Array<{
+  value: BulkOperationChoice;
+  label: string;
+}> = [
+  ...operationOptions,
+  { value: "EXPORTACION_ANTICIPADA", label: "Exportación anticipada" },
+  { value: "NACIONAL", label: "Nacional" },
+];
+
+interface OperationRow {
   key: number;
-  cargoDescription: string;
+  operationType: BulkOperationChoice;
+  isContainerized: boolean;
   containerNumber: string;
   containerType: BulkContainerType;
   weight: string;
   cargoVehicleTypeCode: CargoVehicleTypeCode;
   requiredTrailerType: TrailerType | "";
   scheduledAt: string;
-  fechaCitaOrigen: string;
-  fechaCitaDestino: string;
-  fechaRetiro: string;
+  cargoDescription: string;
+  packageType: string;
+  packageCount: string;
+  dimensions: string;
+  volumeM3: string;
+  originId: string;
+  destinationId: string;
+  requiresInspection: boolean;
 }
 
 interface BulkBookingOperationFormProps {
   onClose: () => void;
 }
 
-const INVALID_YARD_APPOINTMENT_MESSAGE =
-  "Horario de patio no válido: de lunes a viernes hasta las 4:00 p. m., los sábados hasta las 12:00 m. y los domingos cerrado.";
+const toIsoDate = (value: string): string | undefined =>
+  value ? new Date(value).toISOString() : undefined;
 
-const getPatioAppointmentError = (value: string): string | null => {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (!match) return null;
-  const [, year, month, day, hour, minute] = match;
-  const weekday = new Date(
-    Date.UTC(Number(year), Number(month) - 1, Number(day)),
-  ).getUTCDay();
-  const minutes = Number(hour) * 60 + Number(minute);
-  return weekday === 0 ||
-    (weekday === 6 && minutes > 720) ||
-    (weekday > 0 && weekday < 6 && minutes > 960)
-    ? INVALID_YARD_APPOINTMENT_MESSAGE
-    : null;
+const getOperationType = (
+  value: BulkOperationChoice,
+): BulkOperationType =>
+  value === "EXPORTACION_ANTICIPADA" ? "EXPORTACION" : value;
+
+const isAdvanceExport = (row: OperationRow): boolean =>
+  row.operationType === "EXPORTACION_ANTICIPADA";
+
+const isEmptyOperation = (row: OperationRow): boolean => {
+  const type = getOperationType(row.operationType);
+  return type === "RETIRO_VACIO" || type === "DEVOLUCION_VACIO";
 };
 
-const getContainerLengthFeet = (value: string): 20 | 40 | 45 | null => {
+const createInitialRow = (key: number): OperationRow => ({
+  key,
+  operationType: "IMPORTACION",
+  isContainerized: true,
+  containerNumber: "",
+  containerType: "DRY_40",
+  weight: "",
+  cargoVehicleTypeCode: "2S3",
+  requiredTrailerType: "",
+  scheduledAt: "",
+  cargoDescription: "",
+  packageType: "",
+  packageCount: "",
+  dimensions: "",
+  volumeM3: "",
+  originId: "",
+  destinationId: "",
+  requiresInspection: false,
+});
+
+const getContainerLengthFeet = (
+  value: string,
+): 20 | 40 | 45 | null => {
   const match = value.match(/(?:^|_)(20|40|45)(?:_|$)/);
   if (!match) return null;
   const length = Number(match[1]);
@@ -87,52 +122,31 @@ const getContainerTareKg = (value: string): number => {
   return length === 20 ? 2300 : length === 40 ? 3750 : length === 45 ? 4800 : 0;
 };
 
-const getTrailerCompatibilityError = (
-  containerType: string,
-  trailerType: string,
-): string | null => {
-  const length = getContainerLengthFeet(containerType);
-  if (!length || !trailerType) return null;
-  const normalized = trailerType.toUpperCase();
-  const has20 = /(?:^|\D)20(?:\D|$)/.test(normalized);
-  const has40 = /(?:^|\D)40(?:\D|$)/.test(normalized);
-  const has45 = /(?:^|\D)45(?:\D|$)/.test(normalized);
-  if (has20 && !has40 && !has45 && length > 20) {
-    return "El tráiler seleccionado es exclusivo para contenedores de 20' y no admite este tamaño.";
+const getContainerSizeSummary = (rows: OperationRow[]): string => {
+  const counts = new Map<number, number>();
+  const containerRows = rows.filter((row) => row.isContainerized);
+  for (const row of containerRows) {
+    const length = getContainerLengthFeet(row.containerType);
+    if (length !== null) counts.set(length, (counts.get(length) ?? 0) + 1);
   }
-  if (length === 45 && has40 && !has20 && !has45) {
-    return "El tráiler seleccionado no admite contenedores de 45'.";
-  }
-  return null;
+  const breakdown = [...counts.entries()]
+    .sort(([first], [second]) => second - first)
+    .map(([length, count]) => `${count}×${length}'`)
+    .join(" + ");
+  return breakdown || "0 contenedores";
 };
 
-const toIsoDate = (value: string): string | undefined =>
-  value ? new Date(value).toISOString() : undefined;
-
-const createInitialRow = (key: number): ContainerRow => ({
-  key,
-  cargoDescription: "",
-  containerNumber: "",
-  containerType: "DRY_40",
-  weight: "",
-  cargoVehicleTypeCode: "2S3",
-  requiredTrailerType: "",
-  scheduledAt: "",
-  fechaCitaOrigen: "",
-  fechaCitaDestino: "",
-  fechaRetiro: "",
-});
-
 const getRowPayloadWarning = (
-  row: ContainerRow,
+  row: OperationRow,
   vehicleTypes: ReturnType<typeof useTariffs>["vehicleTypes"],
 ): string | null => {
+  if (!row.isContainerized) return null;
   const weight = Number(row.weight);
   if (!Number.isFinite(weight) || weight <= 0) return null;
   const configuration = vehicleTypes.find(
     (item) => item.code === row.cargoVehicleTypeCode,
   );
-  if (!configuration) return "No se encontró la capacidad vehicular seleccionada.";
+  if (!configuration) return "No se encontró la tipología vehicular seleccionada.";
   const containerGross = weight + getContainerTareKg(row.containerType);
   if (
     configuration.maxPayloadKg != null &&
@@ -141,17 +155,14 @@ const getRowPayloadWarning = (
     return `El peso bruto estimado del contenedor (${containerGross.toLocaleString("es-CO")} kg, incluida su tara) supera la capacidad de ${configuration.code} (${configuration.maxPayloadKg.toLocaleString("es-CO")} kg).`;
   }
   const equipmentTare =
-    "approxTareKg" in configuration &&
     typeof configuration.approxTareKg === "number"
       ? configuration.approxTareKg
       : 0;
   const legalPbv =
-    "maxLegalPbvKg" in configuration &&
     typeof configuration.maxLegalPbvKg === "number"
       ? configuration.maxLegalPbvKg
       : null;
   const tolerance =
-    "maxTolerancePbvKg" in configuration &&
     typeof configuration.maxTolerancePbvKg === "number"
       ? configuration.maxTolerancePbvKg
       : 0;
@@ -159,23 +170,6 @@ const getRowPayloadWarning = (
     return `El peso bruto estimado del equipo y el contenedor supera el PBV permitido para ${configuration.code}.`;
   }
   return null;
-};
-
-const getContainerSizeSummary = (rows: ContainerRow[]): string => {
-  const counts = new Map<number, number>();
-  for (const row of rows) {
-    const length = getContainerLengthFeet(row.containerType);
-    if (length !== null) counts.set(length, (counts.get(length) ?? 0) + 1);
-  }
-  const breakdown = [...counts.entries()]
-    .sort(([first], [second]) => second - first)
-    .map(([length, count]) => `${count}×${length}'`)
-    .join(" + ");
-  const totalFeet = rows.reduce(
-    (total, row) => total + (getContainerLengthFeet(row.containerType) ?? 0),
-    0,
-  );
-  return `${breakdown || "0 contenedores"} = ${totalFeet} pies`;
 };
 
 const getFailedRowNumber = (message: string): number | null => {
@@ -199,8 +193,6 @@ export function BulkBookingOperationForm({
     staleTime: 300000,
   });
 
-  const [operationType, setOperationType] =
-    useState<BulkOperationType>("IMPORTACION");
   const [clientId, setClientId] = useState("");
   const [clientLocationId, setClientLocationId] = useState("");
   const [numeroPedido, setNumeroPedido] = useState("");
@@ -208,14 +200,9 @@ export function BulkBookingOperationForm({
   const [portId, setPortId] = useState("");
   const [shippingLineId, setShippingLineId] = useState("");
   const [routeScope, setRouteScope] = useState<"URBANO" | "NACIONAL">("URBANO");
-  const [isContainerized, setIsContainerized] = useState(true);
-  const [genericOriginId, setGenericOriginId] = useState("");
-  const [genericDestinationId, setGenericDestinationId] = useState("");
-  const [requiresInspection, setRequiresInspection] = useState(false);
-  const [isAnticipada, setIsAnticipada] = useState(false);
   const [fechaLimiteDocumental, setFechaLimiteDocumental] = useState("");
   const [fechaLimiteFisico, setFechaLimiteFisico] = useState("");
-  const [containers, setContainers] = useState<ContainerRow[]>([
+  const [operations, setOperations] = useState<OperationRow[]>([
     createInitialRow(1),
   ]);
   const [isSaving, setIsSaving] = useState(false);
@@ -237,61 +224,69 @@ export function BulkBookingOperationForm({
     id: location.id,
     name: location.name,
   }));
-  const type = operationType;
-  const isEmptyOperation =
-    type === "RETIRO_VACIO" || type === "DEVOLUCION_VACIO";
-  const rowErrors = containers.map((row) => {
+  const hasContainerizedRows = operations.some((row) => row.isContainerized);
+  const rowsRequiringPort = operations.some((row) =>
+    ["IMPORTACION", "EXPORTACION", "EXPORTACION_ANTICIPADA", "RETIRO_VACIO"].includes(
+      row.operationType,
+    ),
+  );
+  const requiresShippingLine = operations.some(
+    (row) =>
+      row.isContainerized &&
+      getOperationType(row.operationType) !== "DEVOLUCION_VACIO",
+  );
+
+  const updateOperation = (
+    key: number,
+    changes: Partial<Omit<OperationRow, "key">>,
+  ) => {
+    setOperations((rows) =>
+      rows.map((row) => (row.key === key ? { ...row, ...changes } : row)),
+    );
+  };
+
+  const rowErrors = operations.map((row) => {
+    const type = getOperationType(row.operationType);
+    const isAnticipada = isAdvanceExport(row);
     if (!clientId) return "Selecciona un cliente.";
+    if (!numeroPedido.trim()) return "Indica el número de pedido o Booking compartido.";
+    if (!clientLocationId) return "Selecciona la ubicación del cliente.";
     if (
-      type === "IMPORTACION" &&
-      (!portId || !clientLocationId)
+      ["IMPORTACION", "EXPORTACION", "RETIRO_VACIO"].includes(type) &&
+      !portId
     ) {
-      return "La importación requiere puerto de origen y ubicación del cliente.";
+      return "Selecciona el puerto requerido por esta operación.";
     }
-    if (
-      type === "EXPORTACION" &&
-      (!yardId || !clientLocationId || !portId)
-    ) {
-      return "La exportación requiere patio de retiro, ubicación de cargue y puerto de destino.";
-    }
-    if (isAnticipada && !row.fechaRetiro) {
-      return "La exportación anticipada requiere fecha de retiro.";
-    }
-    if (type === "RETIRO_VACIO" && (!portId || !yardId)) {
-      return "El retiro de vacío requiere puerto y patio de destino.";
+    if (row.isContainerized && !yardId) {
+      return "Selecciona el patio de vacíos compartido para las operaciones contenerizadas.";
     }
     if (
-      type === "DEVOLUCION_VACIO" &&
-      (!clientLocationId || (!yardId && !portId))
+      row.isContainerized &&
+      type !== "DEVOLUCION_VACIO" &&
+      !shippingLineId
     ) {
-      return "La devolución de vacío requiere ubicación de origen y patio o puerto de destino.";
-    }
-    if (
-      (type === "NACIONAL" || type === "MOVIMIENTO_INTERNO") &&
-      !genericOriginId
-    ) {
-      return "Selecciona el origen de la operación.";
-    }
-    if (
-      (type === "NACIONAL" || type === "MOVIMIENTO_INTERNO") &&
-      !genericDestinationId
-    ) {
-      return "Selecciona el destino de la operación.";
-    }
-    if (
-      (type === "IMPORTACION" || type === "EXPORTACION") &&
-      !numeroPedido.trim()
-    ) {
-      return "Las importaciones y exportaciones requieren Booking, BL, DO o número de pedido.";
-    }
-    if (type !== "DEVOLUCION_VACIO" && !shippingLineId) {
       return "Selecciona la línea naviera requerida.";
     }
     if (
-      !isEmptyOperation &&
-      (!row.weight || !Number.isFinite(Number(row.weight)) || Number(row.weight) <= 0)
+      (type === "RETIRO_VACIO" || type === "DEVOLUCION_VACIO") &&
+      !row.isContainerized
     ) {
-      return "Indica un peso neto mayor que cero para este contenedor.";
+      return "El retiro y la devolución de vacío deben ser contenerizados.";
+    }
+    if (
+      type === "NACIONAL" ||
+      type === "MOVIMIENTO_INTERNO"
+    ) {
+      if (!row.originId) return "Selecciona el origen de la operación.";
+      if (!row.destinationId) return "Selecciona el destino de la operación.";
+    }
+    if (
+      !isEmptyOperation(row) &&
+      (!row.weight ||
+        !Number.isFinite(Number(row.weight)) ||
+        Number(row.weight) <= 0)
+    ) {
+      return "Indica un peso mayor que cero para esta operación.";
     }
     if (
       row.weight &&
@@ -299,119 +294,127 @@ export function BulkBookingOperationForm({
     ) {
       return "El peso debe ser igual o mayor que cero.";
     }
-    if (!isContainerized && !row.cargoDescription.trim()) {
-      return "Describe la carga suelta de esta unidad.";
+    if (row.isContainerized) {
+      const containerNumber = row.containerNumber
+        .replace(/\s+/g, "")
+        .toUpperCase();
+      if (containerNumber && !/^[A-Z]{4}\d{7}$/.test(containerNumber)) {
+        return "El número de contenedor debe tener 4 letras y 7 números.";
+      }
+      const payloadWarning = getRowPayloadWarning(row, vehicleTypes);
+      if (payloadWarning) return payloadWarning;
+    } else {
+      if (!row.cargoDescription.trim()) {
+        return "Describe la mercancía de la carga suelta.";
+      }
+      if (!row.packageType.trim()) return "Indica el tipo de empaque.";
+      if (!row.packageCount || Number(row.packageCount) < 1) {
+        return "Indica la cantidad de bultos.";
+      }
+      if (!row.dimensions.trim()) return "Indica las dimensiones de la mercancía.";
+      if (!row.volumeM3 || Number(row.volumeM3) <= 0) {
+        return "Indica un volumen mayor que cero.";
+      }
     }
-    if (
-      row.containerNumber.trim() &&
-      isContainerized &&
-      !/^[A-Z]{4}\d{7}$/.test(row.containerNumber.replace(/\s+/g, "").toUpperCase())
-    ) {
-      return "El número de contenedor debe tener 4 letras y 7 números.";
+    if (row.scheduledAt && Number.isNaN(new Date(row.scheduledAt).getTime())) {
+      return "La fecha de programación no es válida.";
     }
-    const trailerError = getTrailerCompatibilityError(
-      row.containerType,
-      row.requiredTrailerType,
-    );
-    if (trailerError) return trailerError;
-    const payloadWarning = getRowPayloadWarning(row, vehicleTypes);
-    if (payloadWarning) return payloadWarning;
-    const originAppointmentError = getPatioAppointmentError(row.fechaCitaOrigen);
-    if (originAppointmentError) return originAppointmentError;
-    const destinationAppointmentError = getPatioAppointmentError(row.fechaCitaDestino);
-    if (destinationAppointmentError) return destinationAppointmentError;
-    if (isAnticipada) {
-      const retirementError = getPatioAppointmentError(row.fechaRetiro);
-      if (retirementError) return retirementError;
+    if (isAnticipada && !row.isContainerized) {
+      return "La exportación anticipada solo aplica a operaciones contenerizadas.";
     }
-    if (
-      row.scheduledAt &&
-      Number.isNaN(new Date(row.scheduledAt).getTime())
-    ) {
-      return "La cita en puerto no tiene una fecha válida.";
+    if (isAnticipada && !row.scheduledAt) {
+      return "La exportación anticipada requiere fecha de programación para el retiro.";
     }
     return null;
   });
 
-  const updateContainer = (
-    key: number,
-    changes: Partial<Omit<ContainerRow, "key">>,
-  ) => {
-    setContainers((rows) =>
-      rows.map((row) => (row.key === key ? { ...row, ...changes } : row)),
-    );
-  };
-
-  const buildPayload = (): CreateBulkOperationsPayload => ({
-    clientId: Number(clientId),
-    type: operationType,
-    operationType,
-    numeroPedido: numeroPedido.trim(),
-    fechaLimiteDocumental: toIsoDate(fechaLimiteDocumental) ?? null,
-    fechaLimiteFisico: toIsoDate(fechaLimiteFisico) ?? null,
-    fechaLimiteDevolucion: toIsoDate(fechaLimiteFisico) ?? null,
-    isContainerized,
-    shippingLineId: shippingLineId ? Number(shippingLineId) : undefined,
-    routeScope,
-    portId: portId ? Number(portId) : undefined,
-    clientLocationId: clientLocationId ? Number(clientLocationId) : undefined,
-    yardId: yardId ? Number(yardId) : undefined,
-    requiresInspection:
-      operationType === "IMPORTACION" && requiresInspection,
-    containers: containers.map((row) => {
-      const route =
-        type === "IMPORTACION"
-          ? {
-              origenId: Number(portId),
-              destinoId: Number(clientLocationId),
-              depositoDevolucionId: yardId ? Number(yardId) : undefined,
-            }
-          : type === "EXPORTACION"
+  const buildPayload = (): CreateBulkOperationsPayload => {
+    const firstType = getOperationType(operations[0].operationType);
+    return {
+      clientId: Number(clientId),
+      type: firstType,
+      operationType: firstType,
+      numeroPedido: numeroPedido.trim(),
+      fechaLimiteDocumental: toIsoDate(fechaLimiteDocumental) ?? null,
+      fechaLimiteFisico: toIsoDate(fechaLimiteFisico) ?? null,
+      fechaLimiteDevolucion: toIsoDate(fechaLimiteFisico) ?? null,
+      shippingLineId: requiresShippingLine ? Number(shippingLineId) : undefined,
+      routeScope,
+      portId: portId ? Number(portId) : undefined,
+      clientLocationId: Number(clientLocationId),
+      yardId: hasContainerizedRows && yardId ? Number(yardId) : undefined,
+      containers: operations.map((row) => {
+        const type = getOperationType(row.operationType);
+        const isAnticipada = isAdvanceExport(row);
+        const route =
+          type === "IMPORTACION"
             ? {
-                origenId: Number(yardId),
-                cargueId: Number(clientLocationId),
-                destinoId: Number(portId),
-                destinoTemporalId:
-                  isAnticipada && yardId
-                    ? Number(yardId)
-                    : undefined,
+                origenId: Number(portId),
+                destinoId: Number(clientLocationId),
+                depositoDevolucionId:
+                  row.isContainerized && yardId ? Number(yardId) : undefined,
               }
-            : type === "RETIRO_VACIO"
-              ? { origenId: Number(portId), destinoId: Number(yardId) }
-              : type === "DEVOLUCION_VACIO"
+            : type === "EXPORTACION"
+              ? {
+                  origenId: Number(
+                    row.isContainerized ? yardId : clientLocationId,
+                  ),
+                  cargueId: row.isContainerized
+                    ? Number(clientLocationId)
+                    : undefined,
+                  destinoId: Number(portId),
+                  destinoTemporalId:
+                    isAnticipada && yardId ? Number(yardId) : undefined,
+                }
+              : type === "RETIRO_VACIO"
                 ? {
-                    origenId: Number(clientLocationId),
-                    destinoId: Number(yardId || portId),
+                    origenId: Number(portId),
+                    destinoId: Number(yardId),
                   }
-                : {
-                    origenId: Number(genericOriginId),
-                    destinoId: Number(genericDestinationId),
-                  };
-      return {
-        operationType,
-        containerNumber: row.containerNumber.trim()
-          ? row.containerNumber.replace(/\s+/g, "").toUpperCase()
-          : null,
-        containerType: isContainerized ? row.containerType : undefined,
-        weight: row.weight ? Number(row.weight) : 0,
-        cargoVehicleTypeCode: row.cargoVehicleTypeCode,
-        requiredTrailerType: row.requiredTrailerType || null,
-        cargoDescription: isContainerized
-          ? undefined
-          : row.cargoDescription.trim() || "Carga suelta",
-        vehicleId: null,
-        driverId: null,
-        scheduledAt: toIsoDate(row.scheduledAt) ?? null,
-        fechaCitaOrigen: toIsoDate(row.fechaCitaOrigen) ?? null,
-        fechaCitaDestino: toIsoDate(row.fechaCitaDestino) ?? null,
-        fechaRetiro: toIsoDate(row.fechaRetiro) ?? null,
-        isAnticipada,
-        requiresInspection:
-          operationType === "IMPORTACION" && requiresInspection,
-        ...route,
-      };
-    }),
-  });
+                : type === "DEVOLUCION_VACIO"
+                  ? {
+                      origenId: Number(clientLocationId),
+                      destinoId: Number(yardId || portId),
+                    }
+                  : {
+                      origenId: Number(row.originId),
+                      destinoId: Number(row.destinationId),
+                    };
+        const scheduledAt = toIsoDate(row.scheduledAt) ?? null;
+        return {
+          operationType: type,
+          isContainerized: row.isContainerized,
+          containerNumber: row.isContainerized
+            ? row.containerNumber.replace(/\s+/g, "").toUpperCase() || null
+            : null,
+          containerType: row.isContainerized ? row.containerType : undefined,
+          cargoDescription: row.isContainerized
+            ? undefined
+            : row.cargoDescription.trim(),
+          weight: row.weight ? Number(row.weight) : undefined,
+          dimensions: row.isContainerized ? undefined : row.dimensions.trim(),
+          packageType: row.isContainerized
+            ? undefined
+            : row.packageType.trim(),
+          packageCount: row.isContainerized
+            ? undefined
+            : Number(row.packageCount),
+          volumeM3: row.isContainerized ? undefined : Number(row.volumeM3),
+          cargoVehicleTypeCode: row.cargoVehicleTypeCode,
+          requiredTrailerType: row.isContainerized
+            ? row.requiredTrailerType || null
+            : null,
+          vehicleId: null,
+          driverId: null,
+          scheduledAt,
+          fechaRetiro: isAnticipada ? scheduledAt : undefined,
+          isAnticipada,
+          requiresInspection: row.requiresInspection,
+          ...route,
+        };
+      }),
+    };
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -419,14 +422,16 @@ export function BulkBookingOperationForm({
     setError(null);
     setFailedRow(null);
 
-    const normalizedNumbers = containers.map((row) =>
-      row.containerNumber.replace(/\s+/g, "").toUpperCase(),
+    const containerNumbers = operations.map((row) =>
+      row.isContainerized
+        ? row.containerNumber.replace(/\s+/g, "").toUpperCase()
+        : "",
     );
-    const duplicate = normalizedNumbers.find(
-      (value, index) => value && normalizedNumbers.indexOf(value) !== index,
+    const duplicate = containerNumbers.find(
+      (value, index) => value && containerNumbers.indexOf(value) !== index,
     );
     if (duplicate) {
-      const duplicateRows = normalizedNumbers
+      const duplicateRows = containerNumbers
         .map((value, index) => (value === duplicate ? index + 1 : null))
         .filter((index): index is number => index !== null);
       const message = `El contenedor ${duplicate} está duplicado en las filas ${duplicateRows.join(" y ")}.`;
@@ -454,13 +459,13 @@ export function BulkBookingOperationForm({
         queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
       ]);
       showToast.success(
-        `Se crearon ${created.length} operaciones independientes para ${numeroPedido.trim() || "el lote"}.`,
+        `Se crearon ${created.length} operaciones independientes para ${numeroPedido.trim()}.`,
       );
       onClose();
     } catch (submitError: unknown) {
       const message = getUserFriendlyErrorMessage(
         submitError,
-        "No se pudieron crear las operaciones del lote.",
+        "No se pudieron crear las operaciones del consolidado.",
       );
       setFailedRow(getFailedRowNumber(message));
       setError(message);
@@ -471,38 +476,39 @@ export function BulkBookingOperationForm({
     }
   };
 
-  const addContainer = () =>
-    setContainers((rows) => [
+  const addOperation = () =>
+    setOperations((rows) => [
       ...rows,
       createInitialRow(Math.max(0, ...rows.map((row) => row.key)) + 1),
     ]);
 
-  const totalWeight = containers.reduce(
+  const totalWeight = operations.reduce(
     (total, row) => total + (Number(row.weight) || 0),
     0,
   );
+  const looseCargoCount = operations.filter((row) => !row.isContainerized).length;
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <header className={styles.modeHeading}>
         <div>
-          <strong>Creación masiva por contenedor</strong>
+          <strong>Creación de operaciones en consolidado</strong>
           <span>
-            Cada fila crea una operación independiente. La asignación de flota
-            queda a cargo del Jefe de Flota.
+            El pedido y la ruta se comparten; cada sección crea una operación
+            independiente y puede ser contenerizada o carga suelta.
           </span>
         </div>
       </header>
 
       {(clientsError ||
         locationsError ||
-        shippingLinesQuery.isError) && (
+        (requiresShippingLine && shippingLinesQuery.isError)) && (
         <p className={styles.validationError} role="alert">
           {clientsError ||
             locationsError ||
             getUserFriendlyErrorMessage(
               shippingLinesQuery.error,
-              "No se pudieron cargar los datos del formulario.",
+              "No se pudieron cargar las líneas navieras.",
             )}
         </p>
       )}
@@ -510,28 +516,19 @@ export function BulkBookingOperationForm({
       <section className={styles.sharedSection}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3>Bloque 1 — Datos principales del lote</h3>
-            <p>Estos datos identifican el lote y definen su ruta común.</p>
+            <h3>Datos compartidos del pedido</h3>
+            <p>La referencia, el cliente y el alcance aplican a todas las unidades.</p>
           </div>
         </div>
         <div className={styles.sharedGrid}>
           <label>
-            Tipo de operación
-            <select
-              value={operationType}
-              onChange={(event) => {
-                const nextType = operationTypes.find(
-                  (option) => option.value === event.target.value,
-                )?.value;
-                if (nextType) setOperationType(nextType);
-              }}
-            >
-              {operationTypes.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            Número de pedido / Booking
+            <input
+              required
+              value={numeroPedido}
+              onChange={(event) => setNumeroPedido(event.target.value)}
+              placeholder="Referencia unificada del lote"
+            />
           </label>
           <label>
             Cliente
@@ -552,58 +549,61 @@ export function BulkBookingOperationForm({
               ))}
             </select>
           </label>
-          {(type === "IMPORTACION" ||
-            type === "EXPORTACION" ||
-            type === "DEVOLUCION_VACIO") && (
-            <label>
-              Ubicación del cliente
-              <select
-                value={clientLocationId}
-                onChange={(event) => setClientLocationId(event.target.value)}
-                disabled={!clientId || isLoadingLocations}
-              >
-                <option value="">Selecciona una ubicación</option>
-                {clientLocations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {(type === "IMPORTACION" || type === "EXPORTACION") && (
-            <>
-              <label>
-                Booking / BL / DO / Número de pedido
-                <input
-                  value={numeroPedido}
-                  onChange={(event) => setNumeroPedido(event.target.value)}
-                  placeholder="Referencia unificada del lote"
-                />
-              </label>
-              <label>
-                Alcance de ruta
-                <select
-                  value={routeScope}
-                  onChange={(event) =>
-                    setRouteScope(
-                      event.target.value === "NACIONAL" ? "NACIONAL" : "URBANO",
-                    )
-                  }
-                >
-                  <option value="URBANO">Urbano</option>
-                  <option value="NACIONAL">Nacional</option>
-                </select>
-              </label>
-            </>
-          )}
-          {(type === "IMPORTACION" ||
-            type === "EXPORTACION" ||
-            type === "RETIRO_VACIO" ||
-            type === "DEVOLUCION_VACIO") && (
+          <label>
+            Ubicación del cliente (planta / bodega)
+            <select
+              required
+              value={clientLocationId}
+              onChange={(event) => setClientLocationId(event.target.value)}
+              disabled={!clientId || isLoadingLocations}
+            >
+              <option value="">Selecciona una ubicación</option>
+              {clientLocations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Alcance de ruta
+            <select
+              value={routeScope}
+              onChange={(event) =>
+                setRouteScope(
+                  event.target.value === "NACIONAL" ? "NACIONAL" : "URBANO",
+                )
+              }
+            >
+              <option value="URBANO">Urbano</option>
+              <option value="NACIONAL">Nacional</option>
+            </select>
+          </label>
+          <label>
+            Puerto
+            <select
+              required={rowsRequiringPort}
+              value={portId}
+              onChange={(event) => setPortId(event.target.value)}
+              disabled={isLoadingLocations}
+            >
+              <option value="">Selecciona un puerto</option>
+              {ports.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {hasContainerizedRows && (
             <label>
               Patio de vacíos
-              <select value={yardId} onChange={(event) => setYardId(event.target.value)}>
+              <select
+                required
+                value={yardId}
+                onChange={(event) => setYardId(event.target.value)}
+                disabled={isLoadingLocations}
+              >
                 <option value="">Selecciona un patio</option>
                 {yards.map((location) => (
                   <option key={location.id} value={location.id}>
@@ -613,26 +613,11 @@ export function BulkBookingOperationForm({
               </select>
             </label>
           )}
-          {(type === "IMPORTACION" ||
-            type === "EXPORTACION" ||
-            type === "RETIRO_VACIO" ||
-            type === "DEVOLUCION_VACIO") && (
-            <label>
-              Puerto
-              <select value={portId} onChange={(event) => setPortId(event.target.value)}>
-                <option value="">Selecciona un puerto</option>
-                {ports.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {isContainerized && type !== "DEVOLUCION_VACIO" && (
+          {requiresShippingLine && (
             <label>
               Línea naviera
               <select
+                required
                 value={shippingLineId}
                 onChange={(event) => setShippingLineId(event.target.value)}
                 disabled={shippingLinesQuery.isLoading}
@@ -646,14 +631,6 @@ export function BulkBookingOperationForm({
               </select>
             </label>
           )}
-          <label className={styles.checkboxField}>
-            <input
-              type="checkbox"
-              checked={isContainerized}
-              onChange={(event) => setIsContainerized(event.target.checked)}
-            />
-            Carga Contenerizada
-          </label>
           <label>
             Cierre documental
             <input
@@ -672,294 +649,359 @@ export function BulkBookingOperationForm({
               onChange={(event) => setFechaLimiteFisico(event.target.value)}
             />
           </label>
-          {(type === "NACIONAL" || type === "MOVIMIENTO_INTERNO") && (
-            <>
-              <label>
-                Origen
-                <select
-                  value={genericOriginId}
-                  onChange={(event) => setGenericOriginId(event.target.value)}
-                >
-                  <option value="">Selecciona un origen</option>
-                  {locationsOptions.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Destino
-                <select
-                  value={genericDestinationId}
-                  onChange={(event) => setGenericDestinationId(event.target.value)}
-                >
-                  <option value="">Selecciona un destino</option>
-                  {locationsOptions.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Alcance de ruta
-                <select
-                  value={routeScope}
-                  onChange={(event) =>
-                    setRouteScope(
-                      event.target.value === "NACIONAL" ? "NACIONAL" : "URBANO",
-                    )
-                  }
-                >
-                  <option value="URBANO">Urbano</option>
-                  <option value="NACIONAL">Nacional</option>
-                </select>
-              </label>
-            </>
-          )}
-          {operationType === "IMPORTACION" && isContainerized && (
-            <label className={styles.checkboxField}>
-              <input
-                type="checkbox"
-                checked={requiresInspection}
-                onChange={(event) => setRequiresInspection(event.target.checked)}
-              />
-              La naviera exige inspección
-            </label>
-          )}
-          {operationType === "EXPORTACION" && isContainerized && (
-            <label className={styles.checkboxField}>
-              <input
-                type="checkbox"
-                checked={isAnticipada}
-                onChange={(event) => setIsAnticipada(event.target.checked)}
-              />
-              ¿Es Exportación Anticipada?
-            </label>
-          )}
         </div>
       </section>
 
       <section className={styles.summary} aria-live="polite">
-        <strong>Resumen en vivo del lote</strong>
+        <strong>Resumen del pedido</strong>
         <span>
-          {isContainerized
-            ? `${getContainerSizeSummary(containers)} · `
-            : `${containers.length} cargas sueltas · `}
-          {containers.length} unidades ·{" "}
-          {totalWeight.toLocaleString("es-CO")} kg netos
+          {getContainerSizeSummary(operations)} · {looseCargoCount} cargas sueltas
+          · {operations.length} operaciones · {totalWeight.toLocaleString("es-CO")} kg
+          netos
         </span>
       </section>
 
       <section className={styles.containersSection}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3>Bloque 2 — Contenedores del lote</h3>
-            <p>Define el tamaño, peso, equipo requerido y citas para cada operación.</p>
+            <h3>Unidades del pedido</h3>
+            <p>Define el tipo, la carga y la programación de cada operación. Las citas se completan luego en Editar.</p>
           </div>
           <button
             type="button"
             className={styles.addButton}
-            onClick={addContainer}
+            onClick={addOperation}
             disabled={isSaving}
           >
             <Plus size={16} aria-hidden="true" />
-            Agregar contenedor
+            Agregar contenedor / carga suelta
           </button>
         </div>
         <div className={styles.containerRows}>
-          {containers.map((row, index) => (
-            <article className={styles.containerCard} key={row.key}>
-              <div className={styles.containerCardHeader}>
-                <span className={styles.rowNumber}>{index + 1}</span>
-                <h4>Operación {index + 1}</h4>
-                <button
-                  type="button"
-                  className={styles.removeButton}
-                  onClick={() =>
-                    setContainers((rows) =>
-                      rows.filter((item) => item.key !== row.key),
-                    )
-                  }
-                  disabled={containers.length <= 1 || isSaving}
-                  aria-label={`Eliminar fila ${index + 1}`}
-                >
-                  <Trash2 size={15} aria-hidden="true" />
-                </button>
-              </div>
-              <div className={styles.containerRow}>
-                {isContainerized ? (
-                <label>
-                  Tamaño / tipo
-                  <select
-                    value={row.containerType}
-                    onChange={(event) => {
-                      const next = containerTypes.find(
-                        (item) => item.value === event.target.value,
-                      )?.value;
-                      if (next) updateContainer(row.key, { containerType: next });
-                    }}
+          {operations.map((row, index) => {
+            const type = getOperationType(row.operationType);
+            const isAnticipada = isAdvanceExport(row);
+            const requiresCustomRoute =
+              type === "NACIONAL" || type === "MOVIMIENTO_INTERNO";
+            return (
+              <article className={styles.containerCard} key={row.key}>
+                <div className={styles.containerCardHeader}>
+                  <span className={styles.rowNumber}>{index + 1}</span>
+                  <h4>{row.isContainerized ? "Contenedor" : "Carga suelta"} · {index + 1}</h4>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    onClick={() =>
+                      setOperations((rows) =>
+                        rows.filter((item) => item.key !== row.key),
+                      )
+                    }
+                    disabled={operations.length <= 1 || isSaving}
+                    aria-label={`Eliminar unidad ${index + 1}`}
                   >
-                    {containerTypes.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                ) : (
+                    <Trash2 size={15} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className={styles.containerRow}>
                   <label>
-                    Descripción de la carga suelta
-                    <input
-                      value={row.cargoDescription}
+                    Tipo de operación
+                    <select
+                      value={row.operationType}
+                      onChange={(event) => {
+                        const nextType = operationTypes.find(
+                          (option) => option.value === event.target.value,
+                        )?.value;
+                        if (!nextType) return;
+                        updateOperation(row.key, {
+                          operationType: nextType,
+                          isContainerized:
+                            nextType === "RETIRO_VACIO" ||
+                            nextType === "DEVOLUCION_VACIO"
+                              ? true
+                              : row.isContainerized,
+                        });
+                      }}
+                    >
+                      {operationTypes.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Tipo de carga
+                    <select
+                      value={String(row.isContainerized)}
                       onChange={(event) =>
-                        updateContainer(row.key, {
-                          cargoDescription: event.target.value,
+                        updateOperation(row.key, {
+                          isContainerized: event.target.value === "true",
                         })
                       }
-                      placeholder="Ej: Maquinaria, carga general"
+                      disabled={
+                        type === "RETIRO_VACIO" ||
+                        type === "DEVOLUCION_VACIO"
+                      }
+                    >
+                      <option value="true">Contenerizada</option>
+                      <option value="false">Carga suelta</option>
+                    </select>
+                  </label>
+                  {row.isContainerized ? (
+                    <>
+                      <label>
+                        Tipo de contenedor
+                        <select
+                          value={row.containerType}
+                          onChange={(event) => {
+                            const nextType = containerTypes.find(
+                              (item) => item.value === event.target.value,
+                            )?.value;
+                            if (nextType) {
+                              updateOperation(row.key, {
+                                containerType: nextType,
+                              });
+                            }
+                          }}
+                        >
+                          {containerTypes.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Número de contenedor (opcional)
+                        <input
+                          value={row.containerNumber}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              containerNumber: event.target.value,
+                            })
+                          }
+                          placeholder="ABCD1234567"
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <label>
+                        Descripción de la mercancía
+                        <input
+                          value={row.cargoDescription}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              cargoDescription: event.target.value,
+                            })
+                          }
+                          placeholder="Ej: Maquinaria, carga general"
+                        />
+                      </label>
+                      <label>
+                        Tipo de empaque
+                        <input
+                          value={row.packageType}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              packageType: event.target.value,
+                            })
+                          }
+                          placeholder="Cajas, estibas, sacos..."
+                        />
+                      </label>
+                      <label>
+                        Bultos
+                        <input
+                          type="number"
+                          min="1"
+                          value={row.packageCount}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              packageCount: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Dimensiones
+                        <input
+                          value={row.dimensions}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              dimensions: event.target.value,
+                            })
+                          }
+                          placeholder="2.4 x 1.8 x 1.5 m"
+                        />
+                      </label>
+                      <label>
+                        Volumen (m³)
+                        <input
+                          type="number"
+                          min="0.001"
+                          step="0.001"
+                          value={row.volumeM3}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              volumeM3: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                  <label>
+                    Peso de la mercancía (kg)
+                    <input
+                      type="number"
+                      min="0"
+                      value={row.weight}
+                      onChange={(event) =>
+                        updateOperation(row.key, { weight: event.target.value })
+                      }
+                      placeholder={isEmptyOperation(row) ? "Opcional" : "Requerido"}
                     />
                   </label>
-                )}
-                {isContainerized && (
-                <label>
-                  Número de contenedor (opcional)
-                  <input
-                    value={row.containerNumber}
-                    onChange={(event) =>
-                      updateContainer(row.key, {
-                        containerNumber: event.target.value,
-                      })
-                    }
-                    placeholder="ABCD1234567"
-                  />
-                </label>
-                )}
-                <label>
-                  Peso neto (kg)
-                  <input
-                    type="number"
-                    min="0"
-                    value={row.weight}
-                    onChange={(event) =>
-                      updateContainer(row.key, { weight: event.target.value })
-                    }
-                    placeholder={isEmptyOperation ? "Opcional" : "Requerido"}
-                  />
-                </label>
-                <label>
-                  Tipología de cabezote
-                  <select
-                    value={row.cargoVehicleTypeCode}
-                    onChange={(event) => {
-                      const code = CARGO_VEHICLE_TYPE_CODES.find(
-                        (candidate) => candidate === event.target.value,
-                      );
-                      if (code) updateContainer(row.key, { cargoVehicleTypeCode: code });
-                    }}
-                  >
-                    {CARGO_VEHICLE_TYPE_CODES.map((code) => {
-                      const configuration = vehicleTypes.find(
-                        (item) => item.code === code,
-                      );
-                      const capacity =
-                        configuration?.maxPayloadKg == null
-                          ? "sin capacidad publicada"
-                          : `hasta ${configuration.maxPayloadKg.toLocaleString("es-CO")} kg`;
-                      return (
-                        <option key={code} value={code}>
-                          {code} · {capacity}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                <label>
-                  Tipo de tráiler requerido
-                  <select
-                    value={row.requiredTrailerType}
-                    onChange={(event) => {
-                      const trailerType = TRAILER_TYPES.find(
-                        (value) => value === event.target.value,
-                      );
-                      updateContainer(row.key, {
-                        requiredTrailerType: trailerType ?? "",
-                      });
-                    }}
-                  >
-                    <option value="">Cualquiera o sin restricción</option>
-                    {TRAILER_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Programación
-                  <input
-                    type="datetime-local"
-                    value={row.scheduledAt}
-                    placeholder="Por confirmar con cliente"
-                    onChange={(event) =>
-                      updateContainer(row.key, { scheduledAt: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Cita en origen
-                  <input
-                    type="datetime-local"
-                    value={row.fechaCitaOrigen}
-                    placeholder="Por confirmar con cliente"
-                    onChange={(event) =>
-                      updateContainer(row.key, {
-                        fechaCitaOrigen: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Cita en destino
-                  <input
-                    type="datetime-local"
-                    value={row.fechaCitaDestino}
-                    placeholder="Por confirmar con cliente"
-                    onChange={(event) =>
-                      updateContainer(row.key, {
-                        fechaCitaDestino: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-                {isAnticipada && (
                   <label>
-                    Fecha de retiro anticipado
+                    Tipología vehicular
+                    <select
+                      value={row.cargoVehicleTypeCode}
+                      onChange={(event) => {
+                        const code = CARGO_VEHICLE_TYPE_CODES.find(
+                          (candidate) => candidate === event.target.value,
+                        );
+                        if (code) {
+                          updateOperation(row.key, {
+                            cargoVehicleTypeCode: code,
+                          });
+                        }
+                      }}
+                    >
+                      {CARGO_VEHICLE_TYPE_CODES.map((code) => {
+                        const configuration = vehicleTypes.find(
+                          (item) => item.code === code,
+                        );
+                        const capacity =
+                          configuration?.maxPayloadKg == null
+                            ? "sin capacidad publicada"
+                            : `hasta ${configuration.maxPayloadKg.toLocaleString("es-CO")} kg`;
+                        return (
+                          <option key={code} value={code}>
+                            {code} · {capacity}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                  {row.isContainerized && (
+                    <label>
+                      Tipo de tráiler requerido
+                      <select
+                        value={row.requiredTrailerType}
+                        onChange={(event) => {
+                          const trailerType = TRAILER_TYPES.find(
+                            (value) => value === event.target.value,
+                          );
+                          updateOperation(row.key, {
+                            requiredTrailerType: trailerType ?? "",
+                          });
+                        }}
+                      >
+                        <option value="">Cualquiera o sin restricción</option>
+                        {TRAILER_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {requiresCustomRoute && (
+                    <>
+                      <label>
+                        Origen
+                        <select
+                          value={row.originId}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              originId: event.target.value,
+                            })
+                          }
+                          disabled={isLoadingLocations}
+                        >
+                          <option value="">Selecciona un origen</option>
+                          {locationsOptions.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Destino
+                        <select
+                          value={row.destinationId}
+                          onChange={(event) =>
+                            updateOperation(row.key, {
+                              destinationId: event.target.value,
+                            })
+                          }
+                          disabled={isLoadingLocations}
+                        >
+                          <option value="">Selecciona un destino</option>
+                          {locationsOptions.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                  <label>
+                    {isAnticipada
+                      ? "Programación / retiro anticipado"
+                      : "Fecha de programación (opcional)"}
                     <input
                       type="datetime-local"
-                      value={row.fechaRetiro}
+                      required={isAnticipada}
+                      value={row.scheduledAt}
                       onChange={(event) =>
-                        updateContainer(row.key, {
-                          fechaRetiro: event.target.value,
+                        updateOperation(row.key, {
+                          scheduledAt: event.target.value,
                         })
                       }
                     />
                   </label>
+                  {row.isContainerized && type === "IMPORTACION" && (
+                    <label className={styles.checkboxField}>
+                      <input
+                        type="checkbox"
+                        checked={row.requiresInspection}
+                        onChange={(event) =>
+                          updateOperation(row.key, {
+                            requiresInspection: event.target.checked,
+                          })
+                        }
+                      />
+                      La naviera exige inspección
+                    </label>
+                  )}
+                </div>
+                {rowErrors[index] && (
+                  <p className={styles.validationWarning} role="status">
+                    Fila {index + 1}: {rowErrors[index]}
+                  </p>
                 )}
-              </div>
-              {rowErrors[index] && (
-                <p className={styles.validationWarning} role="status">
-                  Fila {index + 1}: {rowErrors[index]}
-                </p>
-              )}
-              {failedRow === index + 1 && error && (
-                <p className={styles.validationError} role="alert">
-                  {error}
-                </p>
-              )}
-            </article>
-          ))}
+                {failedRow === index + 1 && error && (
+                  <p className={styles.validationError} role="alert">
+                    {error}
+                  </p>
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
 

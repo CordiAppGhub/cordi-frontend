@@ -172,20 +172,8 @@ const requestedAppointments = (operation: Operation): number[] =>
     .map((value) => new Date(value).getTime())
     .filter((value) => Number.isFinite(value));
 
-const hasLooseCargoProgramming = (operation: Operation): boolean => {
-  const isLooseForeignTradeOperation =
-    isLooseCargoOperation(operation) &&
-    ["IMPORTACION", "EXPORTACION", "EXPORTACION_ANTICIPADA"].includes(
-      operation.type,
-    );
-  if (!isLooseForeignTradeOperation) return true;
-
-  const portAppointment =
-    operation.type === "IMPORTACION"
-      ? operation.fechaCitaOrigen
-      : operation.fechaCitaDestino;
-  return Boolean(operation.scheduledAt && portAppointment);
-};
+const hasScheduledProgramming = (operation: Operation): boolean =>
+  Boolean(operation.scheduledAt);
 
 const hasPotentialOverlap = (
   operation: Operation,
@@ -599,7 +587,7 @@ export function OperationDispatchDrawer({
       hasRequiredTrailer,
       compatibility,
       canAssign:
-        Boolean(operation && hasLooseCargoProgramming(operation)) &&
+        Boolean(operation && hasScheduledProgramming(operation)) &&
         statusAvailable &&
         driverAvailable &&
         hasRequiredTrailer &&
@@ -773,6 +761,12 @@ export function OperationDispatchDrawer({
         operation?.scheduledAt ||
         (operation?.isContainerized === true ? operation.fechaRetiro : null)
       : operation?.scheduledAt;
+  const hasLoadedAppointments = Boolean(
+    operation?.fechaCitaOrigen ||
+      operation?.fechaCitaDestino ||
+      operation?.fechaCitaDesvio ||
+      operation?.fechaRetiro,
+  );
   const dispatcherTitle = operation
     ? `${selectionOnly ? "Seleccionar flota para amparo" : isAnalyst && !allowAnalystFleetReassignment ? "Asignar tercero" : isReassigningFleet ? "Reasignar flota" : "Asignar flota"} · Operación #${operation.id}`
     : "Despacho de flota";
@@ -830,6 +824,18 @@ export function OperationDispatchDrawer({
               </span>
               <span>{destinationName}</span>
             </p>
+            {!operation.scheduledAt ? (
+              <div className={styles.scheduleNotice} role="alert">
+                Falta la fecha de programación. No se puede asignar flota hasta
+                definirla.
+              </div>
+            ) : !hasLoadedAppointments ? (
+              <div className={styles.scheduleNotice} role="status">
+                Aún no hay citas de origen, destino o patio cargadas. Puedes
+                completar la asignación; recuerda cargar las citas antes del
+                inicio del viaje.
+              </div>
+            ) : null}
             <div className={styles.contextDetails}>
               <div className={styles.contextDetail}>
                 <CalendarClock size={16} aria-hidden="true" />
@@ -1346,7 +1352,7 @@ export function OperationDispatchDrawer({
                     disabled={
                       !operationDetailsReady ||
                       !externalForm.formState.isValid ||
-                      !hasLooseCargoProgramming(operation) ||
+                      !hasScheduledProgramming(operation) ||
                       externalFleetMutation.isPending
                     }
                   >
