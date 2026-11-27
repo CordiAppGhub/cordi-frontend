@@ -11,6 +11,7 @@ import {
   Truck, 
   MapPin,
   ClipboardList,
+  FileCheck2,
   BarChart3,
   ContactRound,
   LogOut, 
@@ -70,6 +71,19 @@ export const Navbar: React.FC = () => {
     staleTime: 15_000,
   });
   const pendingCount = pendingCountQuery.data ?? 0;
+  const canViewPendingManifest =
+    isAuthenticated &&
+    ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(userRole ?? '');
+  const pendingManifestQuery = useQuery({
+    queryKey: ['operations', 'pending-manifest'],
+    queryFn: () => operationService.getPendingManifestOperations(),
+    enabled: canViewPendingManifest,
+    refetchInterval: 45_000,
+  });
+  const pendingManifestCount =
+    pendingManifestQuery.data?.summary.totalCount ?? 0;
+  const readyManifestCount =
+    pendingManifestQuery.data?.summary.readyToManifestCount ?? 0;
   const notificationsQuery = useQuery({
     queryKey: ['notifications', 'mine'],
     queryFn: notificationsService.getMine,
@@ -137,7 +151,9 @@ export const Navbar: React.FC = () => {
     { path: '/dashboard', label: 'Inicio', icon: <LayoutDashboard size={16} /> },
     { path: '/profiles', label: 'Perfiles', icon: <ContactRound size={16} /> },
     { path: '/operations', label: 'Viajes / Op.', icon: <ClipboardList size={16} /> },
+    { path: '/pending-manifest', label: 'Sin Manifiesto', icon: <FileCheck2 size={16} /> },
     { path: '/programacion', label: 'Solicitudes de flota', icon: <Truck size={16} /> },
+    { path: '/fleet-status', label: 'Estado de Flota', icon: <MapPin size={16} /> },
     { path: '/fleet', label: 'Flota', icon: <Truck size={16} /> },
     { path: '/fleet/asignaciones', label: 'Vínculo Vehículo–Conductor', icon: <Truck size={16} /> },
     { path: '/locations', label: 'Ubicaciones', icon: <MapPin size={16} /> },
@@ -147,6 +163,12 @@ export const Navbar: React.FC = () => {
   ];
 
   const tabs = rawTabs.filter((item) => {
+    if (item.path === '/pending-manifest') {
+      return ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(userRole ?? '');
+    }
+    if (item.path === '/fleet-status') {
+      return ['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(userRole ?? '');
+    }
     if (item.path === '/user') {
       return userRole === 'ADMIN' || userRole === 'JEFE_DE_FLOTA';
     }
@@ -418,7 +440,7 @@ export const Navbar: React.FC = () => {
             const isActive =
               pathname === tab.path ||
               (tab.path !== '/dashboard' &&
-                pathname.startsWith(tab.path) &&
+                pathname.startsWith(`${tab.path}/`) &&
                 !hasActiveChild);
             return (
               <Link 
@@ -428,7 +450,10 @@ export const Navbar: React.FC = () => {
                 aria-label={
                   tab.path === '/programacion' && pendingCount > 0
                     ? `${tab.label}: ${pendingCount} operaciones requieren acción`
-                    : undefined
+                    : tab.path === '/pending-manifest' &&
+                        pendingManifestCount > 0
+                      ? `${tab.label}: ${pendingManifestCount} pendientes, ${readyManifestCount} listas para planillar`
+                      : undefined
                 }
               >
                 {tab.icon}
@@ -438,6 +463,13 @@ export const Navbar: React.FC = () => {
                     {pendingCount > 99 ? '99+' : pendingCount}
                   </span>
                 )}
+                {tab.path === '/pending-manifest' &&
+                  pendingManifestCount > 0 && (
+                    <span className={styles.manifestBadge} aria-hidden="true">
+                      <span className={styles.manifestPing} />
+                      {pendingManifestCount} · {readyManifestCount} listas
+                    </span>
+                  )}
               </Link>
             );
           })}

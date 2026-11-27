@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { useUIStore } from '@/store/use-ui.store';
 import { useTrafico } from '../hooks/use-operations';
@@ -28,6 +28,7 @@ import { Loader } from 'lucide-react';
 import { OperationAmparosPanel } from '../components/amparados/operation-amparos-panel';
 import { OperationDispatchDrawer } from '../components/actions/operation-dispatch-drawer';
 import { OperationHistoryView } from './history/operation-history-view';
+import { ImportOperationsExcelModal } from '../components/forms/import-operations-excel-modal';
 import { PendingDriverExtraReports } from '../components/actions/pending-driver-extra-reports';
 import { useOperationHistoryStore } from '@/store/use-operation-history.store';
 import { useCancelOperation } from '../hooks/use-cancel-operation';
@@ -324,6 +325,7 @@ export function OperationsView() {
 
   const [activeTab, setActiveTab] = useState('TODAS');
   const [historyCount, setHistoryCount] = useState<number | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const [surchargeModalOpId, setSurchargeModalOpId] = useState<number | null>(null);
   const [reviewExtraReportOperationId, setReviewExtraReportOperationId] =
@@ -340,6 +342,19 @@ export function OperationsView() {
     type: 'OPERATION' | 'CONTAINER' | 'ANALYST' | 'DRIVER' | 'VEHICLE';
     id: string | number
   } | null>(null);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const operationId = Number(url.searchParams.get('operationId'));
+    if (!Number.isInteger(operationId) || operationId <= 0) return;
+    setTraceContext({ type: 'OPERATION', id: operationId });
+    url.searchParams.delete('operationId');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, []);
 
   const handleEditOperation = (operation: Operation) => {
     setOperationToEdit(operation);
@@ -513,9 +528,17 @@ export function OperationsView() {
           ))}
         </div>
         {section === 'active' && (
-          <Button onClick={openCreateModal} className={styles.createOperationButton}>
-            {user?.role === 'ANALISTA' ? '+ Nueva solicitud' : '+ Nueva Operación'}
-          </Button>
+          <div className={styles.headerActions}>
+            <Button
+              onClick={() => setIsImportModalOpen(true)}
+              variant="secondary"
+            >
+              Cargar Excel
+            </Button>
+            <Button onClick={openCreateModal} className={styles.createOperationButton}>
+              {user?.role === 'ANALISTA' ? '+ Nueva solicitud' : '+ Nueva Operación'}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -594,6 +617,12 @@ export function OperationsView() {
       )}
 
       <CreateDrawerOperation />
+      {isImportModalOpen && (
+        <ImportOperationsExcelModal
+          onClose={() => setIsImportModalOpen(false)}
+          onCreated={fetchOperations}
+        />
+      )}
 
       <ApplySurchargeModal
         isOpen={surchargeModalOpId !== null}

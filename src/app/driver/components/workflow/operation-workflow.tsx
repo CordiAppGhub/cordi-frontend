@@ -8,6 +8,7 @@ import type {
   CargoStatus,
   OperationContainerStatus,
 } from "@/types/driver-portal.types";
+import type { TrailerType } from "@/types/vehicles";
 import {
   formatEvidenceTypeLabel,
   formatOperationStateLabel,
@@ -21,6 +22,7 @@ import {
   getWorkflowFamily,
 } from "./workflow-steps.builder";
 import { WorkflowStepCard } from "./components/WorkflowStepCard";
+import { ContainerPhotoCapture } from "./components/container-photo-capture";
 
 const PORT_ENTRY_EVIDENCE = "INGRESO_PUERTO";
 const SEAL_EVIDENCE = "SELLOS_CONTENEDOR";
@@ -41,6 +43,12 @@ const DELIVERY_DOC_EVIDENCE = "DELIVERY_DOC";
 const CLOSING_EVIDENCE = "Soporte de cierre";
 const CAB_PLATE_EVIDENCE = "VERIFICACION_PLACA_CABEZOTE";
 const TRAILER_PLATE_EVIDENCE = "VERIFICACION_PLACA_TRAILER";
+const CONTAINER_SIDE_PHOTO_EVIDENCE_TYPES = [
+  "CONTENEDOR_PUERTA",
+  "CONTENEDOR_COSTADO_DERECHO",
+  "CONTENEDOR_COSTADO_IZQUIERDO",
+  "CONTENEDOR_FRENTE",
+];
 
 interface OperationData {
   id: number;
@@ -51,6 +59,16 @@ interface OperationData {
   tipoCarga?: string | null;
   cargoDescription?: string | null;
   weight?: number | null;
+  weightKg?: number | null;
+  requiredTrailerType?: TrailerType | null;
+  cargoVehicleType?: {
+    name: string;
+    code?: string;
+    tractorAxles: number | null;
+    trailerAxles: number | null;
+    requiresTrailer: boolean;
+    maxPayloadKg: number | null;
+  } | null;
   dimensions?: string | null;
   estadoViaje?: string | null;
   status?: string;
@@ -58,6 +76,7 @@ interface OperationData {
   cargoStatus?: CargoStatus;
   containerStatusUpdatedAt?: string | null;
   containerNumber?: string | null;
+  containerType?: string | null;
   sealNumber?: string | null;
   containerIssueDescription?: string | null;
   scheduledAt?: string | null;
@@ -99,6 +118,8 @@ interface OperationData {
     id: number;
     type: string;
     estadoRevision: string;
+    invalidated?: boolean;
+    url?: string | null;
     notaAnalista?: string | null;
     etapa?: string | null;
   }>;
@@ -328,7 +349,9 @@ function hasValidEvidence(operation: OperationData, type: string): boolean {
   return Boolean(
     operation.evidences?.some(
       (evidence) =>
-        evidence.type === type && evidence.estadoRevision !== "DEVUELTO",
+        evidence.type === type &&
+        evidence.invalidated !== true &&
+        evidence.estadoRevision !== "DEVUELTO",
     ),
   );
 }
@@ -342,6 +365,7 @@ function hasStageEvidence(
     operation.evidences?.some(
       (evidence) =>
         evidence.type === type &&
+        evidence.invalidated !== true &&
         evidence.estadoRevision !== "DEVUELTO" &&
         (!etapa || evidence.etapa === etapa),
     ),
@@ -742,6 +766,7 @@ const EMPTY_PICKUP_STEPS: WorkflowStep[] = [
     travelState: "LLEGADA_ORIGEN",
     label: "ESCANEAR CONTENEDOR VACÍO (OCR)",
     action: "ocr",
+    requiresEvidence: CONTAINER_SIDE_PHOTO_EVIDENCE_TYPES,
   },
   {
     id: "empty-pickup-comodato",
@@ -1133,7 +1158,10 @@ const IMPORT_TO_YARD_STEPS: WorkflowStep[] = [
     label: "SALIDA DE PUERTO + SUBIR ARIN DE SALIDA",
     action: "evidence",
     evidenceTypes: [PORT_EXIT_EVIDENCE],
-    requiresEvidence: [PORT_ENTRY_EVIDENCE],
+    requiresEvidence: [
+      PORT_ENTRY_EVIDENCE,
+      ...CONTAINER_SIDE_PHOTO_EVIDENCE_TYPES,
+    ],
     stopOrder: 0,
     stopMilestone: "DEPARTURE",
   },
@@ -1643,6 +1671,24 @@ export function OperationWorkflow({
       ? workflowSteps.length
       : firstIncompleteStep;
   const activeStep = isFinished ? undefined : workflowSteps[currentIndex];
+  const firstContainerStop = operation.stops?.find(
+    (stop) => stop.stopOrder === 0 && stop.stopType === "CARGUE",
+  );
+  const isExportEmptyYardPhotoStage =
+    operation.isContainerized === true &&
+    isExportWorkflow &&
+    currentState === "LLEGADA_ORIGEN";
+  const isImportPortExitPhotoStage =
+    operation.isContainerized === true &&
+    operation.type === "IMPORTACION" &&
+    (currentState === "EN_PUERTO" ||
+      currentState === "EN_PUERTO_CARGADO") &&
+    operation.containerStatus === "CARGADO_AL_TRAILER";
+  const containerPhotoStop =
+    firstContainerStop &&
+    (isExportEmptyYardPhotoStage || isImportPortExitPhotoStage)
+      ? firstContainerStop
+      : undefined;
   const requiredContainerAction =
     operation.isContainerized !== true ||
     isFinished ||
@@ -1727,6 +1773,15 @@ export function OperationWorkflow({
           minute: "2-digit",
         })
       : "Pendiente";
+  const cargoWeight = operation.weight ?? operation.weightKg;
+  const requiredTrailerAxles =
+    operation.cargoVehicleType?.trailerAxles === 2 ||
+    operation.cargoVehicleType?.trailerAxles === 3
+      ? operation.cargoVehicleType.trailerAxles
+      : null;
+  const requiresTrailer =
+    operation.cargoVehicleType?.requiresTrailer === true ||
+    Boolean(operation.requiredTrailerType);
 
   return (
     <div className={styles.workflowContainer}>
@@ -1735,6 +1790,56 @@ export function OperationWorkflow({
           <span>🔄</span> OPERACIÓN DE DOBLE MOVIMIENTO (AMPARADA)
         </div>
       )}
+      <section
+        className={styles.operationRequirements}
+        aria-label="Requisitos de la operación"
+      >
+        <h3>Requisitos de la operación</h3>
+        <div className={styles.requirementGrid}>
+          <div>
+            <span>Peso de la mercancía</span>
+            <strong>
+              {cargoWeight == null
+                ? "No registrado"
+                : `${Number(cargoWeight).toLocaleString("es-CO")} kg`}
+            </strong>
+          </div>
+          <div>
+            <span>Tipología / ejes requeridos</span>
+            <strong>
+              {operation.cargoVehicleType
+                ? `${operation.cargoVehicleType.name}${
+                    operation.cargoVehicleType.tractorAxles
+                      ? ` · cabezote ${operation.cargoVehicleType.tractorAxles} ejes`
+                      : ""
+                  }${
+                    requiredTrailerAxles
+                      ? ` · tráiler ${requiredTrailerAxles} ejes`
+                      : ""
+                  }`
+                : operation.requiredTrailerType
+                  ? `Tráiler tipo ${operation.requiredTrailerType}`
+                  : "No especificada"}
+            </strong>
+          </div>
+          {operation.isContainerized === true && (
+            <div>
+              <span>Tipo de contenedor</span>
+              <strong>{operation.containerType || "No registrado"}</strong>
+            </div>
+          )}
+        </div>
+        {requiresTrailer && requiredTrailerAxles && (
+          <p className={styles.trailerAxleNotice} role="status">
+            Alerta preventiva: la carga de{" "}
+            {cargoWeight == null
+              ? "esta operación"
+              : `${Number(cargoWeight).toLocaleString("es-CO")} kg`}{" "}
+            requiere un tráiler de mínimo {requiredTrailerAxles} ejes según la
+            tipología asignada.
+          </p>
+        )}
+      </section>
 
       {operation.isContainerized !== true ? (
         <section
@@ -1904,6 +2009,17 @@ export function OperationWorkflow({
           }`}
         >
           <h3 className={styles.title}>ESTADO DEL CONTENEDOR</h3>
+          {containerPhotoStop && (
+            <ContainerPhotoCapture
+              operationId={operation.id}
+              evidenceStage={currentState}
+              evidences={operation.evidences ?? []}
+              isLoading={isLoading}
+              onCompleteStop={() =>
+                onCompleteStop(operation.id, containerPhotoStop.id)
+              }
+            />
+          )}
           <p>
             Número: {operation.containerNumber || "Pendiente de validación OCR"}
           </p>

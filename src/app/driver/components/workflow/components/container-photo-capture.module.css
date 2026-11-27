@@ -1,0 +1,120 @@
+.captureSection {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.captureHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.captureHeader h4,
+.captureHeader p {
+  margin: 0;
+}
+
+.captureHeader h4 {
+  color: #1e3a8a;
+  font-size: 0.9rem;
+}
+
+.captureHeader p {
+  margin-top: 4px;
+  color: #475569;
+  font-size: 0.78rem;
+}
+
+.captureHeader > strong {
+  flex: 0 0 auto;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photoCard {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.photoCard > strong {
+  color: #334155;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.photoPreview,
+.photoPlaceholder {
+  width: 100%;
+  height: 128px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.photoPlaceholder {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.fileInput {
+  display: none;
+}
+
+.captureButton,
+.completeButton {
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.captureButton {
+  background: #1d4ed8;
+}
+
+.completeButton {
+  background: #15803d;
+}
+
+.captureButton:disabled,
+.completeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.errorMessage {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .captureHeader {
+    flex-direction: column;
+  }
+}

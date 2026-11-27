@@ -238,11 +238,145 @@ export interface CreateBulkOperationsPayload {
   }>;
 }
 
+export interface ImportedOperationPreviewRow {
+  rowNumber: number;
+  status: "VALID" | "NEEDS_CLIENT_FIX" | "ERROR";
+  messages: string[];
+  errors: string[];
+  numeroPedido: string;
+  clientId: number | null;
+  clientName: string;
+  analystId: number | null;
+  analystName: string | null;
+  type: "EXPORTACION" | "IMPORTACION" | null;
+  routeScope: "URBANO" | "NACIONAL" | null;
+  isContainerized: boolean | null;
+  containerNumber: string | null;
+  containerType: ContainerType | null;
+  weight: number | null;
+  volumeM3: number | null;
+  cargoVehicleTypeCode: string | null;
+  clientLocationId: number | null;
+  locationName: string;
+  yardId: number | null;
+  yardName: string;
+  shippingLineId: number | null;
+  shippingLineName: string;
+  portId: number | null;
+  portName: string | null;
+}
+
+export interface ImportedOperationsPreview {
+  rows: ImportedOperationPreviewRow[];
+  availableClients: Array<{
+    id: number;
+    name: string;
+    analystId: number | null;
+    analystName: string | null;
+  }>;
+  availableClientLocations: Array<{
+    id: number;
+    clientId: number;
+    name: string;
+  }>;
+  availablePorts: Array<{ id: number; name: string }>;
+}
+
+export interface ConfirmImportedOperation {
+  clientId: number;
+  clientLocationId: number;
+  portId: number;
+  yardId?: number;
+  shippingLineId?: number;
+  numeroPedido: string;
+  type: "EXPORTACION" | "IMPORTACION";
+  routeScope: "URBANO" | "NACIONAL";
+  isContainerized: boolean;
+  containerNumber?: string | null;
+  weight: number;
+  volumeM3?: number;
+  cargoVehicleTypeCode?: string | null;
+}
+
+export interface ImportedOperationsResult {
+  createdCount: number;
+  createdOperations: Operation[];
+}
+
 export interface ShippingLine {
   id: number;
   name: string;
   nit: string;
   createdAt: string;
+}
+
+export interface PendingManifestOperation {
+  id: number;
+  numeroPedido: string | null;
+  type: string;
+  isContainerized: boolean;
+  containerNumber: string | null;
+  cargoDescription: string | null;
+  clientId: number | null;
+  clientName: string;
+  analystId: number | null;
+  analystName: string | null;
+  driver: {
+    name: string | null;
+    cedula: string | null;
+    telefono: string | null;
+  } | null;
+  vehicle: {
+    plate: string;
+    trailerPlate: string | null;
+  } | null;
+  scheduledAt: string | null;
+  freightToCharge: number;
+  freightToPay: number;
+  status: string;
+  readyToManifest: boolean;
+}
+
+export interface PendingManifestSummary {
+  totalCount: number;
+  readyToManifestCount: number;
+  withoutVehicleCount: number;
+  totalFreightToCharge: number;
+  readyFreightToCharge: number;
+  totalFreightToPay: number;
+  readyFreightToPay: number;
+}
+
+export interface PendingManifestAnalystSummary {
+  analystId: number | null;
+  analystName: string;
+  totalCount: number;
+  readyToManifestCount: number;
+  totalFreightToCharge: number;
+  totalFreightToPay: number;
+}
+
+export interface PendingManifestClientSummary {
+  clientId: number | null;
+  clientName: string;
+  analystId: number | null;
+  analystName: string;
+  totalCount: number;
+  readyToManifestCount: number;
+  totalFreightToCharge: number;
+  totalFreightToPay: number;
+}
+
+export interface PendingManifestResponse {
+  summary: PendingManifestSummary;
+  byAnalyst: PendingManifestAnalystSummary[];
+  byClient: PendingManifestClientSummary[];
+  items: PendingManifestOperation[];
+}
+
+export interface PendingManifestFilters {
+  analystId?: number;
+  clientId?: number;
 }
 
 export type InspectionResult = "APROBADO" | "RECHAZADO_MAL_ESTADO";
@@ -376,6 +510,36 @@ export interface ExternalEvidenceUploads {
 // SERVICIO PRINCIPAL UNIFICADO
 // ==========================================
 export const operationService = {
+  downloadOperationsImportTemplate: async (): Promise<Blob> => {
+    const response = await api.get<Blob>(
+      "/operations/import-excel/template",
+      { responseType: "blob" },
+    );
+    return response.data;
+  },
+
+  previewOperationsExcel: async (
+    file: File,
+  ): Promise<ImportedOperationsPreview> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post<ImportedOperationsPreview>(
+      "/operations/import-excel/preview",
+      formData,
+    );
+    return response.data;
+  },
+
+  confirmOperationsExcel: async (
+    rows: ConfirmImportedOperation[],
+  ): Promise<ImportedOperationsResult> => {
+    const response = await api.post<ImportedOperationsResult>(
+      "/operations/import-excel/confirm",
+      { rows },
+    );
+    return response.data;
+  },
+
   getEvidencePdf: async (operationId: number): Promise<Blob> => {
     const response = await api.get<Blob>(
       `/operations/${operationId}/evidences-pdf`,
@@ -458,6 +622,33 @@ export const operationService = {
       "/operations/pending-count",
     );
     return response.data.count;
+  },
+
+  getPendingManifestOperations: async (
+    filters: PendingManifestFilters = {},
+  ): Promise<PendingManifestResponse> => {
+    const response = await api.get<PendingManifestResponse>(
+      "/operations/pending-manifest",
+      { params: filters },
+    );
+    return response.data;
+  },
+
+  registerManifest: async (
+    operationId: number,
+    manifestNumber: string,
+    file: File | null,
+  ): Promise<{ id: number; documentoTransporte: string }> => {
+    const formData = new FormData();
+    formData.append("manifestNumber", manifestNumber);
+    if (file) formData.append("file", file);
+    const response = await api.patch<{
+      id: number;
+      documentoTransporte: string;
+    }>(`/operations/${operationId}/manifest`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
   },
 
   cancelOperation: async (id: number): Promise<void> => {

@@ -95,6 +95,13 @@
   white-space: nowrap;
 }
 
+.headerActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
 .insightGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -395,5 +402,10 @@
     align-self: center;
     padding: 0 10px;
     font-size: 0.75rem;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }

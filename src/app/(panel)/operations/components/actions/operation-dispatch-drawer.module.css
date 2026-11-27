@@ -225,6 +225,13 @@
   margin-bottom: 1rem;
 }
 
+.trailerAssignmentHelp {
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .searchInput {
   display: flex;
   align-items: center;

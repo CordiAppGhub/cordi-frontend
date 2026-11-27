@@ -1,0 +1,503 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  color: #0f172a;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 2px 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #b45309;
+}
+
+.titleRow h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 19px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.titleRow > span {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.exportButton,
+.planButton,
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #b45309;
+  border-radius: 8px;
+  color: #fff;
+  background: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exportButton {
+  min-height: 34px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.exportButton:disabled,
+.planButton:disabled,
+.saveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.kpiCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.kpiCard > span {
+  grid-column: 1;
+  grid-row: 1;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpiCard > strong {
+  grid-column: 2;
+  grid-row: 1;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.kpiCard > small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.analystSummary {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid #fcd34d;
+  border-radius: 7px;
+  color: #854d0e;
+  background: #fffbeb;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tablePanel {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.selectControl {
+  display: flex;
+  flex: 0 1 290px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 175px;
+}
+
+.selectControl > span {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.selectControl select {
+  width: 100%;
+  height: 30px;
+  padding: 0 26px 0 8px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.quickFilters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.quickFilters button {
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  color: #475569;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.quickFilters button:hover,
+.quickFilters .filterActive {
+  border-color: #fbbf24;
+  color: #92400e;
+  background: #fef3c7;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+}
+
+.searchBox {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 7px;
+  min-width: 220px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+}
+
+.searchBox:focus-within {
+  border-color: #b45309;
+  box-shadow: 0 0 0 3px rgb(180 83 9 / 12%);
+}
+
+.searchBox input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #0f172a;
+  background: transparent;
+  font-size: 12px;
+}
+
+.clearButton {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #64748b;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  border-color: #cbd5e1;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.tableScroll {
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  border-bottom: 1px solid #dbe3ec;
+  color: #475569;
+  background: #f8fafc;
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.table td {
+  min-width: 105px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf1f5;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: #fffbeb;
+}
+
+.table tfoot td {
+  padding: 8px 10px;
+  border-top: 2px solid #cbd5e1;
+  color: #1e293b;
+  background: #f8fafc;
+  font-weight: 750;
+}
+
+.table td strong,
+.table td small {
+  display: block;
+}
+
+.table td strong {
+  color: #1e293b;
+}
+
+.table td small {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.moneyCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.readyBadge,
+.missingBadge {
+  display: inline-block;
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.readyBadge {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.missingBadge {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.planButton {
+  min-height: 29px;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.feedback,
+.emptyState {
+  padding: 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.error button {
+  padding: 6px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  background: #fff;
+  cursor: pointer;
+}
+
+.tableFooter {
+  padding: 10px 14px;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.modalForm {
+  display: grid;
+  gap: 16px;
+}
+
+.modalIntro {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.copyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.copyGrid div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.copyGrid span,
+.formField > span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.copyGrid strong {
+  overflow-wrap: anywhere;
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.formField {
+  display: grid;
+  gap: 7px;
+}
+
+.formField input[type="text"],
+.formField input[type="file"] {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #1e293b;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.formField input:focus {
+  border-color: #b45309;
+  outline: 2px solid rgb(180 83 9 / 13%);
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #475569;
+  font-size: 11px;
+}
+
+.fileInfo button {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  border-radius: 5px;
+  color: #64748b;
+  background: #f1f5f9;
+  cursor: pointer;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.cancelButton,
+.saveButton {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.cancelButton {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #475569;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .exportButton {
+    align-self: stretch;
+  }
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .copyGrid {
+    grid-template-columns: 1fr;
+  }
+}

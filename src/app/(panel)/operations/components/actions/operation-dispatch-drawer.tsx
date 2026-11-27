@@ -192,6 +192,7 @@ const getVehicleAxleCompatibility = (
   operation: Operation,
   vehicle: FleetLiveVehicle,
   trailer: FleetLiveTrailer | null,
+  allowPendingTrailer = false,
 ) => {
   const configuration = operation.cargoVehicleType;
   const reasons: string[] = [];
@@ -220,7 +221,11 @@ const getVehicleAxleCompatibility = (
       );
     }
 
-    if (configuration.requiresTrailer && !trailer) {
+    if (
+      configuration.requiresTrailer &&
+      !trailer &&
+      !allowPendingTrailer
+    ) {
       reasons.push("La configuración requiere un tráiler");
     } else if (!configuration.requiresTrailer && trailer) {
       reasons.push("La configuración requiere un vehículo rígido sin tráiler");
@@ -242,7 +247,10 @@ const getVehicleAxleCompatibility = (
       trailer?.axles,
       vehicle.type,
     );
-    if (!actualConfigurationCode) {
+    if (
+      !actualConfigurationCode &&
+      !(allowPendingTrailer && configuration.requiresTrailer && !trailer)
+    ) {
       reasons.push("No se pudo determinar una tipología oficial del equipo");
     }
     if (
@@ -253,7 +261,11 @@ const getVehicleAxleCompatibility = (
       reasons.push("Se requiere registrar un camión rígido C2 o C3");
     }
 
-    if (operation.weight != null && operation.weight > 0) {
+    if (
+      !(allowPendingTrailer && configuration.requiresTrailer && !trailer) &&
+      operation.weight != null &&
+      operation.weight > 0
+    ) {
       const effectiveCapacity = vehicle.effectiveCapacityKg;
       if (effectiveCapacity === null) {
         reasons.push("Capacidad efectiva del equipo sin registrar");
@@ -266,11 +278,14 @@ const getVehicleAxleCompatibility = (
   }
 
   if (operation.requiredTrailerType) {
-    if (!trailer) {
+    if (!trailer && !allowPendingTrailer) {
       reasons.push(
         `Se requiere un tráiler tipo ${TRAILER_TYPE_LABELS[operation.requiredTrailerType]}`,
       );
-    } else if (trailer.trailerType !== operation.requiredTrailerType) {
+    } else if (
+      trailer &&
+      trailer.trailerType !== operation.requiredTrailerType
+    ) {
       reasons.push(
         `Tráiler ${trailer.trailerType ? TRAILER_TYPE_LABELS[trailer.trailerType] : "sin tipo"}; se requiere ${TRAILER_TYPE_LABELS[operation.requiredTrailerType]}`,
       );
@@ -495,9 +510,6 @@ export function OperationDispatchDrawer({
     [driversQuery.data],
   );
   const operationDriverId = operation?.driverId;
-  const operationAllowsRigidVehicle =
-    !operation?.cargoVehicleType?.requiresTrailer &&
-    !operation?.requiredTrailerType;
   const requiredTrailerType = operation?.requiredTrailerType;
 
   const vehicles = useMemo(() => {
@@ -524,12 +536,13 @@ export function OperationDispatchDrawer({
           vehicle.status === "BUSY") &&
         (driver?.isAvailable === true ||
           driver?.conductorStatus === "BUSY" ||
-          driver?.id === operationDriverId) &&
-        (operationAllowsRigidVehicle || Boolean(vehicle.trailerId));
+          driver?.id === operationDriverId);
       const isPreassigned =
         preassignedFleet?.vehicleIds.includes(vehicle.id) === true;
       const matchesRequiredTrailerType =
-        !requiredTrailerType || trailer?.trailerType === requiredTrailerType;
+        !requiredTrailerType ||
+        !trailer ||
+        trailer.trailerType === requiredTrailerType;
       return (
         matchesSearch &&
         matchesRequiredTrailerType &&
@@ -541,7 +554,6 @@ export function OperationDispatchDrawer({
     driverById,
     liveQuery.data,
     onlyAvailable,
-    operationAllowsRigidVehicle,
     operationDriverId,
     preassignedFleet?.vehicleIds,
     requiredTrailerType,
@@ -576,7 +588,12 @@ export function OperationDispatchDrawer({
       Boolean(operation?.requiredTrailerType);
     const hasRequiredTrailer = !requiresTrailer || hasTrailer;
     const compatibility = operation
-      ? getVehicleAxleCompatibility(operation, vehicle, trailer ?? null)
+      ? getVehicleAxleCompatibility(
+          operation,
+          vehicle,
+          trailer ?? null,
+          requiresTrailer && !hasTrailer,
+        )
       : { compatible: true, reasons: [] };
     return {
       driver,
@@ -590,7 +607,6 @@ export function OperationDispatchDrawer({
         Boolean(operation && hasScheduledProgramming(operation)) &&
         statusAvailable &&
         driverAvailable &&
-        hasRequiredTrailer &&
         compatibility.compatible,
       overlap:
         !isPreassignedVehicle &&
@@ -604,7 +620,7 @@ export function OperationDispatchDrawer({
   const assignOwnVehicle = async (vehicle: FleetLiveVehicle) => {
     if (!operation || !operationDetailsReady) return;
     const eligibility = getVehicleEligibility(vehicle);
-    if (!eligibility.driver || !eligibility.hasRequiredTrailer) return;
+    if (!eligibility.driver) return;
     if (selectionOnly) {
       onFleetSelected?.({
         driverId: eligibility.driver.id,
@@ -990,6 +1006,10 @@ export function OperationDispatchDrawer({
                     Solo disponibles ahora
                   </label>
                 </div>
+                <p className={styles.trailerAssignmentHelp}>
+                  Opcional: el conductor podrá acoplar o cambiar el chasis
+                  desde su PWA según el peso y requisito de la carga.
+                </p>
 
                 {!operationDetailsReady ? (
                   <div className={styles.stateMessage} role="status">
@@ -1117,9 +1137,9 @@ export function OperationDispatchDrawer({
                               </span>
                             )}
                             {!eligibility.hasRequiredTrailer && (
-                              <span className={styles.badgeDanger}>
+                              <span className={styles.badgeWarning}>
                                 <AlertTriangle size={13} />
-                                Falta tráiler requerido
+                                Sin tráiler acoplado · podrá acoplarlo desde PWA
                               </span>
                             )}
                             <span

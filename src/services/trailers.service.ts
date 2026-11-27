@@ -4,10 +4,16 @@ import type {
   Trailer,
   UpdateTrailerInput,
 } from '@/types/vehicles';
+import type { DriverTrailerOption } from '@/types/driver-portal.types';
 
 export const trailersService = {
   getAll: async (): Promise<Trailer[]> => {
     const { data } = await api.get('/trailers');
+    return data;
+  },
+
+  getAvailableForDriver: async (): Promise<DriverTrailerOption[]> => {
+    const { data } = await api.get<DriverTrailerOption[]>('/trailers');
     return data;
   },
 

@@ -12,6 +12,7 @@ import { SuperModal } from "@/components/organisms/modal/modal";
 import type {
   Operation,
   OperationContainerStatus,
+  DriverTrailerOption,
   TrailerDestinationType,
 } from "@/types/driver-portal.types";
 import { DriverHeaderNav } from "./components/DriverHeaderNav";
@@ -28,6 +29,7 @@ import { getUserFriendlyErrorMessage } from "@/utils/api-error";
 import { compressFiles } from "@/utils/image-compressor";
 import { formatEvidenceTypeLabel } from "@/utils/format-labels";
 import { SealAndClosureModal } from "./components/workflow/components/SealAndClosureModal";
+import { TrailerCouplingSelector } from "./components/TrailerCouplingSelector";
 
 type PairedAmparoPreview = {
   id: number;
@@ -55,6 +57,39 @@ type PendingEvidenceFile = {
   file: File;
   previewUrl: string | null;
 };
+
+async function compressOcrPhoto(file: File): Promise<File> {
+  const image = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  try {
+    const scale = Math.min(1, 1024 / Math.max(image.width, image.height));
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No se pudo procesar la imagen OCR.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) =>
+          result
+            ? resolve(result)
+            : reject(new Error("No se pudo comprimir la imagen OCR.")),
+        "image/jpeg",
+        0.75,
+      );
+    });
+    const fileName = file.name.replace(/\.[^/.]+$/, "") || "ocr-photo";
+    return new File([blob], `${fileName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  } finally {
+    image.close();
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
 
 export default function DriverPortalPage() {
   const queryClient = useQueryClient();
@@ -148,6 +183,7 @@ export default function DriverPortalPage() {
   const [pendingEvidenceFiles, setPendingEvidenceFiles] = useState<
     PendingEvidenceFile[]
   >([]);
+  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
 
   useEffect(
     () => () => {
@@ -256,10 +292,14 @@ export default function DriverPortalPage() {
     }
 
     submissionLockRef.current = true;
+    setIsProcessingOcr(modalType === "OCR");
     let completed = false;
     try {
       const rawFiles = pendingEvidenceFiles.map(({ file }) => file);
-      const files = await compressFiles(rawFiles);
+      const files =
+        modalType === "OCR"
+          ? await Promise.all(rawFiles.map(compressOcrPhoto))
+          : await compressFiles(rawFiles);
       const file = files[0];
       if (!file) return;
       if (modalType === "OCR") {
@@ -381,6 +421,7 @@ export default function DriverPortalPage() {
       });
     } finally {
       submissionLockRef.current = false;
+      setIsProcessingOcr(false);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (galleryInputRef.current) galleryInputRef.current.value = "";
       if (completed) setPendingEvidenceFiles([]);
@@ -495,6 +536,13 @@ export default function DriverPortalPage() {
   };
 
   const handleVerifyFleetPlates = async () => {
+    if (
+      submissionLockRef.current ||
+      isProcessingOcr ||
+      isVerifyingFleetPlates
+    ) {
+      return;
+    }
     if (!selectedOperation || !cabPlateImage || !trailerPlateImage) {
       await showAlert({
         title: "Faltan fotos",
@@ -504,16 +552,13 @@ export default function DriverPortalPage() {
       return;
     }
 
+    submissionLockRef.current = true;
+    setIsProcessingOcr(true);
     try {
-      const [cabFiles, trailerFiles] = await Promise.all([
-        compressFiles([cabPlateImage]),
-        compressFiles([trailerPlateImage]),
+      const [cabImage, trailerImage] = await Promise.all([
+        compressOcrPhoto(cabPlateImage),
+        compressOcrPhoto(trailerPlateImage),
       ]);
-      const cabImage = cabFiles[0];
-      const trailerImage = trailerFiles[0];
-      if (!cabImage || !trailerImage) {
-        throw new Error("No se pudieron preparar ambas imágenes.");
-      }
 
       const result = await verifyFleetPlates(
         selectedOperation.id,
@@ -538,6 +583,9 @@ export default function DriverPortalPage() {
         icon: "error",
         confirmButtonColor: "#dc2626",
       });
+    } finally {
+      submissionLockRef.current = false;
+      setIsProcessingOcr(false);
     }
   };
 
@@ -864,6 +912,19 @@ export default function DriverPortalPage() {
             onReportTrailerLocation={(operationId, destinationType) =>
               handleOpenTrailerLocationReport(operationId, destinationType)
             }
+            onTrailerUpdated={(operationId, trailer) => {
+              setSelectedOperation((current) =>
+                current?.id === operationId
+                  ? {
+                      ...current,
+                      trailer,
+                      vehicle: current.vehicle
+                        ? { ...current.vehicle, currentTrailerId: trailer.id }
+                        : current.vehicle,
+                    }
+                  : current,
+              );
+            }}
             isUncouplingTrailer={isUncouplingTrailer}
           />
         </>
@@ -927,6 +988,25 @@ export default function DriverPortalPage() {
                     {selectedOperation.trailer?.plate || "No asignado"}
                   </strong>
                 </p>
+                <TrailerCouplingSelector
+                  operation={selectedOperation}
+                  onTrailerUpdated={(trailer: DriverTrailerOption) => {
+                    setSelectedOperation((current) =>
+                      current?.id === selectedOperation.id
+                        ? {
+                            ...current,
+                            trailer,
+                            vehicle: current.vehicle
+                              ? {
+                                  ...current.vehicle,
+                                  currentTrailerId: trailer.id,
+                                }
+                              : current.vehicle,
+                          }
+                        : current,
+                    );
+                  }}
+                />
                 <label style={{ display: "grid", gap: 6 }}>
                   Foto Placa Cabezote
                   <input
@@ -936,7 +1016,7 @@ export default function DriverPortalPage() {
                     onChange={(event) =>
                       setCabPlateImage(event.target.files?.[0] ?? null)
                     }
-                    disabled={isVerifyingFleetPlates}
+                    disabled={isVerifyingFleetPlates || isProcessingOcr}
                     required
                   />
                 </label>
@@ -949,18 +1029,19 @@ export default function DriverPortalPage() {
                     onChange={(event) =>
                       setTrailerPlateImage(event.target.files?.[0] ?? null)
                     }
-                    disabled={isVerifyingFleetPlates}
+                    disabled={isVerifyingFleetPlates || isProcessingOcr}
                     required
                   />
                 </label>
                 <Button
                   type="button"
                   onClick={() => void handleVerifyFleetPlates()}
-                  isLoading={isVerifyingFleetPlates}
+                  isLoading={isVerifyingFleetPlates || isProcessingOcr}
                   disabled={
                     !cabPlateImage ||
                     !trailerPlateImage ||
-                    isVerifyingFleetPlates
+                    isVerifyingFleetPlates ||
+                    isProcessingOcr
                   }
                 >
                   {isVerifyingFleetPlates
@@ -1184,8 +1265,12 @@ export default function DriverPortalPage() {
                       type="button"
                       variant="primary"
                       onClick={() => void handleConfirmFileSelection()}
-                      isLoading={uploading || processingState}
-                      disabled={uploading || processingState}
+                      isLoading={
+                        uploading || processingState || isProcessingOcr
+                      }
+                      disabled={
+                        uploading || processingState || isProcessingOcr
+                      }
                     >
                       Confirmar y subir
                     </Button>

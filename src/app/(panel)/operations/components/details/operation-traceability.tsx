@@ -49,6 +49,13 @@ const DOCUMENT_RELATED_CONTAINER_TYPES = new Set([
   'DEVOLUCION_VACIO',
 ]);
 
+const CONTAINER_PHOTO_SLOTS = [
+  { type: 'CONTENEDOR_PUERTA', label: 'Puerta' },
+  { type: 'CONTENEDOR_COSTADO_DERECHO', label: 'Costado Derecho' },
+  { type: 'CONTENEDOR_COSTADO_IZQUIERDO', label: 'Costado Izquierdo' },
+  { type: 'CONTENEDOR_FRENTE', label: 'Frente' },
+];
+
 type RoutePointRole = 'CARGUE' | 'DESCARGUE' | 'EMPTY_PICKUP' | 'EMPTY_RETURN';
 
 interface TraceabilityRoutePoint {
@@ -1839,6 +1846,66 @@ export function OperationTraceability({ operationId }: Props) {
       {/* 🚀 VISTA 3: GALERÍA Y REVISIÓN DE SOPORTES */}
       {activeTab === 'evidences' && (
         <div className={styles.card}>
+          {currentOperation.isContainerized && (
+            <section className={styles.containerPhotoSection}>
+              <h3>Fotos del Contenedor (4 lados)</h3>
+              <div className={styles.containerPhotoGrid}>
+                {CONTAINER_PHOTO_SLOTS.map((slot) => {
+                  const evidence = currentOperation.evidences
+                    ?.filter(
+                      (item) =>
+                        item.type === slot.type && item.invalidated !== true,
+                    )
+                    .sort((left, right) =>
+                      (right.createdAt ?? '').localeCompare(
+                        left.createdAt ?? '',
+                      ),
+                    )[0];
+                  const imageUrl =
+                    evidence?.url ?? evidence?.photosUrl?.[0] ?? null;
+                  return (
+                    <article
+                      className={styles.containerPhotoCard}
+                      key={slot.type}
+                    >
+                      <strong>{slot.label}</strong>
+                      {imageUrl ? (
+                        <button
+                          type="button"
+                          className={styles.containerPhotoPreviewButton}
+                          onClick={() => setSelectedImage(imageUrl)}
+                          aria-label={`Ampliar foto: ${slot.label}`}
+                        >
+                          <img src={imageUrl} alt={slot.label} />
+                        </button>
+                      ) : (
+                        <div className={styles.containerPhotoEmpty}>
+                          Foto pendiente
+                        </div>
+                      )}
+                      <span>
+                        {evidence?.createdAt
+                          ? `Capturada: ${formatDate(evidence.createdAt)}`
+                          : 'Sin captura'}
+                      </span>
+                      {imageUrl && (
+                        <a
+                          href={imageUrl}
+                          download={`operacion-${displayedOperationId}-${slot.type.toLowerCase()}.jpg`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.containerPhotoDownload}
+                        >
+                          <Download size={14} />
+                          Descargar
+                        </a>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>

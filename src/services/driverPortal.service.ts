@@ -2,6 +2,7 @@ import {
   DriverPortalData,
   OperationContainerStatus,
   CargoStatus,
+  DriverTrailerOption,
   TripMicroState,
   OcrResult,
   FleetPlateVerificationResult,
@@ -97,6 +98,17 @@ export const driverPortalService = {
       `/portal/operations/${operationId}/trailer-location`,
       payload,
     );
+  },
+
+  assignTrailer: async (
+    operationId: number,
+    trailerId: string,
+  ): Promise<{ trailer: DriverTrailerOption }> => {
+    const { data } = await api.patch<{ trailer: DriverTrailerOption }>(
+      `/portal/operations/${operationId}/trailer`,
+      { trailerId },
+    );
+    return data;
   },
 
   verifyFleetPlates: async (

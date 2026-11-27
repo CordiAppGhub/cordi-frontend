@@ -99,6 +99,15 @@ export interface Vehicle {
   currentTrailerId?: string | null;
 }
 
+export interface DriverTrailerOption {
+  id: string;
+  plate: string;
+  trailerType: TrailerType | null;
+  axles: number | null;
+  status: "AVAILABLE_IN_YARD";
+  capacity: number | null;
+}
+
 export interface Operation {
   id: number;
   clientId?: number | null;
@@ -129,6 +138,16 @@ export interface Operation {
   cargoDescription?: string | null;
   peso?: number | null;
   weight?: number | null;
+  weightKg?: number | null;
+  requiredTrailerType?: TrailerType | null;
+  cargoVehicleType?: {
+    name: string;
+    code?: string;
+    tractorAxles: number | null;
+    trailerAxles: number | null;
+    requiresTrailer: boolean;
+    maxPayloadKg: number | null;
+  } | null;
   dimensions?: string | null;
   packageType?: string | null;
   packageCount?: number | null;
@@ -232,10 +251,11 @@ export interface Operation {
   originLocation?: Location | null;
   destinationLocation?: Location | null;
   vehicle?: Pick<Vehicle, "id" | "plate" | "type" | "currentTrailerId">;
-  trailer?: {
+  trailer?: DriverTrailerOption | {
     id: string;
     plate: string;
-    trailerType?: TrailerType;
+    trailerType?: TrailerType | null;
+    axles?: number | null;
   };
 }
 

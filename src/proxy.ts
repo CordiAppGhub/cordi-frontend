@@ -5,8 +5,10 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/profiles',
   '/operations',
+  '/pending-manifest',
   '/programacion',
   '/fleet',
+  '/fleet-status',
   '/locations',
   '/novedades',
   '/tariff',
@@ -152,6 +154,20 @@ export function proxy(request: NextRequest) {
   }
 
   if (hasValidSession) {
+    if (
+      pathname === '/fleet-status' &&
+      !['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(userRole ?? '')
+    ) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    if (
+      (pathname === '/pending-manifest' ||
+        pathname.startsWith('/pending-manifest/')) &&
+      !['ADMIN', 'JEFE_DE_FLOTA', 'ANALISTA'].includes(userRole ?? '')
+    ) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
     const isRestrictedRoute = RESTRICTED_FOR_ANALYST.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
     );

@@ -11,10 +11,12 @@ import type {
   Operation,
   OperationContainerStatus,
   CargoStatus,
+  DriverTrailerOption,
   TrailerDestinationType,
   Vehicle,
 } from "@/types/driver-portal.types";
 import { generateDriverOperationRoute } from "@/utils/driver-operation-route";
+import { TrailerCouplingSelector } from "./TrailerCouplingSelector";
 
 interface CurrentTripTabProps {
   driver: DriverPortalData;
@@ -59,6 +61,10 @@ interface CurrentTripTabProps {
     operationId: number,
     destinationType: TrailerDestinationType,
   ) => void;
+  onTrailerUpdated: (
+    operationId: number,
+    trailer: DriverTrailerOption,
+  ) => void;
   isUncouplingTrailer: boolean;
 }
 
@@ -83,6 +89,7 @@ export function CurrentTripTab({
   onOpenClosingModal,
   onOpenDetailsModal,
   onReportTrailerLocation,
+  onTrailerUpdated,
   isUncouplingTrailer,
 }: CurrentTripTabProps) {
   const containerCardRef = useRef<HTMLElement | null>(null);
@@ -424,6 +431,15 @@ export function CurrentTripTab({
             >
               Ver detalles &gt;
             </a>
+            {isDriverActive(activeOperation) &&
+              !isAmparoImportBlocked(activeOperation) && (
+                <TrailerCouplingSelector
+                  operation={activeOperation}
+                  onTrailerUpdated={(trailer) =>
+                    onTrailerUpdated(activeOperation.id, trailer)
+                  }
+                />
+              )}
             {isDriverActive(activeOperation) &&
               !isAmparoImportBlocked(activeOperation) &&
               activeOperation.trailer &&

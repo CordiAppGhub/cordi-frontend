@@ -38,6 +38,55 @@
   letter-spacing: 0.02em;
 }
 
+.operationRequirements {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.operationRequirements h3 {
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 0.88rem;
+}
+
+.requirementGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.requirementGrid > div {
+  display: grid;
+  gap: 3px;
+}
+
+.requirementGrid span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.requirementGrid strong {
+  color: #0f172a;
+  font-size: 0.82rem;
+}
+
+.trailerAxleNotice {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #fbbf24;
+  border-radius: 7px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .containerStatusSection {
   display: flex;
   flex-direction: column;

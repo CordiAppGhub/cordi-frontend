@@ -1,0 +1,54 @@
+.selector {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.85rem;
+}
+
+.currentTrailer,
+.message {
+  margin: 0;
+  color: #475569;
+}
+
+.notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #fff7ed;
+  color: #9a3412;
+  line-height: 1.4;
+}
+
+.controls {
+  display: grid;
+  gap: 7px;
+}
+
+.controls label {
+  font-weight: 600;
+}
+
+.controls select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #b91c1c;
+}
